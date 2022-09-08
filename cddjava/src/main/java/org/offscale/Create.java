@@ -12,13 +12,15 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Given an OpenAPI Spec, generates code for routes and components.
+ * Given an OpenAPI Spec, generates code for routes and components
+ * when no code previously exists
  */
 public class Create {
     private final JSONObject jo;
@@ -56,9 +58,9 @@ public class Create {
 
     public Create(String filePath) {
         this.jo = getJSONObjectFromFile(filePath);
-        generateComponents();
-        generateRoutes();
     }
+
+
 
     /**
      * @param filePath of yaml file
@@ -68,20 +70,37 @@ public class Create {
         Yaml yaml = new Yaml();
         InputStream inputStream = this.getClass()
                 .getClassLoader()
-                .getResourceAsStream("test.yaml");
+                .getResourceAsStream(filePath);
         Map<String, Object> obj = yaml.load(inputStream);
         return new JSONObject(obj);
     }
 
     /**
-     * Generates the classes corresponding to the schemas in the OpenAPI spec
+     * Generates the classes corresponding to the components in the OpenAPI spec
+     * @return a map where the keys are the class names and the values are the class code
      */
-    public ImmutableList<String> generateComponents() {
-        List<String> generatedComponents = new ArrayList<>();
+    public ImmutableMap<String, String> generateComponents() {
+        HashMap<String, String> generatedComponents = new HashMap<>();
         JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        schemas.forEach((schema) -> generatedComponents.add(generateComponent(joSchemas.getJSONObject(schema), schema)));
-        return ImmutableList.copyOf(generatedComponents);
+        schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent(joSchemas.getJSONObject(schema), schema)));
+        return ImmutableMap.copyOf(generatedComponents);
+    }
+
+    /**
+     * Generates code for a component.
+     * @param joComponent JSONObject for a component in the OpenAPI spec.
+     * @param componentName name of the component to generate.
+     * @return a String containing the generated code for a component.
+     */
+    private String generateComponent(JSONObject joComponent, String componentName) {
+        JSONObject joProperties = joComponent.getJSONObject("properties");
+        List<String> properties = Lists.newArrayList(joProperties.keys());
+        ClassOrInterfaceDeclaration myComponent = new ClassOrInterfaceDeclaration();
+
+        myComponent.setName(componentName);
+        properties.forEach((property) -> myComponent.addField(OPEN_API_TO_JAVA.get(joProperties.getJSONObject(property).getString("type")), property));
+        return myComponent.toString();
     }
 
     /**
@@ -215,21 +234,5 @@ public class Create {
 
     private String generateJavadocReturn(JSONObject joResponse, String responseName) {
         return joResponse.getString("description") + " (Status Code " + responseName + "), ";
-    }
-
-    /**
-     * Generates code for a component.
-     * @param joComponent JSONObject for a component in the OpenAPI spec.
-     * @param componentName name of the component to generate.
-     * @return a String containing the generated code for a component.
-     */
-    private String generateComponent(JSONObject joComponent, String componentName) {
-        JSONObject joProperties = joComponent.getJSONObject("properties");
-        List<String> properties = Lists.newArrayList(joProperties.keys());
-        ClassOrInterfaceDeclaration myComponent = new ClassOrInterfaceDeclaration();
-
-        myComponent.setName(componentName);
-        properties.forEach((property) -> myComponent.addField(OPEN_API_TO_JAVA.get(joProperties.getJSONObject(property).getString("type")), property));
-        return myComponent.toString();
     }
 }
