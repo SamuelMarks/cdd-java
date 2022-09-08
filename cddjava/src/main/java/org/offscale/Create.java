@@ -1,15 +1,14 @@
 package org.offscale;
 
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
-
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +57,7 @@ public class Create {
 
     public Create(String filePath) {
         this.jo = getJSONObjectFromFile(filePath);
+        generateComponents();
     }
 
 
@@ -99,7 +99,11 @@ public class Create {
         ClassOrInterfaceDeclaration myComponent = new ClassOrInterfaceDeclaration();
 
         myComponent.setName(componentName);
-        properties.forEach((property) -> myComponent.addField(OPEN_API_TO_JAVA.get(joProperties.getJSONObject(property).getString("type")), property));
+        properties.forEach((property) -> {
+            Parameter parameter = parseSchema(joProperties.getJSONObject(property));
+            FieldDeclaration field = myComponent.addField(parameter.type, property);
+            field.setJavadocComment("Type of " + parameter.strictType);
+        });
         return myComponent.toString();
     }
 
@@ -117,7 +121,6 @@ public class Create {
                 generateRoute(myInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
             }
         }
-        System.out.println(myInterface);
         return myInterface.toString();
     }
 
