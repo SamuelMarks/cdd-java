@@ -11,11 +11,11 @@ public class Utils {
     * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
      */
     public static ImmutableMap<String, String> getOpenAPIToJavaTypes() {
-        Map<String, String> openAPIToJavaTypes = new HashMap<>();
-        openAPIToJavaTypes.put("string", "String");
-        openAPIToJavaTypes.put("int64", "long");
-        openAPIToJavaTypes.put("integer", "int");
-        openAPIToJavaTypes.put("int32", "int");
-        return ImmutableMap.copyOf(openAPIToJavaTypes);
+        return ImmutableMap.of(
+            "string", "String",
+            "int64", "long",
+            "integer", "int",
+            "int32", "int"
+        );
     }
 }
