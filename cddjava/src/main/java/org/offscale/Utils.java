@@ -1,7 +1,10 @@
 package org.offscale;
 
 import com.google.common.collect.ImmutableMap;
+import org.json.JSONObject;
+import org.yaml.snakeyaml.Yaml;
 
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,5 +20,18 @@ public class Utils {
             "integer", "int",
             "int32", "int"
         );
+    }
+
+    /**
+     * @param filePath of yaml file
+     * @return JSONObject corresponding to openAPI spec from yaml file
+     */
+    public static <T> JSONObject getJSONObjectFromFile(String filePath, Class<T> getClass) {
+        Yaml yaml = new Yaml();
+        InputStream inputStream = getClass
+                .getClassLoader()
+                .getResourceAsStream(filePath);
+        Map<String, Object> obj = yaml.load(inputStream);
+        return new JSONObject(obj);
     }
 }

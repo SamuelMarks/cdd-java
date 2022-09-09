@@ -56,23 +56,8 @@ public class Create {
     }
 
     public Create(String filePath) {
-        this.jo = getJSONObjectFromFile(filePath);
+        this.jo = Utils.getJSONObjectFromFile(filePath, this.getClass());
         generateComponents();
-    }
-
-
-
-    /**
-     * @param filePath of yaml file
-     * @return JSONObject corresponding to openAPI spec from yaml file
-     */
-    public JSONObject getJSONObjectFromFile(String filePath) {
-        Yaml yaml = new Yaml();
-        InputStream inputStream = this.getClass()
-                .getClassLoader()
-                .getResourceAsStream(filePath);
-        Map<String, Object> obj = yaml.load(inputStream);
-        return new JSONObject(obj);
     }
 
     /**
