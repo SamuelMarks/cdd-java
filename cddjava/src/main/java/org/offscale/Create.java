@@ -4,6 +4,7 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONArray;
@@ -57,7 +58,6 @@ public class Create {
 
     public Create(String filePath) {
         this.jo = Utils.getJSONObjectFromFile(filePath, this.getClass());
-        generateComponents();
     }
 
     /**
@@ -78,7 +78,7 @@ public class Create {
      * @param componentName name of the component to generate.
      * @return a String containing the generated code for a component.
      */
-    private String generateComponent(JSONObject joComponent, String componentName) {
+     private String generateComponent(JSONObject joComponent, String componentName) {
         JSONObject joProperties = joComponent.getJSONObject("properties");
         List<String> properties = Lists.newArrayList(joProperties.keys());
         ClassOrInterfaceDeclaration myComponent = new ClassOrInterfaceDeclaration();
@@ -116,7 +116,7 @@ public class Create {
      * @param routeName
      * @param operation
      */
-    private void generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
+    private MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
         MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"));
         methodDeclaration.setJavadocComment(generateJavadocForRoute(joRoute, routeName, operation));
         NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
@@ -126,6 +126,7 @@ public class Create {
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.type, param.name));
         }
+        return methodDeclaration;
     }
 
     /**
