@@ -3,11 +3,8 @@ package org.offscale;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.google.common.collect.ImmutableMap;
-import org.json.JSONObject;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -26,13 +23,10 @@ public class Merge {
         this.create = new Create(filePath);
     }
 
-    // TODO: Still working on this, but taking a break to write tests for Create
     public ImmutableMap<String, String> mergeComponents() {
         ImmutableMap<String, String> openAPIComponents = create.generateComponents();
         Map<String, String> mergedComponents = new HashMap<>();
-        openAPIComponents.entrySet().forEach(entry -> mergedComponents.put(entry.getKey(), mergeComponent(entry.getValue(), entry.getKey())));
-        CompilationUnit cuComponent = StaticJavaParser.parse(this.components.get(""));
-
+        openAPIComponents.forEach((key, value) -> mergedComponents.put(key, mergeComponent(value, key)));
         return ImmutableMap.copyOf(mergedComponents);
     }
 
@@ -43,17 +37,21 @@ public class Merge {
 
         CompilationUnit openAPIComponent = StaticJavaParser.parse(componentCode);
         Optional<ClassOrInterfaceDeclaration> openAPIComponentClass = openAPIComponent.getClassByName(componentName);
-        CompilationUnit javaCodeComponent = StaticJavaParser.parse(this.components.get(this.components.get(componentName)));
+        CompilationUnit javaCodeComponent = StaticJavaParser.parse(this.components.get(componentName));
         Optional<ClassOrInterfaceDeclaration> javaCodeComponentClass = javaCodeComponent.getClassByName(componentName);
         if (javaCodeComponentClass.isPresent() && openAPIComponentClass.isPresent()) {
             openAPIComponentClass.get().getFields().forEach(field -> {
                 VariableDeclarator varDeclarator = field.getVariable(0);
-                System.out.println(varDeclarator.getNameAsString());
                 if (javaCodeComponentClass.get().getFieldByName(varDeclarator.getNameAsString()).isPresent()) {
                     javaCodeComponentClass.get().getFieldByName(varDeclarator.getNameAsString()).get().remove();
                 }
                 javaCodeComponentClass.get().addField(varDeclarator.getTypeAsString(), varDeclarator.getNameAsString())
                         .setJavadocComment(field.getJavadocComment().get());
+            });
+            javaCodeComponentClass.get().getFields().forEach(field -> {
+                if (openAPIComponentClass.get().getFieldByName(field.getVariable(0).getNameAsString()).isEmpty()) {
+                    field.remove();
+                }
             });
         }
         return javaCodeComponent.toString();
@@ -63,12 +61,19 @@ public class Merge {
         String openAPIRoutes = create.generateRoutes();
         CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
         CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
-        ClassOrInterfaceDeclaration javaCodeInterface = cuOpenAPIRoutes.getInterfaceByName("routes").get();
-        cuOpenAPIRoutes.getInterfaceByName("routes").get().getMethods().forEach(method -> {
+        ClassOrInterfaceDeclaration javaCodeInterface = cuJavaCodeRoutes.getInterfaceByName("Routes").get();
+        cuOpenAPIRoutes.getInterfaceByName("Routes").get().getMethods().forEach(method -> {
             if (!javaCodeInterface.getMethodsByName(method.getNameAsString()).isEmpty()) {
                 javaCodeInterface.getMethodsByName(method.getNameAsString()).get(0).remove();
             }
-            javaCodeInterface.addField(method.getTypeAsString(), method.getNameAsString()).setJavadocComment(method.getJavadocComment().get());
+            javaCodeInterface.addMethod(method.getNameAsString()).setType(method.getTypeAsString())
+                    .setAnnotations(method.getAnnotations()).setParameters(method.getParameters())
+                    .setJavadocComment(method.getJavadocComment().get()).removeBody();
+        });
+        javaCodeInterface.getMethods().forEach(method -> {
+            if (!openAPIRoutes.contains(method.getNameAsString())) {
+                method.remove();
+            }
         });
 
         return cuJavaCodeRoutes.toString();

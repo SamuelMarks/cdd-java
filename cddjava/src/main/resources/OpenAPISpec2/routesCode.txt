@@ -1,0 +1,25 @@
+interface Routes {
+
+    /**
+     * Create a pet
+     * @return unexpected error (Status Code default), Null response (Status Code 201),
+     */
+    @POST(path = "/pets")
+    void createPets();
+
+    /**
+     * List all pets
+     * @param limit of type int32. How many items to return at one time (max 100).
+     * @return A paged array of pets (Status Code 200), unexpected error (Status Code default),
+     */
+    @GET(path = "/pets")
+    Call<Pets> listPets(int limit);
+
+    /**
+     * Info for a specific pet
+     * @param petId of type integer. The id of the pet to retrieve.
+     * @return Expected response to a valid request (Status Code 200), unexpected error (Status Code default),
+     */
+    @GET(path = "/pets/{petId}")
+    Call<Pets> showPetById(int petId);
+}

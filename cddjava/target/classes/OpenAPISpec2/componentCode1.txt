@@ -1,0 +1,17 @@
+class Pet {
+
+    /**
+     * Type of integer
+     */
+    int name;
+
+    /**
+     * Type of int64
+     */
+    long id;
+
+    /**
+     * Type of integer
+     */
+    int age;
+}

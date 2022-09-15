@@ -4,21 +4,23 @@ import com.google.common.collect.ImmutableMap;
 import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 public class Utils {
 
     /**
-    * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
+     * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
      */
     public static ImmutableMap<String, String> getOpenAPIToJavaTypes() {
         return ImmutableMap.of(
-            "string", "String",
-            "int64", "long",
-            "integer", "int",
-            "int32", "int"
+                "string", "String",
+                "int64", "long",
+                "integer", "int",
+                "int32", "int"
         );
     }
 
@@ -33,5 +35,14 @@ public class Utils {
                 .getResourceAsStream(filePath);
         Map<String, Object> obj = yaml.load(inputStream);
         return new JSONObject(obj);
+    }
+
+    public static String readFileToString(String filePath) {
+        try {
+            return Files.
+                    readString(Path.of(filePath));
+        } catch (IOException e) {
+            return "";
+        }
     }
 }
