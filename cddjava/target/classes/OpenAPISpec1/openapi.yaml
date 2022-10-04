@@ -93,6 +93,23 @@ components:
           type: integer
         tag2:
           type: string
+    Dog:
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: object
+          properties:
+            first:
+              type: object
+              properties:
+                origin:
+                  type: string
+                beginsWithA:
+                  type: boolean
+            last:
+              type: string
     Error:
       required:
         - code

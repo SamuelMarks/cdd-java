@@ -1,19 +1,26 @@
 package org.offscale;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import java.io.IOException;
+
+import java.io.*;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class CreateTests {
     private Create create;
     private Create improperFormCreate;
-
-    static private final String COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode1.txt";
+    static private final String PET_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode1.txt";
+    static private final String DOG_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode3.txt";
     static private final String ROUTES_FILE_PATH = "src/main/resources/OpenAPISpec1/routesCode.txt";
 
     @Before
@@ -24,12 +31,12 @@ public class CreateTests {
 
     @Test
     public void generateComponentsSuccess() throws IOException {
-        Path filePath = Path.of(COMPONENT_FILE_PATH);
-        String petComponentCode = Files.readString(filePath);
+        String petComponentCode = Files.readString(Path.of(PET_COMPONENT_FILE_PATH));
+        String dogComponentCode = Files.readString(Path.of(DOG_COMPONENT_FILE_PATH));
         ImmutableMap<String, String> generatedComponents = create.generateComponents();
-//        System.out.println(generatedComponents.get("Pet"));
-        assertEquals(generatedComponents.size(), 2);
+        assertEquals(generatedComponents.size(), 3);
         assertEquals(generatedComponents.get("Pet"), petComponentCode);
+        assertEquals(generatedComponents.get("Dog"), dogComponentCode);
     }
 
     @Test(expected = JSONException.class)
@@ -41,7 +48,35 @@ public class CreateTests {
     public void generateRoutesSuccess() throws IOException {
         Path filePath = Path.of(ROUTES_FILE_PATH);
         String routesCode = Files.readString(filePath);
-        assertEquals(create.generateRoutes(), routesCode);
+        System.out.println(create.generateRoutesAndTests().get("tests"));
+        assertEquals(create.generateRoutesAndTests().get("routes"), routesCode);
+    }
+
+    String run(String url, OkHttpClient client) throws IOException {
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            response.headers().forEach(header -> System.out.println(header));
+            System.out.println(response.code());
+            return response.body().string();
+        }
+    }
+    @Test
+    public void testEndPoints() throws IOException {
+        URL url = new URL("http://www.android.com/");
+        OkHttpClient client = new OkHttpClient();
+        System.out.println(run("https://petstore.swagger.io/v2/pet/findByStatus?status=available", client));
+
+        String jsonString = """
+                10
+                """;
+        Gson gson = new GsonBuilder().create();
+
+        Integer user = gson.fromJson(jsonString, Integer.class);
+
+        System.out.println(user);
     }
 
 }

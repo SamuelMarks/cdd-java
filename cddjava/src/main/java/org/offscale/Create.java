@@ -1,20 +1,20 @@
 package org.offscale;
 
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javafaker.Faker;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
-import com.google.common.annotations.VisibleForTesting;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.yaml.snakeyaml.Yaml;
-import java.io.InputStream;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,27 +24,27 @@ import java.util.regex.Pattern;
  */
 public class Create {
     private final JSONObject jo;
+    Faker faker = new Faker();
     private static final ImmutableMap<String, String> OPEN_API_TO_JAVA = Utils.getOpenAPIToJavaTypes();
-
-    private class Parameter {
+    private static final String GET_METHOD_METHOD_NAME = "run";
+    private class Schema {
         private String type;
         private String name;
-
         private String description;
-
         private String strictType;
 
-        public Parameter (String type) {
+        public Schema (final String type) {
             this.type = type;
         }
 
-        public Parameter(String type, String strictType) {
+        public Schema(String type, String strictType) {
             this.type = type;
             this.strictType = strictType;
         }
 
-        public void setName(String name) {
+        public Schema setName(String name) {
             this.name = name;
+            return this;
         }
 
         public void setType(String type) {
@@ -68,7 +68,7 @@ public class Create {
         HashMap<String, String> generatedComponents = new HashMap<>();
         JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent(joSchemas.getJSONObject(schema), schema)));
+        schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent(joSchemas.getJSONObject(schema), schema).toString()));
         return ImmutableMap.copyOf(generatedComponents);
     }
 
@@ -78,35 +78,116 @@ public class Create {
      * @param componentName name of the component to generate.
      * @return a String containing the generated code for a component.
      */
-     private String generateComponent(JSONObject joComponent, String componentName) {
+     private ClassOrInterfaceDeclaration generateComponent(JSONObject joComponent, String componentName) {
         JSONObject joProperties = joComponent.getJSONObject("properties");
         List<String> properties = Lists.newArrayList(joProperties.keys());
         ClassOrInterfaceDeclaration myComponent = new ClassOrInterfaceDeclaration();
 
         myComponent.setName(componentName);
         properties.forEach((property) -> {
-            Parameter parameter = parseSchema(joProperties.getJSONObject(property));
-            FieldDeclaration field = myComponent.addField(parameter.type, property);
-            field.setJavadocComment("Type of " + parameter.strictType);
+            Schema parameter = parseSchema(joProperties.getJSONObject(property));
+            if (parameter.type.equals("Object")) {
+                myComponent.addMember(generateComponent(joProperties.getJSONObject(property), Utils.capitalizeFirstLetter(property)));
+                FieldDeclaration field = myComponent.addField(Utils.capitalizeFirstLetter(property), property);
+            } else {
+                FieldDeclaration field = myComponent.addField(parameter.type, property);
+                field.setJavadocComment("Type of " + parameter.strictType);
+            }
         });
-        return myComponent.toString();
+        return myComponent;
     }
 
     /**
      * @return Routes interface containing routes from OpenAPI Spec
      */
-    public String generateRoutes() {
+    public ImmutableMap<String, String> generateRoutesAndTests() {
+        HashMap<String, String> routesAndTests = new HashMap<>();
         JSONObject joPaths = jo.getJSONObject("paths");
         List<String> paths = Lists.newArrayList(joPaths.keys());
-        ClassOrInterfaceDeclaration myInterface = new ClassOrInterfaceDeclaration();
-        myInterface.setInterface(true);
-        myInterface.setName("Routes");
+        ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
+                .setInterface(true).setName("Routes");
+        ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
+        testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0).setInitializer("new OkHttpClient()");
+        MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_METHOD_NAME);
+        MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
+        runMethod.setParameters(runMethodWithBody.getParameters());
+        runMethod.setType(runMethodWithBody.getType());
+        runMethod.setBody(runMethodWithBody.getBody().get());
+
         for (String path : paths) {
             for (String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
-                generateRoute(myInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
+                generateRoute(routesInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
+                generateTest(testsClass, joPaths.getJSONObject(path).getJSONObject(operation));
             }
         }
-        return myInterface.toString();
+        routesAndTests.put("routes", routesInterface.toString());
+        routesAndTests.put("tests", testsClass.toString());
+        return ImmutableMap.copyOf(routesAndTests);
+    }
+
+    private String getBaseURL() {
+        return this.jo.getJSONArray("servers").getJSONObject(0).getString("url");
+    }
+
+    private void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute) {
+        String classType = generateRouteType(joRoute.getJSONObject("responses")).type;
+        MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
+        methodDeclaration.addAnnotation("Test");
+        StringBuilder getURL = new StringBuilder("\"" + getBaseURL() + "?");
+        if (joRoute.has("parameters")) {
+            generateRouteParameters(joRoute.getJSONArray("parameters"))
+                    .forEach(parameter -> getURL.append(generateMockDataForType(parameter)));
+        }
+        getURL.append("\"");
+        BlockStmt methodBody = new BlockStmt();
+        MethodCallExpr runCall = new MethodCallExpr();
+        runCall.setName(GET_METHOD_METHOD_NAME);
+        runCall.addArgument(getURL.toString());
+        FieldDeclaration getResponse = new FieldDeclaration();
+        if (!classType.equals("void")) {
+            FieldDeclaration gson = new FieldDeclaration();
+            FieldDeclaration parsedResponse = new FieldDeclaration();
+
+            Utils.initializeField(getResponse, "String", "getResponse", runCall.toString() + ".body().string()");
+            Utils.initializeField(gson, "Gson", "gson", "new GsonBuilder().create()");
+            Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(classType),
+                    "response", "gson.fromJson(getResponse, " + classType + ".class)");
+            Utils.addDeclarationsToBlock(methodBody, getResponse, gson, parsedResponse);
+        } else {
+            Utils.initializeField(getResponse, "int", "statusCode", runCall.toString() + ".code()");
+            MethodCallExpr assertEqualsCall = new MethodCallExpr();
+            assertEqualsCall.setName("assertEquals");
+            assertEqualsCall.addArgument("statusCode");
+            assertEqualsCall.addArgument("200");
+            Utils.addDeclarationsToBlock(methodBody, getResponse);
+            methodBody.addStatement(assertEqualsCall);
+        }
+        methodDeclaration.setBody(methodBody);
+    }
+
+    private String generateMockDataForUnrecognizedName(String type) {
+        if (type.equals("String")) {
+            return faker.food().fruit();
+        } else if (type.equals("long") || type.equals("int")) {
+            return String.valueOf(faker.number().numberBetween(1, 100));
+        } else if (type.equals("boolean")) {
+            return "true";
+        } else {
+            return "UNKNOWN";
+        }
+    }
+
+    private String generateMockDataForType(Schema schema) {
+        String parameter = schema.name + "=";
+        switch (schema.name) {
+            case "name": return parameter + faker.name().name();
+            case "fullname": return parameter + faker.name().fullName();
+            case "firstname": return parameter + faker.name().firstName();
+            case "lastname": return parameter + faker.name().lastName();
+            case "address": return parameter + faker.address().fullAddress();
+            default: return parameter +
+                    generateMockDataForUnrecognizedName(schema.type);
+        }
     }
 
     /**
@@ -117,12 +198,17 @@ public class Create {
      * @param operation
      */
     private MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
-        MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"));
-        methodDeclaration.setJavadocComment(generateJavadocForRoute(joRoute, routeName, operation));
+        MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
+                .removeBody()
+                .setJavadocComment(generateJavadocForRoute(joRoute, routeName, operation));
         NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
         expr.addPair("path", "\"" + routeName + "\"");
-        methodDeclaration.removeBody();
-        methodDeclaration.setType(generateRouteType(joRoute.getJSONObject("responses")));
+        String routeType = generateRouteType(joRoute.getJSONObject("responses")).type;
+        if (routeType.equals("void")) {
+            methodDeclaration.setType("void");
+        } else {
+            methodDeclaration.setType("Call<" + routeType + ">");
+        }
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.type, param.name));
         }
@@ -134,11 +220,11 @@ public class Create {
      * @param joRouteParameters the openAPI representation of the route parameters
      * @return a List of route parameters
      */
-    private List<Parameter> generateRouteParameters(JSONArray joRouteParameters) {
-        List<Parameter> routeParameters = new ArrayList<>();
+    private List<Schema> generateRouteParameters(JSONArray joRouteParameters) {
+        List<Schema> routeParameters = new ArrayList<>();
         for (int i = 0; i < joRouteParameters.length(); i++) {
             JSONObject joParameter = joRouteParameters.getJSONObject(i);
-            Parameter parameter = parseSchema(joParameter.getJSONObject("schema"));
+            Schema parameter = parseSchema(joParameter.getJSONObject("schema"));
             parameter.setName(joParameter.getString("name"));
             parameter.setDescription(joParameter.getString("description"));
             routeParameters.add(parameter);
@@ -151,41 +237,32 @@ public class Create {
      * @param joRouteResponse the OpenAPI representation of the route response.
      * @return the type of the route
      */
-    private String generateRouteType(JSONObject joRouteResponse) {
-        StringBuilder type = new StringBuilder();
+    private Schema generateRouteType(JSONObject joRouteResponse) {
         List<String> responses = Lists.newArrayList(joRouteResponse.keys());
-        responses.forEach(response -> {
-            if (!response.equals("default")) {
-                if (joRouteResponse.getJSONObject(response).has("content")) {
-                    Parameter parameter = parseSchema(joRouteResponse.getJSONObject(response).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema"));
-                    parameter.setType("Call<" + parameter.type + ">");
-                    type.append(parameter.type);
-                }
-            }
-        });
-        if (type.isEmpty()) {
-            return "void";
-        } else {
-            return type.toString();
+        Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
+        if (!response.isEmpty() && joRouteResponse.getJSONObject(response.get()).has("content")) {
+            return parseSchema(joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema"));
         }
+        return new Schema("void");
     }
 
     /**
      *
-     * @param schema which is essentially a type
+     * @param joSchema which is essentially a type
      * @return a Parameter with type information
      */
-    private Parameter parseSchema(JSONObject schema) {
-        if (schema.has("$ref")) {
-            return new Parameter(parseSchemaRef(schema.getString("$ref")));
+    private Schema parseSchema(JSONObject joSchema) {
+        if (joSchema.has("$ref")) {
+            return new Schema(parseSchemaRef(joSchema.getString("$ref")));
         }
 
-        if (schema.has("format")) {
-            return new Parameter(Utils.getOpenAPIToJavaTypes().get(schema.get("format")), schema.getString("format"));
+        if (joSchema.has("format")) {
+            return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("format")), joSchema.getString("format"));
         }
 
-        return new Parameter(Utils.getOpenAPIToJavaTypes().get(schema.get("type")), schema.getString("type"));
+        return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("type")), joSchema.getString("type"));
     }
+
 
     /**
      * Uses regex to parse out the component name in the reference.

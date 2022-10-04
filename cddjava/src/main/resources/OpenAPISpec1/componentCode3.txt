@@ -1,0 +1,32 @@
+class Dog {
+
+    class Name {
+
+        /**
+         * Type of string
+         */
+        String last;
+
+        class First {
+
+            /**
+             * Type of boolean
+             */
+            boolean beginsWithA;
+
+            /**
+             * Type of string
+             */
+            String origin;
+        }
+
+        First first;
+    }
+
+    Name name;
+
+    /**
+     * Type of int64
+     */
+    long id;
+}

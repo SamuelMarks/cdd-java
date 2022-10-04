@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Given existing code and an openAPI spec, updates code based on openAP spec.
+ */
 public class Merge {
     private final ImmutableMap<String, String> components;
     private final String routes;
@@ -23,6 +26,12 @@ public class Merge {
         this.create = new Create(filePath);
     }
 
+    /**
+     * Updates the Components code with the openAPI components.
+     * When there is a conflict, uses openAPI as the source of truth.
+     * @return a map where the keys are the component names and the values
+     * are the component code.
+     */
     public ImmutableMap<String, String> mergeComponents() {
         ImmutableMap<String, String> openAPIComponents = create.generateComponents();
         Map<String, String> mergedComponents = new HashMap<>();
@@ -30,6 +39,11 @@ public class Merge {
         return ImmutableMap.copyOf(mergedComponents);
     }
 
+    /**
+     * @param componentCode the openAPI component code
+     * @param componentName the openAPI component name
+     * @return the merged code for a component
+     */
     public String mergeComponent(String componentCode, String componentName) {
         if (!this.components.containsKey(componentName)) {
             return componentCode;
@@ -57,8 +71,11 @@ public class Merge {
         return javaCodeComponent.toString();
     }
 
+    /**
+     * @return merged routes between existing code and openAPI spec.
+     */
     public String mergeRoutes() {
-        String openAPIRoutes = create.generateRoutes();
+        String openAPIRoutes = create.generateRoutesAndTests().get("routes");
         CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
         CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
         ClassOrInterfaceDeclaration javaCodeInterface = cuJavaCodeRoutes.getInterfaceByName("Routes").get();
