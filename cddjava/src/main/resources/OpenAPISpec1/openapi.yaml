@@ -91,8 +91,22 @@ components:
           format: int64
         name:
           type: integer
+        names:
+          type: array
+          items:
+            type: array
+            items:
+              type: array
+              items:
+                type: integer
+                format: int64
+
         tag2:
           type: string
+    Pets:
+      type: array
+      items:
+        $ref: "#/components/schemas/Pet"
     Dog:
       properties:
         id:

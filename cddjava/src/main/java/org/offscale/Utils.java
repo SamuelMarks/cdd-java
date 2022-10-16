@@ -28,6 +28,7 @@ public class Utils {
         openAPIToJavaTypes.put("int32", "int");
         openAPIToJavaTypes.put("object", "Object");
         openAPIToJavaTypes.put("boolean", "boolean");
+        openAPIToJavaTypes.put("array", "array");
 
         return ImmutableMap.copyOf(openAPIToJavaTypes);
     }

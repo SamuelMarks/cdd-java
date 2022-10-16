@@ -10,7 +10,7 @@ import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
-
+import static org.hamcrest.CoreMatchers.*;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
@@ -20,6 +20,7 @@ public class CreateTests {
     private Create create;
     private Create improperFormCreate;
     static private final String PET_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode1.txt";
+    static private final String PETS_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode4.txt";
     static private final String DOG_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode3.txt";
     static private final String ROUTES_FILE_PATH = "src/main/resources/OpenAPISpec1/routesCode.txt";
 
@@ -32,10 +33,12 @@ public class CreateTests {
     @Test
     public void generateComponentsSuccess() throws IOException {
         String petComponentCode = Files.readString(Path.of(PET_COMPONENT_FILE_PATH));
+        String petsComponentCode = Files.readString(Path.of(PETS_COMPONENT_FILE_PATH));
         String dogComponentCode = Files.readString(Path.of(DOG_COMPONENT_FILE_PATH));
         ImmutableMap<String, String> generatedComponents = create.generateComponents();
-        assertEquals(generatedComponents.size(), 3);
+        assertEquals(generatedComponents.size(), 4);
         assertEquals(generatedComponents.get("Pet"), petComponentCode);
+        assertEquals(generatedComponents.get("Pets"), petsComponentCode);
         assertEquals(generatedComponents.get("Dog"), dogComponentCode);
     }
 
@@ -48,8 +51,16 @@ public class CreateTests {
     public void generateRoutesSuccess() throws IOException {
         Path filePath = Path.of(ROUTES_FILE_PATH);
         String routesCode = Files.readString(filePath);
-        System.out.println(create.generateRoutesAndTests().get("tests"));
         assertEquals(create.generateRoutesAndTests().get("routes"), routesCode);
+    }
+
+    @Test
+    public void generateTestsSuccess() throws IOException {
+        String testClass = create.generateRoutesAndTests().get("tests");
+        System.out.println(testClass);
+        assertThat(testClass, containsString("createPetsTest()"));
+        assertThat(testClass, containsString("listPetsTest()"));
+        assertThat(testClass, containsString("showDogByIdTest()"));
     }
 
     String run(String url, OkHttpClient client) throws IOException {

@@ -20,9 +20,15 @@ class Dog {
             String origin;
         }
 
+        /**
+         * Type of First
+         */
         First first;
     }
 
+    /**
+     * Type of Name
+     */
     Name name;
 
     /**
