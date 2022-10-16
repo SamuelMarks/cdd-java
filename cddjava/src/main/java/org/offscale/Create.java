@@ -74,11 +74,18 @@ public class Create {
         HashMap<String, String> generatedComponents = new HashMap<>();
         JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent2(joSchemas.getJSONObject(schema), schema, null).get("type")));
+        schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).get("type")));
         return ImmutableMap.copyOf(generatedComponents);
     }
-    
-    private ImmutableMap<String, String> generateComponent2(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
+
+    /**
+     *
+     * @param joComponent JSONObject for a component in the OpenAPI spec.
+     * @param componentName name of the component to generate.
+     * @param parentClass the parent class of a given component.
+     * @return a String containing the generated code for a component.
+     */
+    private ImmutableMap<String, String> generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
         Schema type = parseSchema(joComponent);
         if (type.type.equalsIgnoreCase("object")) {
             ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
@@ -86,7 +93,7 @@ public class Create {
             List<String> properties = Lists.newArrayList(joProperties.keys());
             newClass.setName(Utils.capitalizeFirstLetter(componentName));
             properties.forEach(property -> {
-                ImmutableMap<String, String> propertyType = generateComponent2(joProperties.getJSONObject(property), property, newClass);
+                ImmutableMap<String, String> propertyType = generateComponent(joProperties.getJSONObject(property), property, newClass);
                 FieldDeclaration field = newClass.addField(propertyType.get("type"), property);
                 field.setJavadocComment("Type of " + propertyType.get("strictType"));
             });
@@ -99,12 +106,12 @@ public class Create {
         } else if (type.type.equals("array")) {
             if (parentClass == null) {
                 ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
-                String arrayType = generateComponent2(joComponent.getJSONObject("items"), "ArrayType", newClass).get("type");
+                String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).get("type");
                 newClass.setName(Utils.capitalizeFirstLetter(componentName));
                 newClass.addField(arrayType + "[]", componentName + "Array");
                 return ImmutableMap.of("type", newClass.toString());
             }
-            String arrayType = generateComponent2(joComponent.getJSONObject("items"), "ArrayType", parentClass).get("type");
+            String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).get("type");
             return ImmutableMap.of("type", arrayType + "[]", "strictType", arrayType + "[]");
         } else {
             return ImmutableMap.of("type", parseSchema(joComponent).type, "strictType", parseSchema(joComponent).strictType);
