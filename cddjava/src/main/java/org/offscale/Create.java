@@ -77,38 +77,7 @@ public class Create {
         schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent2(joSchemas.getJSONObject(schema), schema, null).get("type")));
         return ImmutableMap.copyOf(generatedComponents);
     }
-
-    /**
-     * Generates code for a component.
-     * @param joComponent JSONObject for a component in the OpenAPI spec.
-     * @param componentName name of the component to generate.
-     * @return a String containing the generated code for a component.
-     */
-     private ClassOrInterfaceDeclaration generateComponent(JSONObject joComponent, String componentName) {
-         ClassOrInterfaceDeclaration myComponent = new ClassOrInterfaceDeclaration();
-         myComponent.setName(componentName);
-         if (joComponent.has("properties")) {
-             JSONObject joProperties = joComponent.getJSONObject("properties");
-             List<String> properties = Lists.newArrayList(joProperties.keys());
-             properties.forEach((property) -> {
-                 Schema parameter = parseSchema(joProperties.getJSONObject(property));
-                 if (parameter.type.equals("Object")) {
-                     myComponent.addMember(generateComponent(joProperties.getJSONObject(property), Utils.capitalizeFirstLetter(property)));
-                     FieldDeclaration field = myComponent.addField(Utils.capitalizeFirstLetter(property), property);
-                     field.setJavadocComment("Type of " + parameter.strictType);
-                 } else {
-                     FieldDeclaration field = myComponent.addField(parameter.type, property);
-                     field.setJavadocComment("Type of " + parameter.strictType);
-                 }
-             });
-           // If there is no properties field, this should an array.
-         } else {
-             JSONObject joItems = joComponent.getJSONObject("items");
-             Schema parameter = parseSchema(joItems);
-         }
-         return myComponent;
-    }
-
+    
     private ImmutableMap<String, String> generateComponent2(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
         Schema type = parseSchema(joComponent);
         if (type.type.equalsIgnoreCase("object")) {
