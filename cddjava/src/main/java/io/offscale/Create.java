@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  */
 public class Create {
     private final JSONObject jo;
-    Faker faker = new Faker();
+    final Faker faker = new Faker();
     private static final ImmutableMap<String, String> OPEN_API_TO_JAVA = Utils.getOpenAPIToJavaTypes();
     private static final String GET_METHOD_METHOD_NAME = "run";
     private static class Schema {
@@ -57,8 +57,9 @@ public class Create {
             this.type = type;
         }
 
-        public void setDescription(String description) {
+        public Schema setDescription(String description) {
             this.description = description;
+            return this;
         }
     }
 
@@ -139,7 +140,7 @@ public class Create {
         body.ifPresent(runMethod::setBody);
 
         for (final String path : paths) {
-            for (String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
+            for (final String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
                 generateRoute(routesInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
                 generateTest(testsClass, joPaths.getJSONObject(path).getJSONObject(operation));
             }
@@ -264,9 +265,9 @@ public class Create {
         final List<Schema> routeParameters = new ArrayList<>();
         for (int i = 0; i < joRouteParameters.length(); i++) {
             final JSONObject joParameter = joRouteParameters.getJSONObject(i);
-            final Schema parameter = parseSchema(joParameter.getJSONObject("schema"));
-            parameter.setName(joParameter.getString("name"));
-            parameter.setDescription(joParameter.getString("description"));
+            final Schema parameter = parseSchema(joParameter.getJSONObject("schema"))
+                    .setName(joParameter.getString("name"))
+                    .setDescription(joParameter.getString("description"));
             routeParameters.add(parameter);
         }
         return routeParameters;
@@ -331,7 +332,7 @@ public class Create {
         final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
-                String param = "@param " + parameter.name + " of type " + parameter.strictType + ". " + parameter.description + ". \n";
+                final String param = "@param " + parameter.name + " of type " + parameter.strictType + ". " + parameter.description + ". \n";
                 javaDocForRoute.append(param);
             });
         }

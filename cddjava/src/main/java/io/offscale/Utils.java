@@ -39,7 +39,7 @@ public class Utils {
     }
 
     public static void addDeclarationsToBlock(BlockStmt block, FieldDeclaration... declarations) {
-        for (FieldDeclaration declaration: declarations) {
+        for (final FieldDeclaration declaration: declarations) {
             block.addStatement(declaration.toString());
         }
     }
