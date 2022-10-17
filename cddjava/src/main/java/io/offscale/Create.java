@@ -1,4 +1,4 @@
-package org.offscale;
+package io.offscale;
 
 import com.github.javafaker.Faker;
 import com.github.javaparser.ast.Modifier;
@@ -27,11 +27,11 @@ public class Create {
     Faker faker = new Faker();
     private static final ImmutableMap<String, String> OPEN_API_TO_JAVA = Utils.getOpenAPIToJavaTypes();
     private static final String GET_METHOD_METHOD_NAME = "run";
-    private class Schema {
+    private static class Schema {
         private String type;
         private String name;
         private String description;
-        private String strictType;
+        private final String strictType;
 
         public Schema() {
             this.type = "object";
@@ -71,9 +71,9 @@ public class Create {
      * @return a map where the keys are the class names and the values are the class code
      */
     public ImmutableMap<String, String> generateComponents() {
-        HashMap<String, String> generatedComponents = new HashMap<>();
-        JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
-        List<String> schemas = Lists.newArrayList(joSchemas.keys());
+        final HashMap<String, String> generatedComponents = new HashMap<>();
+        final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
+        final List<String> schemas = Lists.newArrayList(joSchemas.keys());
         schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).get("type")));
         return ImmutableMap.copyOf(generatedComponents);
     }
@@ -86,11 +86,11 @@ public class Create {
      * @return a String containing the generated code for a component.
      */
     private ImmutableMap<String, String> generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
-        Schema type = parseSchema(joComponent);
+        final Schema type = parseSchema(joComponent);
         if (type.type.equalsIgnoreCase("object")) {
-            ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
-            JSONObject joProperties = joComponent.getJSONObject("properties");
-            List<String> properties = Lists.newArrayList(joProperties.keys());
+            final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
+            final JSONObject joProperties = joComponent.getJSONObject("properties");
+            final List<String> properties = Lists.newArrayList(joProperties.keys());
             newClass.setName(Utils.capitalizeFirstLetter(componentName));
             properties.forEach(property -> {
                 ImmutableMap<String, String> propertyType = generateComponent(joProperties.getJSONObject(property), property, newClass);
@@ -105,13 +105,13 @@ public class Create {
             return ImmutableMap.of("type", newClass.getNameAsString(), "strictType", newClass.getNameAsString());
         } else if (type.type.equals("array")) {
             if (parentClass == null) {
-                ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
-                String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).get("type");
+                final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
+                final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).get("type");
                 newClass.setName(Utils.capitalizeFirstLetter(componentName));
                 newClass.addField(arrayType + "[]", componentName + "Array");
                 return ImmutableMap.of("type", newClass.toString());
             }
-            String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).get("type");
+            final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).get("type");
             return ImmutableMap.of("type", arrayType + "[]", "strictType", arrayType + "[]");
         } else {
             return ImmutableMap.of("type", parseSchema(joComponent).type, "strictType", parseSchema(joComponent).strictType);
@@ -124,20 +124,21 @@ public class Create {
      * tests is the code for generated tests for all routes.
      */
     public ImmutableMap<String, String> generateRoutesAndTests() {
-        HashMap<String, String> routesAndTests = new HashMap<>();
-        JSONObject joPaths = jo.getJSONObject("paths");
-        List<String> paths = Lists.newArrayList(joPaths.keys());
-        ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
+        final HashMap<String, String> routesAndTests = new HashMap<>();
+        final JSONObject joPaths = jo.getJSONObject("paths");
+        final List<String> paths = Lists.newArrayList(joPaths.keys());
+        final ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
                 .setInterface(true).setName("Routes");
-        ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
+        final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
         testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0).setInitializer("new OkHttpClient()");
-        MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_METHOD_NAME);
-        MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
+        final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_METHOD_NAME);
+        final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
         runMethod.setParameters(runMethodWithBody.getParameters());
         runMethod.setType(runMethodWithBody.getType());
-        runMethod.setBody(runMethodWithBody.getBody().get());
+        final Optional<BlockStmt> body = runMethodWithBody.getBody();
+        body.ifPresent(runMethod::setBody);
 
-        for (String path : paths) {
+        for (final String path : paths) {
             for (String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
                 generateRoute(routesInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
                 generateTest(testsClass, joPaths.getJSONObject(path).getJSONObject(operation));
@@ -161,32 +162,32 @@ public class Create {
      * @param joRoute
      */
     private void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute) {
-        String classType = generateRouteType(joRoute.getJSONObject("responses")).type;
-        MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
+        final String classType = generateRouteType(joRoute.getJSONObject("responses")).type;
+        final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
         methodDeclaration.addAnnotation("Test");
-        StringBuilder getURL = new StringBuilder("\"" + getBaseURL() + "?");
+        final StringBuilder getURL = new StringBuilder("\"" + getBaseURL() + "?");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
                     .forEach(parameter -> getURL.append(generateMockDataForType(parameter)));
         }
         getURL.append("\"");
-        BlockStmt methodBody = new BlockStmt();
-        MethodCallExpr runCall = new MethodCallExpr();
+        final BlockStmt methodBody = new BlockStmt();
+        final MethodCallExpr runCall = new MethodCallExpr();
         runCall.setName(GET_METHOD_METHOD_NAME);
         runCall.addArgument(getURL.toString());
-        FieldDeclaration getResponse = new FieldDeclaration();
+        final FieldDeclaration getResponse = new FieldDeclaration();
         if (!classType.equals("void")) {
-            FieldDeclaration gson = new FieldDeclaration();
-            FieldDeclaration parsedResponse = new FieldDeclaration();
+            final FieldDeclaration gson = new FieldDeclaration();
+            final FieldDeclaration parsedResponse = new FieldDeclaration();
 
-            Utils.initializeField(getResponse, "String", "getResponse", runCall.toString() + ".body().string()");
+            Utils.initializeField(getResponse, "String", "getResponse", runCall + ".body().string()");
             Utils.initializeField(gson, "Gson", "gson", "new GsonBuilder().create()");
             Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(classType),
                     "response", "gson.fromJson(getResponse, " + classType + ".class)");
             Utils.addDeclarationsToBlock(methodBody, getResponse, gson, parsedResponse);
         } else {
-            Utils.initializeField(getResponse, "int", "statusCode", runCall.toString() + ".code()");
-            MethodCallExpr assertEqualsCall = new MethodCallExpr();
+            Utils.initializeField(getResponse, "int", "statusCode", runCall + ".code()");
+            final MethodCallExpr assertEqualsCall = new MethodCallExpr();
             assertEqualsCall.setName("assertEquals");
             assertEqualsCall.addArgument("statusCode");
             assertEqualsCall.addArgument("200");
@@ -204,15 +205,12 @@ public class Create {
      * @return the mock data for the given parameter
      */
     private String generateMockDataForUnrecognizedName(String type) {
-        if (type.equals("String")) {
-            return faker.food().fruit();
-        } else if (type.equals("long") || type.equals("int")) {
-            return String.valueOf(faker.number().numberBetween(1, 100));
-        } else if (type.equals("boolean")) {
-            return "true";
-        } else {
-            return "UNKNOWN";
-        }
+        return switch (type) {
+            case "String" -> faker.food().fruit();
+            case "long", "int" -> String.valueOf(faker.number().numberBetween(1, 100));
+            case "boolean" -> "true";
+            default -> "UNKNOWN";
+        };
     }
 
     /**
@@ -220,16 +218,16 @@ public class Create {
      * @return the mock data for the given schema.
      */
     private String generateMockDataForType(Schema schema) {
-        String parameter = schema.name + "=";
-        switch (schema.name) {
-            case "name": return parameter + faker.name().name();
-            case "fullname": return parameter + faker.name().fullName();
-            case "firstname": return parameter + faker.name().firstName();
-            case "lastname": return parameter + faker.name().lastName();
-            case "address": return parameter + faker.address().fullAddress();
-            default: return parameter +
+        final String parameter = schema.name + "=";
+        return switch (schema.name) {
+            case "name" -> parameter + faker.name().name();
+            case "fullname" -> parameter + faker.name().fullName();
+            case "firstname" -> parameter + faker.name().firstName();
+            case "lastname" -> parameter + faker.name().lastName();
+            case "address" -> parameter + faker.address().fullAddress();
+            default -> parameter +
                     generateMockDataForUnrecognizedName(schema.type);
-        }
+        };
     }
 
     /**
@@ -240,12 +238,12 @@ public class Create {
      * @param operation such as GET or POST
      */
     private MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
-        MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
+        final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
                 .removeBody()
                 .setJavadocComment(generateJavadocForRoute(joRoute, routeName, operation));
-        NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
+        final NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
         expr.addPair("path", "\"" + routeName + "\"");
-        String routeType = generateRouteType(joRoute.getJSONObject("responses")).type;
+        final String routeType = generateRouteType(joRoute.getJSONObject("responses")).type;
         if (routeType.equals("void")) {
             methodDeclaration.setType("void");
         } else {
@@ -263,10 +261,10 @@ public class Create {
      * @return a List of route parameters
      */
     private List<Schema> generateRouteParameters(JSONArray joRouteParameters) {
-        List<Schema> routeParameters = new ArrayList<>();
+        final List<Schema> routeParameters = new ArrayList<>();
         for (int i = 0; i < joRouteParameters.length(); i++) {
-            JSONObject joParameter = joRouteParameters.getJSONObject(i);
-            Schema parameter = parseSchema(joParameter.getJSONObject("schema"));
+            final JSONObject joParameter = joRouteParameters.getJSONObject(i);
+            final Schema parameter = parseSchema(joParameter.getJSONObject("schema"));
             parameter.setName(joParameter.getString("name"));
             parameter.setDescription(joParameter.getString("description"));
             routeParameters.add(parameter);
@@ -280,9 +278,9 @@ public class Create {
      * @return the type of the route
      */
     private Schema generateRouteType(JSONObject joRouteResponse) {
-        List<String> responses = Lists.newArrayList(joRouteResponse.keys());
-        Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
-        if (!response.isEmpty() && joRouteResponse.getJSONObject(response.get()).has("content")) {
+        final List<String> responses = Lists.newArrayList(joRouteResponse.keys());
+        final Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
+        if (response.isPresent() && joRouteResponse.getJSONObject(response.get()).has("content")) {
             return parseSchema(joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema"));
         }
         return new Schema("void");
@@ -298,11 +296,11 @@ public class Create {
             return new Schema(parseSchemaRef(joSchema.getString("$ref")));
         }
 
-        if (joSchema.has("format")) {
+        else if (joSchema.has("format")) {
             return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("format")), joSchema.getString("format"));
         }
 
-        if (!joSchema.has("type")) {
+        else if (!joSchema.has("type")) {
             return new Schema();
         }
 
@@ -316,9 +314,8 @@ public class Create {
      * @return the component name
      */
     private String parseSchemaRef(String ref) {
-        Pattern pattern = Pattern.compile("#/components/schemas/(\\w+)");
-        Matcher matcher = pattern.matcher(ref);
-        matcher.find();
+        final Pattern pattern = Pattern.compile("#/components/schemas/(\\w+)");
+        final Matcher matcher = pattern.matcher(ref);
         return matcher.group(1);
     }
 
@@ -329,9 +326,9 @@ public class Create {
      * @return javadoc
      */
     private String generateJavadocForRoute(JSONObject joRoute, String routeName, String operation) {
-        JSONObject joResponses = joRoute.getJSONObject("responses");
-        List<String> responses = Lists.newArrayList(joResponses.keys());
-        StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
+        final JSONObject joResponses = joRoute.getJSONObject("responses");
+        final List<String> responses = Lists.newArrayList(joResponses.keys());
+        final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
                 String param = "@param " + parameter.name + " of type " + parameter.strictType + ". " + parameter.description + ". \n";

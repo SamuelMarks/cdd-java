@@ -1,6 +1,7 @@
-package org.offscale;
+package io.offscale;
 
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
@@ -8,12 +9,9 @@ import com.github.javaparser.ast.stmt.BlockStmt;
 import com.google.common.collect.ImmutableMap;
 import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class Utils {
 
@@ -21,24 +19,23 @@ public class Utils {
      * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
      */
     public static ImmutableMap<String, String> getOpenAPIToJavaTypes() {
-        HashMap<String, String> openAPIToJavaTypes = new HashMap<>();
-        openAPIToJavaTypes.put("string", "String");
-        openAPIToJavaTypes.put("int64", "long");
-        openAPIToJavaTypes.put("integer", "int");
-        openAPIToJavaTypes.put("int32", "int");
-        openAPIToJavaTypes.put("object", "Object");
-        openAPIToJavaTypes.put("boolean", "boolean");
-        openAPIToJavaTypes.put("array", "array");
-
-        return ImmutableMap.copyOf(openAPIToJavaTypes);
+        return ImmutableMap.<String, String>builder()
+                .put("string", "String")
+                .put("int64", "long")
+                .put("integer", "int")
+                .put("int32", "int")
+                .put("object", "Object")
+                .put("boolean", "boolean")
+                .put("array", "array")
+                .build();
     }
 
     public static String getPrimitivesToClassTypes(String primitive) {
-        switch (primitive) {
-            case "int": return "Integer";
-            case "long": return "Long";
-            default: return primitive;
-        }
+        return switch (primitive) {
+            case "int" -> "Integer";
+            case "long" -> "Long";
+            default -> primitive;
+        };
     }
 
     public static void addDeclarationsToBlock(BlockStmt block, FieldDeclaration... declarations) {
@@ -64,8 +61,8 @@ public class Utils {
         return new JSONObject(obj);
     }
 
-    public static MethodDeclaration generateGetRequestMethod() {
-        String method = """
+    public static MethodDeclaration generateGetRequestMethod() throws AssertionError {
+        final String method = """
                 public class Test {
                     Response run(String url) throws IOException {
                       Request request = new Request.Builder()
@@ -76,8 +73,9 @@ public class Utils {
                     }
                 }
                 """;
-        return StaticJavaParser.parse(method).getClassByName("Test").get()
-                .getMethodsByName("run").get(0);
+        final Optional<ClassOrInterfaceDeclaration> classObj = StaticJavaParser.parse(method).getClassByName("Test");
+        assert(classObj.isPresent());
+        return classObj.get().getMethodsByName("run").get(0);
     }
 
     public static String capitalizeFirstLetter(String s) {

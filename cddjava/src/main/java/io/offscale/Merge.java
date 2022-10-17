@@ -1,4 +1,4 @@
-package org.offscale;
+package io.offscale;
 
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -16,13 +16,11 @@ public class Merge {
     private final ImmutableMap<String, String> components;
     private final String routes;
 
-    private Create create;
-    private final String filePath;
+    private final Create create;
 
     public Merge(ImmutableMap<String, String> components, String routes, String filePath) {
         this.components = components;
         this.routes = routes;
-        this.filePath = filePath;
         this.create = new Create(filePath);
     }
 
@@ -33,8 +31,8 @@ public class Merge {
      * are the component code.
      */
     public ImmutableMap<String, String> mergeComponents() {
-        ImmutableMap<String, String> openAPIComponents = create.generateComponents();
-        Map<String, String> mergedComponents = new HashMap<>();
+        final ImmutableMap<String, String> openAPIComponents = create.generateComponents();
+        final Map<String, String> mergedComponents = new HashMap<>();
         openAPIComponents.forEach((key, value) -> mergedComponents.put(key, mergeComponent(value, key)));
         return ImmutableMap.copyOf(mergedComponents);
     }
@@ -49,13 +47,13 @@ public class Merge {
             return componentCode;
         }
 
-        CompilationUnit openAPIComponent = StaticJavaParser.parse(componentCode);
-        Optional<ClassOrInterfaceDeclaration> openAPIComponentClass = openAPIComponent.getClassByName(componentName);
-        CompilationUnit javaCodeComponent = StaticJavaParser.parse(this.components.get(componentName));
-        Optional<ClassOrInterfaceDeclaration> javaCodeComponentClass = javaCodeComponent.getClassByName(componentName);
+        final CompilationUnit openAPIComponent = StaticJavaParser.parse(componentCode);
+        final Optional<ClassOrInterfaceDeclaration> openAPIComponentClass = openAPIComponent.getClassByName(componentName);
+        final CompilationUnit javaCodeComponent = StaticJavaParser.parse(this.components.get(componentName));
+        final Optional<ClassOrInterfaceDeclaration> javaCodeComponentClass = javaCodeComponent.getClassByName(componentName);
         if (javaCodeComponentClass.isPresent() && openAPIComponentClass.isPresent()) {
             openAPIComponentClass.get().getFields().forEach(field -> {
-                VariableDeclarator varDeclarator = field.getVariable(0);
+                final VariableDeclarator varDeclarator = field.getVariable(0);
                 if (javaCodeComponentClass.get().getFieldByName(varDeclarator.getNameAsString()).isPresent()) {
                     javaCodeComponentClass.get().getFieldByName(varDeclarator.getNameAsString()).get().remove();
                 }
@@ -75,10 +73,10 @@ public class Merge {
      * @return merged routes between existing code and openAPI spec.
      */
     public String mergeRoutes() {
-        String openAPIRoutes = create.generateRoutesAndTests().get("routes");
-        CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
-        CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
-        ClassOrInterfaceDeclaration javaCodeInterface = cuJavaCodeRoutes.getInterfaceByName("Routes").get();
+        final String openAPIRoutes = create.generateRoutesAndTests().get("routes");
+        final CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
+        final CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
+        final ClassOrInterfaceDeclaration javaCodeInterface = cuJavaCodeRoutes.getInterfaceByName("Routes").get();
         cuOpenAPIRoutes.getInterfaceByName("Routes").get().getMethods().forEach(method -> {
             if (!javaCodeInterface.getMethodsByName(method.getNameAsString()).isEmpty()) {
                 javaCodeInterface.getMethodsByName(method.getNameAsString()).get(0).remove();
