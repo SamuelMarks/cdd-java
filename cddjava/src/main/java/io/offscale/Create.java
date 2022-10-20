@@ -317,6 +317,7 @@ public class Create {
     private String parseSchemaRef(String ref) {
         final Pattern pattern = Pattern.compile("#/components/schemas/(\\w+)");
         final Matcher matcher = pattern.matcher(ref);
+        matcher.find();
         return matcher.group(1);
     }
 

@@ -1,11 +1,6 @@
 class Pet {
 
     /**
-     * Type of long[][][]
-     */
-    long[][][] names;
-
-    /**
      * Type of integer
      */
     int name;
@@ -14,6 +9,11 @@ class Pet {
      * Type of int64
      */
     long id;
+
+    /**
+     * Type of long[][][]
+     */
+    long[][][] names;
 
     /**
      * Type of string

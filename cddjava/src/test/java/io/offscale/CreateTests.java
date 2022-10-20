@@ -56,37 +56,36 @@ public class CreateTests {
     @Test
     public void generateTestsSuccess() {
         final String testClass = create.generateRoutesAndTests().get("tests");
-        System.out.println(testClass);
         assertThat(testClass, containsString("createPetsTest()"));
         assertThat(testClass, containsString("listPetsTest()"));
         assertThat(testClass, containsString("showDogByIdTest()"));
     }
 
-    String run(String url, OkHttpClient client) throws IOException {
-        final Request request = new Request.Builder()
-                .url(url)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            response.headers().forEach(System.out::println);
-            System.out.println(response.code());
-            return response.body().string();
-        }
-    }
-    @Test
-    public void testEndPoints() throws IOException {
-        /*final URL url = new URL("http://www.android.com/");*/
-        final OkHttpClient client = new OkHttpClient();
-        System.out.println(run("https://petstore.swagger.io/v2/pet/findByStatus?status=available", client));
-
-        final String jsonString = """
-                10
-                """;
-        final Gson gson = new GsonBuilder().create();
-
-        final Integer user = gson.fromJson(jsonString, Integer.class);
-
-        System.out.println(user);
-    }
+//    String run(String url, OkHttpClient client) throws IOException {
+//        final Request request = new Request.Builder()
+//                .url(url)
+//                .build();
+//
+//        try (Response response = client.newCall(request).execute()) {
+//            response.headers().forEach(System.out::println);
+//            System.out.println(response.code());
+//            return response.body().string();
+//        }
+//    }
+//    @Test
+//    public void testEndPoints() throws IOException {
+//        /*final URL url = new URL("http://www.android.com/");*/
+//        final OkHttpClient client = new OkHttpClient();
+//        System.out.println(run("https://petstore.swagger.io/v2/pet/findByStatus?status=available", client));
+//
+//        final String jsonString = """
+//                10
+//                """;
+//        final Gson gson = new GsonBuilder().create();
+//
+//        final Integer user = gson.fromJson(jsonString, Integer.class);
+//
+//        System.out.println(user);
+//    }
 
 }
