@@ -6,6 +6,7 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.comments.JavadocComment;
 import com.google.common.collect.ImmutableMap;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +29,7 @@ public class Merge {
     /**
      * Updates the Components code with the openAPI components.
      * When there is a conflict, uses openAPI as the source of truth.
+     *
      * @return a map where the keys are the component names and the values
      * are the component code.
      */
@@ -58,16 +60,19 @@ public class Merge {
                 if (javaCodeComponentClass.get().getFieldByName(varDeclarator.getNameAsString()).isPresent()) {
                     javaCodeComponentClass.get().getFieldByName(varDeclarator.getNameAsString()).get().remove();
                 }
-                final Optional<JavadocComment> javadocComment = field.getJavadocComment();
                 final ClassOrInterfaceDeclaration componentClass = javaCodeComponentClass.get();
-                componentClass.addField(varDeclarator.getTypeAsString(), varDeclarator.getNameAsString());
-                javadocComment.ifPresent(componentClass::setJavadocComment);
+                componentClass.addField(varDeclarator.getTypeAsString(), varDeclarator.getNameAsString())
+                        .setJavadocComment(field.getJavadocComment().get());
             });
             javaCodeComponentClass.get().getFields().forEach(field -> {
                 if (openAPIComponentClass.get().getFieldByName(field.getVariable(0).getNameAsString()).isEmpty()) {
                     field.remove();
                 }
             });
+
+            if (openAPIComponentClass.get().getJavadocComment().isPresent()) {
+                javaCodeComponentClass.get().setJavadocComment(openAPIComponentClass.get().getJavadocComment().get());
+            }
         }
         return javaCodeComponent.toString();
     }
@@ -79,24 +84,25 @@ public class Merge {
         final String openAPIRoutes = create.generateRoutesAndTests().get("routes");
         final CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
         final CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
-        cuOpenAPIRoutes.getInterfaceByName("Routes")
-        .ifPresent(routeInterface -> routeInterface.getMethods().forEach(method -> {
-            if (!routeInterface.getMethodsByName(method.getNameAsString()).isEmpty()) {
-                routeInterface.getMethodsByName(method.getNameAsString()).get(0).remove();
-            }
-            routeInterface
-                    .addMethod(method.getNameAsString())
-                    .setType(method.getTypeAsString())
-                    .setAnnotations(method.getAnnotations()).setParameters(method.getParameters())
-                    .removeBody();
-            method.getJavadocComment().ifPresent(routeInterface::setJavadocComment);
 
-            routeInterface.getMethods().forEach(routeMethod -> {
-                if (!openAPIRoutes.contains(routeMethod.getNameAsString())) {
-                    routeMethod.remove();
-                }
-            });
-        }));
+        if (cuJavaCodeRoutes.getInterfaceByName("Routes").isEmpty()
+                || cuOpenAPIRoutes.getInterfaceByName("Routes").isEmpty()) {
+            throw new IllegalArgumentException("Couldn't find Routes interface in openAPI Spec or Java code"); // perhaps change this to a different exceptions
+        }
+
+        ClassOrInterfaceDeclaration cuJavaCodeRoutesInterface = cuJavaCodeRoutes.getInterfaceByName("Routes").get();
+        ClassOrInterfaceDeclaration cuOpenAPIRoutesInterface = cuOpenAPIRoutes.getInterfaceByName("Routes").get();
+        cuOpenAPIRoutesInterface.getMethods().forEach(method -> {
+            if (!cuJavaCodeRoutesInterface.getMethodsByName(method.getNameAsString()).isEmpty()) {
+                cuJavaCodeRoutesInterface.getMethodsByName(method.getNameAsString()).get(0).remove();
+            }
+            cuJavaCodeRoutesInterface.addMethod(method.getNameAsString())
+                    .setModifiers(method.getModifiers())
+                    .setType(method.getType())
+                    .setParameters(method.getParameters())
+                    .setJavadocComment(method.getJavadocComment().get())
+                    .removeBody();
+        });
 
         return cuJavaCodeRoutes.toString();
     }

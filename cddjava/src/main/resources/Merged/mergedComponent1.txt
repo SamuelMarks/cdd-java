@@ -1,5 +1,9 @@
 class Pet {
 
+    String getName() {
+        return this.name;
+    }
+
     /**
      * Type of integer
      */

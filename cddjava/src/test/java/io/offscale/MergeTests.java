@@ -24,14 +24,19 @@ public class MergeTests {
     private final Map<String, String> openAPISpec1Components = Map.of(
             "Pet", readFileToString("src/main/resources/OpenAPISpec1/componentCode1.txt")
     );
+
+    private final Map<String, String> openAPISpec2Components = Map.of(
+            "Pet", readFileToString("src/main/resources/OpenAPISpec2/componentCode1WithMethods.txt")
+    );
     private final String openAPISpec1Routes = "src/main/resources/OpenAPISpec1/routesCode.txt";
+    private final String openAPISpec2Routes = "src/main/resources/OpenAPISpec2/routesCode.txt";
 
     @Test
     public void mergeComponents_addNewComponent() {
-        final Merge merge = new Merge(ImmutableMap.copyOf(openAPISpec1Components), openAPISpec1Routes, "OpenAPISpec1/openapi.yaml");
+        final Merge merge = new Merge(ImmutableMap.copyOf(openAPISpec2Components), openAPISpec2Routes, "OpenAPISpec1/openapi.yaml");
         final ImmutableMap<String, String> mergedComponents = merge.mergeComponents();
-        assertEquals(mergedComponents.size(), 2);
-        assertEquals(mergedComponents.get("Pet"), readFileToString("src/main/resources/OpenAPISpec1/componentCode1.txt"));
+        assertEquals(4, mergedComponents.size());
+        assertEquals(mergedComponents.get("Pet"), readFileToString("src/main/resources/Merged/mergedComponent1.txt"));
         assertEquals(mergedComponents.get("Error"), readFileToString("src/main/resources/OpenAPISpec1/componentCode2.txt"));
     }
 
@@ -41,9 +46,6 @@ public class MergeTests {
         final ImmutableMap<String, String> mergedComponents = merge.mergeComponents();
         assertEquals(mergedComponents.size(), 2);
         assertEquals(mergedComponents.get("Pet"), readFileToString("src/main/resources/OpenAPISpec2/componentCode1.txt"));
-        final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
-        testsClass.addField("OkHttpClient", "client").getVariable(0).setInitializer("new OkHttpClient()");
-        System.out.println(testsClass);
     }
 
     @Test
@@ -51,6 +53,4 @@ public class MergeTests {
         final Merge merge = new Merge(ImmutableMap.copyOf(openAPISpec1Components), readFileToString(openAPISpec1Routes) , "OpenAPISpec2/openapi.yaml");
         assertEquals(merge.mergeRoutes(), readFileToString("src/main/resources/OpenAPISpec2/routesCode.txt"));
     }
-
-
 }

@@ -93,6 +93,8 @@ components:
           type: integer
         age:
           type: integer
+        tag1:
+          type: integer
     Error:
       required:
         - code

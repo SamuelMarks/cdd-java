@@ -6,6 +6,11 @@ class Pet {
     int name;
 
     /**
+     * Type of integer
+     */
+    int tag1;
+
+    /**
      * Type of int64
      */
     long id;

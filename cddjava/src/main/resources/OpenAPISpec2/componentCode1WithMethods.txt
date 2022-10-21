@@ -11,12 +11,11 @@ class Pet {
     long id;
 
     /**
-     * Type of long[][][]
+     * Type of integer
      */
-    long[][][] names;
+    int age;
 
-    /**
-     * Type of string
-     */
-    String tag2;
+    String getName() {
+        return this.name;
+    }
 }

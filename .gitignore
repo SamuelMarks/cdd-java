@@ -36,6 +36,9 @@ captures/
 *.iml
 .idea
 
+#target files
+target/
+
 # Keystore files
 # Uncomment the following line if you do not want to check your keystore files in.
 #*.jks

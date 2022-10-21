@@ -1,12 +1,12 @@
 class Error {
 
     /**
-     * Type of int32
-     */
-    int code;
-
-    /**
      * Type of integer
      */
     int message;
+
+    /**
+     * Type of int32
+     */
+    int code;
 }

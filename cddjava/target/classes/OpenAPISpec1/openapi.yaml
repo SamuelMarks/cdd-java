@@ -100,7 +100,6 @@ components:
               items:
                 type: integer
                 format: int64
-
         tag2:
           type: string
     Pets:

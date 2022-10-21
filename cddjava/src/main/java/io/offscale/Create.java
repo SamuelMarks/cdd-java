@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 public class Create {
     private final JSONObject jo;
     final Faker faker = new Faker();
-    private static final ImmutableMap<String, String> OPEN_API_TO_JAVA = Utils.getOpenAPIToJavaTypes();
     private static final String GET_METHOD_METHOD_NAME = "run";
     private static class Schema {
         private String type;
@@ -84,7 +83,8 @@ public class Create {
      * @param joComponent JSONObject for a component in the OpenAPI spec.
      * @param componentName name of the component to generate.
      * @param parentClass the parent class of a given component.
-     * @return a String containing the generated code for a component.
+     * @return a Map containing two keys: type and strict type.
+     * type will contain the final code generated for the component
      */
     private ImmutableMap<String, String> generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
         final Schema type = parseSchema(joComponent);
@@ -131,7 +131,8 @@ public class Create {
         final ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
                 .setInterface(true).setName("Routes");
         final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
-        testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0).setInitializer("new OkHttpClient()");
+        testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
+                .setInitializer("new OkHttpClient()");
         final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_METHOD_NAME);
         final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
         runMethod.setParameters(runMethodWithBody.getParameters());
