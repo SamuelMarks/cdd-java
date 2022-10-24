@@ -69,15 +69,7 @@ public class Create {
         }
     }
 
-    private final static class Response {
-        private final Schema schema;
-        private final String description;
-
-        public Response(Schema schema, String description) {
-            this.schema = schema;
-            this.description = description;
-        }
-    }
+    private record Response(Schema schema, String description) { }
 
     public Create(String filePath) {
         this.jo = Utils.getJSONObjectFromFile(filePath, this.getClass());
