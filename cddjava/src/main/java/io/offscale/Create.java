@@ -25,40 +25,57 @@ import java.util.regex.Pattern;
 public class Create {
     private final JSONObject jo;
     final Faker faker = new Faker();
-    private static final String GET_METHOD_METHOD_NAME = "run";
-    private static class Schema {
-        private String type;
-        private String name;
-        private String description;
+    private static final String GET_METHOD_NAME = "run";
+
+    private final static class Schema {
+        private final String type;
+        private final String name;
+        private final String code;
         private final String strictType;
 
         public Schema() {
             this.type = "object";
             this.strictType = "Object";
+            this.code = "";
+            this.name = "";
         }
 
         public Schema (final String type) {
             this.type = type;
             this.strictType = type;
+            this.code = "";
+            this.name = "";
         }
 
         public Schema(String type, String strictType) {
             this.type = type;
             this.strictType = strictType;
+            this.code = "";
+            this.name = "";
         }
 
-        public Schema setName(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public void setType(String type) {
+        public Schema(String type, String name, String code) {
             this.type = type;
+            this.name = name;
+            this.strictType = type;
+            this.code = code;
         }
 
-        public Schema setDescription(String description) {
+        public Schema(Schema schema, String name) {
+            this.type = schema.type;
+            this.name = name;
+            this.strictType = schema.strictType;
+            this.code = schema.code;
+        }
+    }
+
+    private final static class Response {
+        private final Schema schema;
+        private final String description;
+
+        public Response(Schema schema, String description) {
+            this.schema = schema;
             this.description = description;
-            return this;
         }
     }
 
@@ -74,7 +91,8 @@ public class Create {
         final HashMap<String, String> generatedComponents = new HashMap<>();
         final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         final List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        schemas.forEach((schema) -> generatedComponents.put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).get("type")));
+        schemas.forEach((schema) -> generatedComponents
+                .put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).code));
         return ImmutableMap.copyOf(generatedComponents);
     }
 
@@ -83,39 +101,38 @@ public class Create {
      * @param joComponent JSONObject for a component in the OpenAPI spec.
      * @param componentName name of the component to generate.
      * @param parentClass the parent class of a given component.
-     * @return a Map containing two keys: type and strict type.
-     * type will contain the final code generated for the component
+     * @return a Schema object containing the code of the component.
      */
-    private ImmutableMap<String, String> generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
-        final Schema type = parseSchema(joComponent);
-        if (type.type.equalsIgnoreCase("object")) {
+    private Schema generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
+        final Schema schema = parseSchema(joComponent);
+        if (schema.type.equalsIgnoreCase("object")) {
             final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
             final JSONObject joProperties = joComponent.getJSONObject("properties");
             final List<String> properties = Lists.newArrayList(joProperties.keys());
             newClass.setName(Utils.capitalizeFirstLetter(componentName));
             properties.forEach(property -> {
-                ImmutableMap<String, String> propertyType = generateComponent(joProperties.getJSONObject(property), property, newClass);
-                FieldDeclaration field = newClass.addField(propertyType.get("type"), property);
-                field.setJavadocComment("Type of " + propertyType.get("strictType"));
+                Schema propertyType = generateComponent(joProperties.getJSONObject(property), property, newClass);
+                FieldDeclaration field = newClass.addField(propertyType.type, property);
+                field.setJavadocComment("Type of " + propertyType.strictType);
             });
-            if (parentClass == null) {
-                return ImmutableMap.of("type", newClass.toString());
-            }
 
-            parentClass.addMember(newClass);
-            return ImmutableMap.of("type", newClass.getNameAsString(), "strictType", newClass.getNameAsString());
-        } else if (type.type.equals("array")) {
+            if (parentClass != null) {
+                parentClass.addMember(newClass);
+            }
+            return new Schema(newClass.getNameAsString(), schema.name, newClass.toString());
+        } else if (schema.type.equals("array")) {
             if (parentClass == null) {
                 final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
-                final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).get("type");
+                final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).type;
                 newClass.setName(Utils.capitalizeFirstLetter(componentName));
                 newClass.addField(arrayType + "[]", componentName + "Array");
-                return ImmutableMap.of("type", newClass.toString());
+                return new Schema(newClass.getNameAsString(), schema.name, newClass.toString());
             }
-            final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).get("type");
-            return ImmutableMap.of("type", arrayType + "[]", "strictType", arrayType + "[]");
+
+            final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).type;
+            return new Schema(arrayType + "[]", schema.name, schema.code);
         } else {
-            return ImmutableMap.of("type", parseSchema(joComponent).type, "strictType", parseSchema(joComponent).strictType);
+            return schema;
         }
     }
 
@@ -133,7 +150,7 @@ public class Create {
         final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
         testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new OkHttpClient()");
-        final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_METHOD_NAME);
+        final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_NAME);
         final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
         runMethod.setParameters(runMethodWithBody.getParameters());
         runMethod.setType(runMethodWithBody.getType());
@@ -170,12 +187,12 @@ public class Create {
         final StringBuilder getURL = new StringBuilder("\"" + getBaseURL() + "?");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
-                    .forEach(parameter -> getURL.append(generateMockDataForType(parameter)));
+                    .forEach(parameter -> getURL.append(generateMockDataForType(parameter.schema)));
         }
         getURL.append("\"");
         final BlockStmt methodBody = new BlockStmt();
         final MethodCallExpr runCall = new MethodCallExpr();
-        runCall.setName(GET_METHOD_METHOD_NAME);
+        runCall.setName(GET_METHOD_NAME);
         runCall.addArgument(getURL.toString());
         final FieldDeclaration getResponse = new FieldDeclaration();
         if (!classType.equals("void")) {
@@ -252,7 +269,7 @@ public class Create {
             methodDeclaration.setType("Call<" + routeType + ">");
         }
         if (joRoute.has("parameters")) {
-            generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.type, param.name));
+            generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.schema.type, param.schema.name));
         }
         return methodDeclaration;
     }
@@ -262,14 +279,13 @@ public class Create {
      * @param joRouteParameters the openAPI representation of the route parameters
      * @return a List of route parameters
      */
-    private List<Schema> generateRouteParameters(JSONArray joRouteParameters) {
-        final List<Schema> routeParameters = new ArrayList<>();
+    private List<Response> generateRouteParameters(JSONArray joRouteParameters) {
+        final List<Response> routeParameters = new ArrayList<>();
         for (int i = 0; i < joRouteParameters.length(); i++) {
             final JSONObject joParameter = joRouteParameters.getJSONObject(i);
-            final Schema parameter = parseSchema(joParameter.getJSONObject("schema"))
-                    .setName(joParameter.getString("name"))
-                    .setDescription(joParameter.getString("description"));
-            routeParameters.add(parameter);
+            final Schema schema = new Schema(parseSchema(joParameter.getJSONObject("schema")), joParameter.getString("name"));
+            final Response response = new Response(schema, joParameter.getString("description"));
+            routeParameters.add(response);
         }
         return routeParameters;
     }
@@ -334,7 +350,7 @@ public class Create {
         final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
-                final String param = "@param " + parameter.name + " of type " + parameter.strictType + ". " + parameter.description + ". \n";
+                final String param = "@param " + parameter.schema.name + " of type " + parameter.schema.strictType + ". " + parameter.description + ". \n";
                 javaDocForRoute.append(param);
             });
         }

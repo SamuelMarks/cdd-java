@@ -12,7 +12,6 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 
 public class MergeTests {
-
     private static String readFileToString(String filePath) {
         try {
             return Files.
