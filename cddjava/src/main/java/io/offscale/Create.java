@@ -181,35 +181,38 @@ public class Create {
     private void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute) {
         final String classType = generateRouteType(joRoute.getJSONObject("responses")).type;
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
-        methodDeclaration.addAnnotation("Test");
         final BlockStmt methodBody = new BlockStmt();
         final MethodCallExpr runCall = new MethodCallExpr();
         final StringBuilder getURLParams = new StringBuilder("\"");
+        final FieldDeclaration getResponse = new FieldDeclaration();
+        final MethodCallExpr assertEqualsCall = new MethodCallExpr();
+
+        methodDeclaration.addAnnotation("Test");
+
+        runCall.setName(GET_METHOD_NAME);
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
                     .forEach(parameter -> getURLParams.append(generateMockDataForType(parameter.schema)));
             getURLParams.append("\"");
-            runCall.addArgument("BASE_URL + " + getURLParams.toString());
+            runCall.addArgument("BASE_URL + " + getURLParams);
         } else {
             runCall.addArgument("BASE_URL");
         }
 
-        runCall.setName(GET_METHOD_NAME);
-        final FieldDeclaration getResponse = new FieldDeclaration();
         Utils.initializeField(getResponse, "Response", "getResponse", runCall.toString());
         Utils.addDeclarationsToBlock(methodBody, getResponse);
-        final MethodCallExpr assertEqualsCall = new MethodCallExpr();
+
         assertEqualsCall.setName("assertEquals");
         assertEqualsCall.addArgument("getResponse.code()");
         assertEqualsCall.addArgument("200");
         methodBody.addStatement(assertEqualsCall);
+
         if (!classType.equals("void")) {
             final FieldDeclaration parsedResponse = new FieldDeclaration();
 
             Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(classType),
                     "response", "gson.fromJson(getResponse.body().string(), " + classType + ".class)");
             Utils.addDeclarationsToBlock(methodBody, parsedResponse);
-        } else {
         }
         methodDeclaration.setBody(methodBody);
     }
