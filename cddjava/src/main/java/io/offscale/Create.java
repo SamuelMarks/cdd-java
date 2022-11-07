@@ -35,12 +35,12 @@ public class Create {
 
         public Schema() {
             this.type = "object";
-            this.strictType = "Object";
+            this.strictType = "object";
             this.code = "";
             this.name = "";
         }
 
-        public Schema (final String type) {
+        public Schema(final String type) {
             this.type = type;
             this.strictType = type;
             this.code = "";
@@ -69,7 +69,8 @@ public class Create {
         }
     }
 
-    private record Response(Schema schema, String description) { }
+    private record Response(Schema schema, String description) {
+    }
 
     public Create(String filePath) {
         this.jo = Utils.getJSONObjectFromFile(filePath, this.getClass());
@@ -77,6 +78,7 @@ public class Create {
 
     /**
      * Generates the classes corresponding to the components in the OpenAPI spec
+     *
      * @return a map where the keys are the class names and the values are the class code
      */
     public ImmutableMap<String, String> generateComponents() {
@@ -89,10 +91,9 @@ public class Create {
     }
 
     /**
-     *
-     * @param joComponent JSONObject for a component in the OpenAPI spec.
+     * @param joComponent   JSONObject for a component in the OpenAPI spec.
      * @param componentName name of the component to generate.
-     * @param parentClass the parent class of a given component.
+     * @param parentClass   the parent class of a given component.
      * @return a Schema object containing the code of the component.
      */
     private Schema generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
@@ -140,9 +141,9 @@ public class Create {
         final ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
                 .setInterface(true).setName("Routes");
         final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
-        testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
+        testsClass.addField("OkHttpClient", "client", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new OkHttpClient()");
-        testsClass.addField("Gson", "gson",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
+        testsClass.addField("Gson", "gson", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new GsonBuilder().create()");
         final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_NAME);
         final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
@@ -171,6 +172,7 @@ public class Create {
 
     /**
      * Given a route, generates a test corresponding the route.
+     *
      * @param routesInterface
      * @param joRoute
      */
@@ -211,6 +213,7 @@ public class Create {
      * Some parameter names are common such as firstname and can be
      * generated more precisely. This method handles parameters that
      * aren't common.
+     *
      * @param type of the parameter to generate mock data for
      * @return the mock data for the given parameter
      */
@@ -242,10 +245,11 @@ public class Create {
 
     /**
      * generates the route code for a given route in the JSONObject.
+     *
      * @param routesInterface
      * @param joRoute
      * @param routeName
-     * @param operation such as GET or POST
+     * @param operation       such as GET or POST
      */
     private MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
@@ -266,7 +270,6 @@ public class Create {
     }
 
     /**
-     *
      * @param joRouteParameters the openAPI representation of the route parameters
      * @return a List of route parameters
      */
@@ -283,6 +286,7 @@ public class Create {
 
     /**
      * Generates the return type of a route
+     *
      * @param joRouteResponse the OpenAPI representation of the route response.
      * @return the type of the route
      */
@@ -296,20 +300,15 @@ public class Create {
     }
 
     /**
-     *
      * @param joSchema which is essentially a type
      * @return a Parameter with type information
      */
     private Schema parseSchema(JSONObject joSchema) {
         if (joSchema.has("$ref")) {
             return new Schema(parseSchemaRef(joSchema.getString("$ref")));
-        }
-
-        else if (joSchema.has("format")) {
+        } else if (joSchema.has("format")) {
             return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("format")), joSchema.getString("format"));
-        }
-
-        else if (!joSchema.has("type")) {
+        } else if (!joSchema.has("type")) {
             return new Schema();
         }
 
@@ -319,6 +318,7 @@ public class Create {
 
     /**
      * Uses regex to parse out the component name in the reference.
+     *
      * @param ref of a schema, maps to a component
      * @return the component name
      */

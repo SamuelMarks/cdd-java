@@ -24,7 +24,7 @@ public class Utils {
                 .put("int64", "long")
                 .put("integer", "int")
                 .put("int32", "int")
-                .put("object", "Object")
+                .put("object", "object")
                 .put("boolean", "boolean")
                 .put("array", "array")
                 .build();
