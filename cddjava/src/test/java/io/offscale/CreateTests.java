@@ -62,7 +62,7 @@ public class CreateTests {
         assertThat(testClass, containsString("showDogByIdTest()"));
     }
 
-//    String run(String url, OkHttpClient client) throws IOException {
+//    Response run(String url, OkHttpClient client) throws IOException {
 //        final Request request = new Request.Builder()
 //                .url(url)
 //                .build();
@@ -70,7 +70,7 @@ public class CreateTests {
 //        try (Response response = client.newCall(request).execute()) {
 //            response.headers().forEach(System.out::println);
 //            System.out.println(response.code());
-//            return response.body().string();
+//            return response;
 //        }
 //    }
 //    @Test

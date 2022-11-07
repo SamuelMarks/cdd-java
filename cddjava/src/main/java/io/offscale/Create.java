@@ -145,6 +145,8 @@ public class Create {
                 .setInitializer("new OkHttpClient()");
         testsClass.addField("Gson", "gson", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new GsonBuilder().create()");
+        testsClass.addField("String", "BASE_URL", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
+                .setInitializer("\"" + getBaseURL() + "?\"");
         final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_NAME);
         final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
         runMethod.setParameters(runMethodWithBody.getParameters());
@@ -180,31 +182,34 @@ public class Create {
         final String classType = generateRouteType(joRoute.getJSONObject("responses")).type;
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
         methodDeclaration.addAnnotation("Test");
-        final StringBuilder getURL = new StringBuilder("\"" + getBaseURL() + "?");
-        if (joRoute.has("parameters")) {
-            generateRouteParameters(joRoute.getJSONArray("parameters"))
-                    .forEach(parameter -> getURL.append(generateMockDataForType(parameter.schema)));
-        }
-        getURL.append("\"");
         final BlockStmt methodBody = new BlockStmt();
         final MethodCallExpr runCall = new MethodCallExpr();
+        final StringBuilder getURLParams = new StringBuilder("\"");
+        if (joRoute.has("parameters")) {
+            generateRouteParameters(joRoute.getJSONArray("parameters"))
+                    .forEach(parameter -> getURLParams.append(generateMockDataForType(parameter.schema)));
+            getURLParams.append("\"");
+            runCall.addArgument("BASE_URL + " + getURLParams.toString());
+        } else {
+            runCall.addArgument("BASE_URL");
+        }
+
         runCall.setName(GET_METHOD_NAME);
-        runCall.addArgument(getURL.toString());
         final FieldDeclaration getResponse = new FieldDeclaration();
+        Utils.initializeField(getResponse, "Response", "getResponse", runCall.toString());
+        Utils.addDeclarationsToBlock(methodBody, getResponse);
+        final MethodCallExpr assertEqualsCall = new MethodCallExpr();
+        assertEqualsCall.setName("assertEquals");
+        assertEqualsCall.addArgument("getResponse.code()");
+        assertEqualsCall.addArgument("200");
+        methodBody.addStatement(assertEqualsCall);
         if (!classType.equals("void")) {
             final FieldDeclaration parsedResponse = new FieldDeclaration();
 
-            Utils.initializeField(getResponse, "String", "getResponse", runCall + ".body().string()");
             Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(classType),
-                    "response", "gson.fromJson(getResponse, " + classType + ".class)");
+                    "response", "gson.fromJson(getResponse.body().string(), " + classType + ".class)");
+            Utils.addDeclarationsToBlock(methodBody, parsedResponse);
         } else {
-            Utils.initializeField(getResponse, "int", "statusCode", runCall + ".code()");
-            final MethodCallExpr assertEqualsCall = new MethodCallExpr();
-            assertEqualsCall.setName("assertEquals");
-            assertEqualsCall.addArgument("statusCode");
-            assertEqualsCall.addArgument("200");
-            Utils.addDeclarationsToBlock(methodBody, getResponse);
-            methodBody.addStatement(assertEqualsCall);
         }
         methodDeclaration.setBody(methodBody);
     }
@@ -221,7 +226,7 @@ public class Create {
         return switch (type) {
             case "String" -> faker.food().fruit();
             case "long", "int" -> String.valueOf(faker.number().numberBetween(1, 100));
-            case "boolean" -> "true";
+            case "boolean" -> faker.bool().toString();
             default -> "UNKNOWN";
         };
     }
