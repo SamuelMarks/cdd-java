@@ -56,6 +56,7 @@ public class CreateTests {
     @Test
     public void generateTestsSuccess() {
         final String testClass = create.generateRoutesAndTests().get("tests");
+        System.out.println(testClass);
         assertThat(testClass, containsString("createPetsTest()"));
         assertThat(testClass, containsString("listPetsTest()"));
         assertThat(testClass, containsString("showDogByIdTest()"));

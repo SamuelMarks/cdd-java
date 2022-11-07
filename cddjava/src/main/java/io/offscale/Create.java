@@ -19,7 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Given an OpenAPI Spec, generates code for routes and components
+ * Given an OpenAPI Spec, generates code for routes and components and tests
  * when no code previously exists
  */
 public class Create {
@@ -97,7 +97,7 @@ public class Create {
      */
     private Schema generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
         final Schema schema = parseSchema(joComponent);
-        if (schema.type.equalsIgnoreCase("object")) {
+        if (schema.type.equals("object")) {
             final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
             final JSONObject joProperties = joComponent.getJSONObject("properties");
             final List<String> properties = Lists.newArrayList(joProperties.keys());
@@ -142,6 +142,8 @@ public class Create {
         final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
         testsClass.addField("OkHttpClient", "client",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new OkHttpClient()");
+        testsClass.addField("Gson", "gson",Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
+                .setInitializer("new GsonBuilder().create()");
         final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_NAME);
         final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
         runMethod.setParameters(runMethodWithBody.getParameters());
@@ -188,14 +190,11 @@ public class Create {
         runCall.addArgument(getURL.toString());
         final FieldDeclaration getResponse = new FieldDeclaration();
         if (!classType.equals("void")) {
-            final FieldDeclaration gson = new FieldDeclaration();
             final FieldDeclaration parsedResponse = new FieldDeclaration();
 
             Utils.initializeField(getResponse, "String", "getResponse", runCall + ".body().string()");
-            Utils.initializeField(gson, "Gson", "gson", "new GsonBuilder().create()");
             Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(classType),
                     "response", "gson.fromJson(getResponse, " + classType + ".class)");
-            Utils.addDeclarationsToBlock(methodBody, getResponse, gson, parsedResponse);
         } else {
             Utils.initializeField(getResponse, "int", "statusCode", runCall + ".code()");
             final MethodCallExpr assertEqualsCall = new MethodCallExpr();
