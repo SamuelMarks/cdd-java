@@ -1,5 +1,10 @@
 package io.offscale;
 
+import org.json.JSONObject;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public final class Schema {
     private final String type;
     private final String strictType;
@@ -55,5 +60,35 @@ public final class Schema {
 
     public String code() {
         return this.code;
+    }
+
+    /**
+     * @param joSchema which is essentially a type
+     * @return a Parameter with type information
+     */
+    public static Schema parseSchema(JSONObject joSchema) {
+        if (joSchema.has("$ref")) {
+            return new Schema(parseSchemaRef(joSchema.getString("$ref")));
+        } else if (joSchema.has("format")) {
+            return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("format")), joSchema.getString("format"));
+        } else if (!joSchema.has("type")) {
+            return new Schema();
+        }
+
+        return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("type")), joSchema.getString("type"));
+    }
+
+
+    /**
+     * Uses regex to parse out the component name in the reference.
+     *
+     * @param ref of a schema, maps to a component
+     * @return the component name
+     */
+    private static String parseSchemaRef(String ref) {
+        final Pattern pattern = Pattern.compile("#/components/schemas/(\\w+)");
+        final Matcher matcher = pattern.matcher(ref);
+        matcher.find();
+        return matcher.group(1);
     }
 }

@@ -12,16 +12,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CreateComponentUtils {
-    public static ImmutableMap<String, String> generateComponents(JSONObject jo) {
-        final HashMap<String, String> generatedComponents = new HashMap<>();
-        final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
-        final List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        schemas.forEach((schema) -> generatedComponents
-                .put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).code()));
-        return ImmutableMap.copyOf(generatedComponents);
-    }
 
-    private static Schema generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
+    /**
+     * @param joComponent   JSONObject for a component in the OpenAPI spec.
+     * @param componentName name of the component to generate.
+     * @param parentClass   the parent class of a given component.
+     * @return a Schema object containing the code of the component.
+     */
+    public static Schema generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
         final Schema schema = parseSchema(joComponent);
 
         // schema type is object which means it will have properties.
@@ -78,7 +76,7 @@ public class CreateComponentUtils {
      * @param ref of a schema, maps to a component
      * @return the component name
      */
-    private String parseSchemaRef(String ref) {
+    private static String parseSchemaRef(String ref) {
         final Pattern pattern = Pattern.compile("#/components/schemas/(\\w+)");
         final Matcher matcher = pattern.matcher(ref);
         matcher.find();
