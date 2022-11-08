@@ -24,50 +24,8 @@ import java.util.regex.Pattern;
  */
 public class Create {
     private final JSONObject jo;
-    final Faker faker = new Faker();
+    private static final Faker faker = new Faker();
     private static final String GET_METHOD_NAME = "run";
-
-    private final static class Schema {
-        private final String type;
-        private final String name;
-        private final String code;
-        private final String strictType;
-
-        public Schema() {
-            this.type = "object";
-            this.strictType = "object";
-            this.code = "";
-            this.name = "";
-        }
-
-        public Schema(final String type) {
-            this.type = type;
-            this.strictType = type;
-            this.code = "";
-            this.name = "";
-        }
-
-        public Schema(String type, String strictType) {
-            this.type = type;
-            this.strictType = strictType;
-            this.code = "";
-            this.name = "";
-        }
-
-        public Schema(String type, String name, String code) {
-            this.type = type;
-            this.name = name;
-            this.strictType = type;
-            this.code = code;
-        }
-
-        public Schema(Schema schema, String name) {
-            this.type = schema.type;
-            this.name = name;
-            this.strictType = schema.strictType;
-            this.code = schema.code;
-        }
-    }
 
     private record Response(Schema schema, String description) {
     }
@@ -86,7 +44,7 @@ public class Create {
         final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         final List<String> schemas = Lists.newArrayList(joSchemas.keys());
         schemas.forEach((schema) -> generatedComponents
-                .put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).code));
+                .put(schema, generateComponent(joSchemas.getJSONObject(schema), schema, null).code()));
         return ImmutableMap.copyOf(generatedComponents);
     }
 
@@ -98,32 +56,34 @@ public class Create {
      */
     private Schema generateComponent(JSONObject joComponent, String componentName, ClassOrInterfaceDeclaration parentClass) {
         final Schema schema = parseSchema(joComponent);
-        if (schema.type.equals("object")) {
+
+        // schema type is object which means it will have properties.
+        if (schema.type().equals("object")) {
             final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
             final JSONObject joProperties = joComponent.getJSONObject("properties");
             final List<String> properties = Lists.newArrayList(joProperties.keys());
             newClass.setName(Utils.capitalizeFirstLetter(componentName));
             properties.forEach(property -> {
                 Schema propertyType = generateComponent(joProperties.getJSONObject(property), property, newClass);
-                FieldDeclaration field = newClass.addField(propertyType.type, property);
-                field.setJavadocComment("Type of " + propertyType.strictType);
+                FieldDeclaration field = newClass.addField(propertyType.type(), property);
+                field.setJavadocComment("Type of " + propertyType.strictType());
             });
 
             if (parentClass != null) {
                 parentClass.addMember(newClass);
             }
-            return new Schema(newClass.getNameAsString(), schema.name, newClass.toString());
-        } else if (schema.type.equals("array")) {
+            return new Schema(newClass.getNameAsString(), schema.name(), newClass.toString());
+        } else if (schema.type().equals("array")) {
             if (parentClass == null) {
                 final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
-                final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).type;
+                final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", newClass).type();
                 newClass.setName(Utils.capitalizeFirstLetter(componentName));
                 newClass.addField(arrayType + "[]", componentName + "Array");
-                return new Schema(newClass.getNameAsString(), schema.name, newClass.toString());
+                return new Schema(newClass.getNameAsString(), schema.name(), newClass.toString());
             }
 
-            final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).type;
-            return new Schema(arrayType + "[]", schema.name, schema.code);
+            final String arrayType = generateComponent(joComponent.getJSONObject("items"), "ArrayType", parentClass).type();
+            return new Schema(arrayType + "[]", schema.name(), schema.code());
         } else {
             return schema;
         }
@@ -179,7 +139,7 @@ public class Create {
      * @param joRoute
      */
     private void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute) {
-        final String classType = generateRouteType(joRoute.getJSONObject("responses")).type;
+        final String classType = generateRouteType(joRoute.getJSONObject("responses")).type();
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
         final BlockStmt methodBody = new BlockStmt();
         final MethodCallExpr runCall = new MethodCallExpr();
@@ -239,15 +199,15 @@ public class Create {
      * @return the mock data for the given schema.
      */
     private String generateMockDataForType(Schema schema) {
-        final String parameter = schema.name + "=";
-        return switch (schema.name) {
+        final String parameter = schema.name() + "=";
+        return switch (schema.name()) {
             case "name" -> parameter + faker.name().name();
             case "fullname" -> parameter + faker.name().fullName();
             case "firstname" -> parameter + faker.name().firstName();
             case "lastname" -> parameter + faker.name().lastName();
             case "address" -> parameter + faker.address().fullAddress();
             default -> parameter +
-                    generateMockDataForUnrecognizedName(schema.type);
+                    generateMockDataForUnrecognizedName(schema.type());
         };
     }
 
@@ -265,14 +225,14 @@ public class Create {
                 .setJavadocComment(generateJavadocForRoute(joRoute, routeName, operation));
         final NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
         expr.addPair("path", "\"" + routeName + "\"");
-        final String routeType = generateRouteType(joRoute.getJSONObject("responses")).type;
+        final String routeType = generateRouteType(joRoute.getJSONObject("responses")).type();
         if (routeType.equals("void")) {
             methodDeclaration.setType("void");
         } else {
             methodDeclaration.setType("Call<" + routeType + ">");
         }
         if (joRoute.has("parameters")) {
-            generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.schema.type, param.schema.name));
+            generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.schema.type(), param.schema.name()));
         }
         return methodDeclaration;
     }
@@ -349,7 +309,7 @@ public class Create {
         final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
-                final String param = "@param " + parameter.schema.name + " of type " + parameter.schema.strictType + ". " + parameter.description + ". \n";
+                final String param = "@param " + parameter.schema.name() + " of type " + parameter.schema.strictType() + ". " + parameter.description + ". \n";
                 javaDocForRoute.append(param);
             });
         }
