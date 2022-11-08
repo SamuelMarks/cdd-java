@@ -2,16 +2,14 @@ package io.offscale;
 
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONObject;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class CreateComponentUtils {
+public class GenerateComponentUtils {
 
     /**
      * @param joComponent   JSONObject for a component in the OpenAPI spec.
