@@ -1,5 +1,8 @@
 package io.offscale;
 
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -26,7 +29,7 @@ public class Schema2 {
         this.arrayOfType = null;
     }
 
-    public Schema2(String type, String strictType, Map<String,Schema2> properties) {
+    public Schema2(String type, String strictType, Map<String, Schema2> properties) {
         this.type = type;
         this.strictType = strictType;
         this.properties = ImmutableMap.copyOf(properties);
@@ -41,7 +44,6 @@ public class Schema2 {
     }
 
 
-
     public String type() {
         return this.type;
     }
@@ -54,9 +56,35 @@ public class Schema2 {
         return properties;
     }
 
+    private String toCodeAux(Schema2 schema, ClassOrInterfaceDeclaration parentClass) {
+        if (schema.isObject()) {
+            final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
+            schema.properties.forEach((name, propSchema) -> {
+                toCodeAux(propSchema, newClass);
+                newClass.addField(propSchema.type, name).setJavadocComment("Type of " + propSchema.strictType);
+            });
+            newClass.setName(schema.type);
+            if (parentClass != null) {
+                parentClass.addMember(newClass);
+            }
+            return newClass.toString();
+        }
+
+        if (schema.isArray()) {
+            toCodeAux(schema.arrayOfType, parentClass);
+        }
+
+        return schema.type;
+    }
+
+    public String toCode() {
+        assert this.isObject();
+        return toCodeAux(this, null);
+    }
+
     public static Schema2 parseSchema(JSONObject joSchema, HashMap<String, Schema2> schemas, String type) {
-        if (joSchema.has("type") && joSchema.get("type").equals("object")) {
-            assert(!type.isEmpty());
+        if (joSchema.has("type") && joSchema.get("type").equals("object") || joSchema.has("properties")) {
+            assert (!type.isEmpty());
             HashMap<String, Schema2> schemaProperties = new HashMap<>();
             final List<String> propertyKeys = Lists.newArrayList(joSchema.getJSONObject("properties").keys());
             propertyKeys.forEach(key -> {
@@ -75,7 +103,11 @@ public class Schema2 {
         }
 
         if (joSchema.has("type") && joSchema.get("type").equals("array")) {
-            return new Schema2("array", "array", parseSchema(joSchema.getJSONObject("items"), schemas, Utils.capitalizeFirstLetter(type)));
+            Schema2 itemsSchema = parseSchema(joSchema.getJSONObject("items"), schemas, Utils.capitalizeFirstLetter(type));
+            if (itemsSchema == null) {
+                return null;
+            }
+            return new Schema2(itemsSchema.type + "[]", "array", itemsSchema);
         }
 
         if (joSchema.has("type") && joSchema.has("format")) {
@@ -86,7 +118,7 @@ public class Schema2 {
             return new Schema2(Utils.getOpenAPIToJavaTypes().get(joSchema.get("type")), joSchema.getString("type"));
         }
 
-        assert(joSchema.has("$ref"));
+        assert (joSchema.has("$ref"));
         if (schemas.containsKey(parseSchemaRef(joSchema.getString("$ref")))) {
             return schemas.get(parseSchemaRef(joSchema.getString("$ref")));
         }
@@ -94,8 +126,16 @@ public class Schema2 {
         return null;
     }
 
+    private boolean isObject() {
+        return this.properties != null;
+    }
+
+    private boolean isArray() {
+        return this.arrayOfType != null;
+    }
+
     private static boolean isNullValue(HashMap<String, Schema2> map) {
-        for (Schema2 value: map.values()) {
+        for (Schema2 value : map.values()) {
             if (value == null) {
                 return true;
             }

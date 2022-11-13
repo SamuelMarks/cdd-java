@@ -17,8 +17,6 @@ import java.util.Optional;
  */
 public class Create {
     private final JSONObject jo;
-    private record Response(Schema schema, String description) { }
-
     public Create(String filePath) {
         this.jo = Utils.getJSONObjectFromFile(filePath, this.getClass());
     }
