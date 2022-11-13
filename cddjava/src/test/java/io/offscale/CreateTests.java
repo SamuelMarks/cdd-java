@@ -25,7 +25,7 @@ public class CreateTests {
 
     @Before
     public void init() {
-        this.create = new Create("OpenAPISpec1/openapi.yaml");
+        this.create = new Create("OpenAPISpec1/openapi_simple.yaml");
         this.improperFormCreate = new Create("improperFormOpenAPI.yaml");
     }
 
@@ -39,6 +39,13 @@ public class CreateTests {
         assertEquals(generatedComponents.get("Pet"), petComponentCode);
         assertEquals(generatedComponents.get("Pets"), petsComponentCode);
         assertEquals(generatedComponents.get("Dog"), dogComponentCode);
+    }
+
+    @Test
+    public void generateSchemas2Test() {
+        final ImmutableMap<String, Schema2> generatedComponents = create.generateSchemas();
+        Schema2 schema = generatedComponents.get("Error");
+        System.out.println(schema.properties().get("message").strictType());
     }
 
     @Test(expected = JSONException.class)

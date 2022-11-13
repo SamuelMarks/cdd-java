@@ -17,20 +17,20 @@ import java.util.Optional;
 
 public class GenerateRoutesAndTestsUtils {
     private static final Faker faker = new Faker();
-    private static final String GET_METHOD_NAME = "run";
     private static record Response(Schema schema, String description) { }
+
     /**
      * generates the route code for a given route in the JSONObject.
      *
      * @param routesInterface
      * @param joRoute
      * @param routeName
-     * @param operation       such as GET or POST
+     * @param operation such as GET or POST
      */
     public static MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
                 .removeBody()
-                .setJavadocComment(generateJavadocForRoute(joRoute, routeName, operation));
+                .setJavadocComment(generateJavadocForRoute(joRoute));
         final NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
         expr.addPair("path", "\"" + routeName + "\"");
         final String routeType = generateRouteType(joRoute.getJSONObject("responses")).type();
@@ -76,12 +76,10 @@ public class GenerateRoutesAndTestsUtils {
     }
 
     /**
-     * @param joRoute
-     * @param routeName
-     * @param operation
-     * @return javadoc
+     * @param joRoute JSON Object of route
+     * @return javadoc for given route
      */
-    private static String generateJavadocForRoute(JSONObject joRoute, String routeName, String operation) {
+    private static String generateJavadocForRoute(JSONObject joRoute) {
         final JSONObject joResponses = joRoute.getJSONObject("responses");
         final List<String> responses = Lists.newArrayList(joResponses.keys());
         final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
@@ -123,7 +121,7 @@ public class GenerateRoutesAndTestsUtils {
 
         methodDeclaration.addAnnotation("Test");
 
-        runCall.setName(GET_METHOD_NAME);
+        runCall.setName(Utils.GET_METHOD_NAME);
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
                     .forEach(parameter -> getURLParams.append(generateMockDataForType(parameter.schema)));

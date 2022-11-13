@@ -15,6 +15,7 @@ import java.util.Optional;
 
 public class Utils {
 
+    public static final String GET_METHOD_NAME = "run";
     /**
      * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
      */

@@ -1,16 +1,15 @@
 package io.offscale;
 
-import com.github.javafaker.Faker;
 import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONObject;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+
 
 /**
  * Given an OpenAPI Spec, generates code for routes and components and tests
@@ -18,9 +17,6 @@ import java.util.Optional;
  */
 public class Create {
     private final JSONObject jo;
-    private static final Faker faker = new Faker();
-    private static final String GET_METHOD_NAME = "run";
-
     private record Response(Schema schema, String description) { }
 
     public Create(String filePath) {
@@ -39,6 +35,23 @@ public class Create {
         schemas.forEach((schema) -> generatedComponents
                 .put(schema, GenerateComponentUtils.generateComponent(joSchemas.getJSONObject(schema), schema, null).code()));
         return ImmutableMap.copyOf(generatedComponents);
+    }
+
+    public ImmutableMap<String, Schema2> generateSchemas() {
+        final HashMap<String, Schema2> generatedSchemas = new HashMap<>();
+        final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
+        final List<String> schemas = Lists.newArrayList(joSchemas.keys());
+        int i = 0;
+        while (generatedSchemas.size() < schemas.size()) {
+            Schema2 generatedSchema = Schema2.parseSchema(joSchemas.getJSONObject(schemas.get(i)), generatedSchemas, schemas.get(i));
+            if (generatedSchema != null) {
+                generatedSchemas.put(schemas.get(i), generatedSchema);
+            }
+
+            i = (i + 1) % schemas.size();
+        }
+
+        return ImmutableMap.copyOf(generatedSchemas);
     }
 
 
@@ -60,7 +73,7 @@ public class Create {
                 .setInitializer("new GsonBuilder().create()");
         testsClass.addField("String", "BASE_URL", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("\"" + getBaseURL() + "?\"");
-        final MethodDeclaration runMethod = testsClass.addMethod(GET_METHOD_NAME);
+        final MethodDeclaration runMethod = testsClass.addMethod(Utils.GET_METHOD_NAME);
         final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
         runMethod.setParameters(runMethodWithBody.getParameters());
         runMethod.setType(runMethodWithBody.getType());
