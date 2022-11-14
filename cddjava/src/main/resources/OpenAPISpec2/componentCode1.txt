@@ -3,12 +3,12 @@ class Pet {
     /**
      * Type of integer
      */
-    int name;
+    int tag1;
 
     /**
      * Type of integer
      */
-    int tag1;
+    int name;
 
     /**
      * Type of int64

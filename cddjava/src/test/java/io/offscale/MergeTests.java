@@ -34,7 +34,7 @@ public class MergeTests {
     public void mergeComponents_addNewComponent() {
         final Merge merge = new Merge(ImmutableMap.copyOf(openAPISpec2Components), openAPISpec2Routes, "OpenAPISpec1/openapi.yaml");
         final ImmutableMap<String, String> mergedComponents = merge.mergeComponents();
-        assertEquals(4, mergedComponents.size());
+        assertEquals(3, mergedComponents.size());
         assertEquals(mergedComponents.get("Pet"), readFileToString("src/main/resources/Merged/mergedComponent1.txt"));
         assertEquals(mergedComponents.get("Error"), readFileToString("src/main/resources/OpenAPISpec1/componentCode2.txt"));
     }
