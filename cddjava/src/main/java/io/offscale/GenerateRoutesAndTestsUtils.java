@@ -7,6 +7,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.stmt.BlockStmt;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,7 +18,13 @@ import java.util.Optional;
 
 public class GenerateRoutesAndTestsUtils {
     private static final Faker faker = new Faker();
-    private static record Response(Schema schema, String description) { }
+    private static record Parameter(Schema schema, String name, String description) { }
+
+    private static ImmutableMap<String, Schema> components;
+
+    public static void setComponents(ImmutableMap<String, Schema> generatedComponents) {
+        components = generatedComponents;
+    }
 
     /**
      * generates the route code for a given route in the JSONObject.
@@ -40,7 +47,7 @@ public class GenerateRoutesAndTestsUtils {
             methodDeclaration.setType("Call<" + routeType + ">");
         }
         if (joRoute.has("parameters")) {
-            generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.schema.type(), param.schema.name()));
+            generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.schema.type(), param.name()));
         }
         return methodDeclaration;
     }
@@ -49,13 +56,13 @@ public class GenerateRoutesAndTestsUtils {
      * @param joRouteParameters the openAPI representation of the route parameters
      * @return a List of route parameters
      */
-    private static List<Response> generateRouteParameters(JSONArray joRouteParameters) {
-        final List<Response> routeParameters = new ArrayList<>();
+    private static List<Parameter> generateRouteParameters(JSONArray joRouteParameters) {
+        final List<Parameter> routeParameters = new ArrayList<>();
         for (int i = 0; i < joRouteParameters.length(); i++) {
             final JSONObject joParameter = joRouteParameters.getJSONObject(i);
-            final Schema schema = new Schema(Schema.parseSchema(joParameter.getJSONObject("schema")), joParameter.getString("name"));
-            final Response response = new Response(schema, joParameter.getString("description"));
-            routeParameters.add(response);
+            final Parameter parameter = new Parameter(Schema.parseSchema(joParameter.getJSONObject("schema"), components, ""),
+                    joParameter.getString("name"), joParameter.getString("description"));
+            routeParameters.add(parameter);
         }
         return routeParameters;
     }
@@ -70,8 +77,10 @@ public class GenerateRoutesAndTestsUtils {
         final List<String> responses = Lists.newArrayList(joRouteResponse.keys());
         final Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
         if (response.isPresent() && joRouteResponse.getJSONObject(response.get()).has("content")) {
-            return Schema.parseSchema(joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema"));
+            JSONObject joRouteResponseSchema = joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema");
+            return Schema.parseSchema(joRouteResponseSchema, components, "" );
         }
+
         return new Schema("void");
     }
 
@@ -85,7 +94,7 @@ public class GenerateRoutesAndTestsUtils {
         final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
-                final String param = "@param " + parameter.schema.name() + " of type " + parameter.schema.strictType() + ". " + parameter.description + ". \n";
+                final String param = "@param " + parameter.name() + " of type " + parameter.schema.strictType() + ". " + parameter.description + ". \n";
                 javaDocForRoute.append(param);
             });
         }
@@ -124,7 +133,7 @@ public class GenerateRoutesAndTestsUtils {
         runCall.setName(Utils.GET_METHOD_NAME);
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
-                    .forEach(parameter -> getURLParams.append(generateMockDataForType(parameter.schema)));
+                    .forEach(parameter -> getURLParams.append(generateMockDataForType(parameter)));
             getURLParams.append("\"");
             runCall.addArgument("BASE_URL + " + getURLParams);
         } else {
@@ -167,19 +176,19 @@ public class GenerateRoutesAndTestsUtils {
     }
 
     /**
-     * @param schema for which to generate the mock data
+     * @param parameter for which to generate the mock data
      * @return the mock data for the given schema.
      */
-    private static String generateMockDataForType(Schema schema) {
-        final String parameter = schema.name() + "=";
-        return switch (schema.name()) {
-            case "name" -> parameter + faker.name().name();
-            case "fullname" -> parameter + faker.name().fullName();
-            case "firstname" -> parameter + faker.name().firstName();
-            case "lastname" -> parameter + faker.name().lastName();
-            case "address" -> parameter + faker.address().fullAddress();
-            default -> parameter +
-                    generateMockDataForUnrecognizedName(schema.type());
+    private static String generateMockDataForType(Parameter parameter) {
+        final String parameterName = parameter.name() + "=";
+        return switch (parameter.name()) {
+            case "name" -> parameterName + faker.name().name();
+            case "fullname" -> parameterName + faker.name().fullName();
+            case "firstname" -> parameterName + faker.name().firstName();
+            case "lastname" -> parameterName + faker.name().lastName();
+            case "address" -> parameterName + faker.address().fullAddress();
+            default -> parameterName +
+                    generateMockDataForUnrecognizedName(parameter.schema().type());
         };
     }
 }

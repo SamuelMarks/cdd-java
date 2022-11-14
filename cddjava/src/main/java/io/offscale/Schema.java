@@ -1,50 +1,51 @@
 package io.offscale;
 
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.json.JSONObject;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class Schema {
+public class Schema {
     private final String type;
     private final String strictType;
-    private final String name;
-    private final String code;
+    private final ImmutableMap<String, Schema> properties;
 
-    public Schema() {
-        this.type = "object";
-        this.strictType = "object";
-        this.name = "";
-        this.code = "";
-    }
+    private final Schema arrayOfType;
 
-    public Schema(final String type) {
+    public Schema(String type) {
         this.type = type;
         this.strictType = type;
-        this.name = "";
-        this.code = "";
+        this.properties = null;
+        this.arrayOfType = null;
     }
 
     public Schema(String type, String strictType) {
         this.type = type;
         this.strictType = strictType;
-        this.name = "";
-        this.code = "";
+        this.properties = null;
+        this.arrayOfType = null;
     }
 
-    public Schema(String type, String name, String code) {
+    public Schema(String type, String strictType, Map<String, Schema> properties) {
         this.type = type;
-        this.strictType = type;
-        this.name = name;
-        this.code = code;
+        this.strictType = strictType;
+        this.properties = ImmutableMap.copyOf(properties);
+        this.arrayOfType = null;
     }
 
-    public Schema(Schema schema, String name) {
-        this.type = schema.type;
-        this.strictType = schema.strictType;
-        this.name = name;
-        this.code = schema.code;
+    public Schema(String type, String strictType, Schema arrayOfType) {
+        this.type = type;
+        this.strictType = strictType;
+        this.properties = null;
+        this.arrayOfType = arrayOfType;
     }
+
 
     public String type() {
         return this.type;
@@ -54,37 +55,97 @@ public final class Schema {
         return this.strictType;
     }
 
-    public String name() {
-        return this.name;
+    public ImmutableMap<String, Schema> properties() {
+        return properties;
     }
 
-    public String code() {
-        return this.code;
-    }
-
-    /**
-     * @param joSchema which is essentially a type
-     * @return a Parameter with type information
-     */
-    public static Schema parseSchema(JSONObject joSchema) {
-        if (joSchema.has("$ref")) {
-            return new Schema(parseSchemaRef(joSchema.getString("$ref")));
-        } else if (joSchema.has("format")) {
-            return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("format")), joSchema.getString("format"));
-        } else if (!joSchema.has("type")) {
-            return new Schema();
+    private String toCodeAux(Schema schema, ClassOrInterfaceDeclaration parentClass) {
+        if (schema.isObject()) {
+            final ClassOrInterfaceDeclaration newClass = new ClassOrInterfaceDeclaration();
+            schema.properties.forEach((name, propSchema) -> {
+                toCodeAux(propSchema, newClass);
+                newClass.addField(propSchema.type, name).setJavadocComment("Type of " + propSchema.strictType);
+            });
+            newClass.setName(schema.type);
+            if (parentClass != null) {
+                parentClass.addMember(newClass);
+            }
+            return newClass.toString();
         }
 
-        return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("type")), joSchema.getString("type"));
+        if (schema.isArray()) {
+            toCodeAux(schema.arrayOfType, parentClass);
+        }
+
+        return schema.type;
     }
 
+    public String toCode() {
+        assert this.isObject();
+        return toCodeAux(this, null);
+    }
 
-    /**
-     * Uses regex to parse out the component name in the reference.
-     *
-     * @param ref of a schema, maps to a component
-     * @return the component name
-     */
+    public static Schema parseSchema(JSONObject joSchema, Map<String, Schema> schemas, String type) {
+        if (joSchema.has("type") && joSchema.get("type").equals("object") || joSchema.has("properties")) {
+            assert (!type.isEmpty());
+            HashMap<String, Schema> schemaProperties = new HashMap<>();
+            final List<String> propertyKeys = Lists.newArrayList(joSchema.getJSONObject("properties").keys());
+            propertyKeys.forEach(key -> {
+                        schemaProperties.put(key, parseSchema(
+                                joSchema.getJSONObject("properties").getJSONObject(key),
+                                schemas,
+                                Utils.capitalizeFirstLetter(key)));
+                    }
+            );
+
+            if (isNullValue(schemaProperties)) {
+                return null;
+            }
+
+            return new Schema(type, type, schemaProperties);
+        }
+
+        if (joSchema.has("type") && joSchema.get("type").equals("array")) {
+            Schema itemsSchema = parseSchema(joSchema.getJSONObject("items"), schemas, Utils.capitalizeFirstLetter(type));
+            if (itemsSchema == null) {
+                return null;
+            }
+            return new Schema(itemsSchema.type + "[]", itemsSchema.type + "[]", itemsSchema);
+        }
+
+        if (joSchema.has("type") && joSchema.has("format")) {
+            return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("format")), joSchema.getString("format"));
+        }
+
+        if (joSchema.has("type") && !joSchema.has("format")) {
+            return new Schema(Utils.getOpenAPIToJavaTypes().get(joSchema.get("type")), joSchema.getString("type"));
+        }
+
+        assert (joSchema.has("$ref"));
+        if (schemas.containsKey(parseSchemaRef(joSchema.getString("$ref")))) {
+            return schemas.get(parseSchemaRef(joSchema.getString("$ref")));
+        }
+
+        return null;
+    }
+
+    private boolean isObject() {
+        return this.properties != null;
+    }
+
+    private boolean isArray() {
+        return this.arrayOfType != null;
+    }
+
+    private static boolean isNullValue(HashMap<String, Schema> map) {
+        for (Schema value : map.values()) {
+            if (value == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static String parseSchemaRef(String ref) {
         final Pattern pattern = Pattern.compile("#/components/schemas/(\\w+)");
         final Matcher matcher = pattern.matcher(ref);

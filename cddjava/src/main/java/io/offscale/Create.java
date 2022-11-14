@@ -27,21 +27,19 @@ public class Create {
      * @return a map where the keys are the class names and the values are the class code
      */
     public ImmutableMap<String, String> generateComponents() {
+        final ImmutableMap<String, Schema> generatedSchemas = generateSchemas();
         final HashMap<String, String> generatedComponents = new HashMap<>();
-        final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
-        final List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        schemas.forEach((schema) -> generatedComponents
-                .put(schema, GenerateComponentUtils.generateComponent(joSchemas.getJSONObject(schema), schema, null).code()));
+        generatedSchemas.forEach((name, schema) -> generatedComponents.put(name, schema.toCode()));
         return ImmutableMap.copyOf(generatedComponents);
     }
 
-    public ImmutableMap<String, Schema2> generateSchemas() {
-        final HashMap<String, Schema2> generatedSchemas = new HashMap<>();
+    public ImmutableMap<String, Schema> generateSchemas() {
+        final HashMap<String, Schema> generatedSchemas = new HashMap<>();
         final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         final List<String> schemas = Lists.newArrayList(joSchemas.keys());
         int i = 0;
         while (generatedSchemas.size() < schemas.size()) {
-            Schema2 generatedSchema = Schema2.parseSchema(joSchemas.getJSONObject(schemas.get(i)), generatedSchemas, schemas.get(i));
+            Schema generatedSchema = Schema.parseSchema(joSchemas.getJSONObject(schemas.get(i)), generatedSchemas, schemas.get(i));
             if (generatedSchema != null) {
                 generatedSchemas.put(schemas.get(i), generatedSchema);
             }
@@ -77,6 +75,7 @@ public class Create {
         runMethod.setType(runMethodWithBody.getType());
         final Optional<BlockStmt> body = runMethodWithBody.getBody();
         body.ifPresent(runMethod::setBody);
+        GenerateRoutesAndTestsUtils.setComponents(generateSchemas());
 
         for (final String path : paths) {
             for (final String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
