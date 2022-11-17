@@ -14,8 +14,32 @@ import java.util.Map;
 import java.util.Optional;
 
 public class Utils {
+    private static final String GET_METHOD = """
+                public class Test {
+                    Response run(String url) throws IOException {
+                      Request request = new Request.Builder()
+                          .url(url)
+                          .build();
+                                    
+                      return client.newCall(request).execute();
+                    }
+                }
+                """;
 
+    private static final String POST_METHOD = """
+                public class Test {
+                    Response post(String url, String json) throws IOException {
+                      RequestBody body = RequestBody.create(json, JSON);
+                      Request request = new Request.Builder()
+                          .url(url)
+                          .post(body)
+                          .build();
+                      return client.newCall(request).execute();
+                    }
+                }
+                """;
     public static final String GET_METHOD_NAME = "run";
+    public static final String POST_METHOD_NAME = "post";
     /**
      * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
      */
@@ -63,20 +87,17 @@ public class Utils {
     }
 
     public static MethodDeclaration generateGetRequestMethod() throws AssertionError {
-        final String method = """
-                public class Test {
-                    Response run(String url) throws IOException {
-                      Request request = new Request.Builder()
-                          .url(url)
-                          .build();
-                                    
-                      return client.newCall(request).execute();
-                    }
-                }
-                """;
+        return generateHttpRequestMethod(GET_METHOD, "run");
+    }
+
+    public static MethodDeclaration generatePostRequestMethod() throws AssertionError {
+        return generateHttpRequestMethod(POST_METHOD, "post");
+    }
+
+    private static MethodDeclaration generateHttpRequestMethod(String method, String methodName) throws AssertionError {
         final Optional<ClassOrInterfaceDeclaration> classObj = StaticJavaParser.parse(method).getClassByName("Test");
         assert(classObj.isPresent());
-        return classObj.get().getMethodsByName("run").get(0);
+        return classObj.get().getMethodsByName(methodName).get(0);
     }
 
     public static String capitalizeFirstLetter(String s) {

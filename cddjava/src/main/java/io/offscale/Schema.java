@@ -55,6 +55,10 @@ public class Schema {
         return this.strictType;
     }
 
+    public Schema arrayOfType() {
+        return this.arrayOfType;
+    }
+
     public ImmutableMap<String, Schema> properties() {
         return properties;
     }
@@ -129,11 +133,11 @@ public class Schema {
         return null;
     }
 
-    private boolean isObject() {
+    public boolean isObject() {
         return this.properties != null;
     }
 
-    private boolean isArray() {
+    public boolean isArray() {
         return this.arrayOfType != null;
     }
 

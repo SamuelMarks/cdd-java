@@ -10,9 +10,9 @@ class Pet {
     long[][][] names;
 
     /**
-     * Type of integer
+     * Type of string
      */
-    int name;
+    String name;
 
     /**
      * Type of int64

@@ -44,6 +44,11 @@ paths:
       operationId: createPets
       tags:
         - pets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
       responses:
         '201':
           description: Null response
@@ -90,7 +95,7 @@ components:
           type: integer
           format: int64
         name:
-          type: integer
+          type: string
         names:
           type: array
           items:

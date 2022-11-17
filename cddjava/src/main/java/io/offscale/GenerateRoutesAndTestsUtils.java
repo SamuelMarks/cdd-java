@@ -119,43 +119,119 @@ public class GenerateRoutesAndTestsUtils {
      * @param routesInterface
      * @param joRoute
      */
-    public static void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute) {
-        final String classType = generateRouteType(joRoute.getJSONObject("responses")).type();
+    public static void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String path, String operation) {
+        final String responseType = generateRouteType(joRoute.getJSONObject("responses")).type();
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
-        final BlockStmt methodBody = new BlockStmt();
-        final MethodCallExpr runCall = new MethodCallExpr();
-        final StringBuilder getURLParams = new StringBuilder("\"");
-        final FieldDeclaration getResponse = new FieldDeclaration();
-        final MethodCallExpr assertEqualsCall = new MethodCallExpr();
 
         methodDeclaration.addAnnotation("Test");
 
-        runCall.setName(Utils.GET_METHOD_NAME);
-        if (joRoute.has("parameters")) {
-            generateRouteParameters(joRoute.getJSONArray("parameters"))
-                    .forEach(parameter -> getURLParams.append(generateMockDataForType(parameter)));
-            getURLParams.append("\"");
-            runCall.addArgument("BASE_URL + " + getURLParams);
-        } else {
-            runCall.addArgument("BASE_URL");
+        switch (operation) {
+            case "get":
+                methodDeclaration.setBody(generateGetRequestTest(joRoute, generateURL(joRoute, path), responseType));
+                break;
+            case "post":
+                methodDeclaration.setBody(generatePostRequestTest(joRoute, generateURL(joRoute, path), responseType));
+                break;
+            default: assert false;
         }
+    }
 
-        Utils.initializeField(getResponse, "Response", "getResponse", runCall.toString());
-        Utils.addDeclarationsToBlock(methodBody, getResponse);
+    private static BlockStmt generateGetRequestTest(JSONObject joRoute, String url, String responseType) {
+        final BlockStmt methodBody = new BlockStmt();
+        final MethodCallExpr getCall = new MethodCallExpr();
+        final FieldDeclaration getResponse = new FieldDeclaration();
+        final FieldDeclaration parsedResponse = new FieldDeclaration();
 
-        assertEqualsCall.setName("assertEquals");
-        assertEqualsCall.addArgument("getResponse.code()");
-        assertEqualsCall.addArgument("200");
-        methodBody.addStatement(assertEqualsCall);
+        getCall.setName(Utils.GET_METHOD_NAME);
+        getCall.addArgument(url);
 
-        if (!classType.equals("void")) {
-            final FieldDeclaration parsedResponse = new FieldDeclaration();
+        return handleTestResponse(responseType, methodBody, getCall, getResponse, parsedResponse);
+    }
 
-            Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(classType),
-                    "response", "gson.fromJson(getResponse.body().string(), " + classType + ".class)");
+    private static BlockStmt generatePostRequestTest(JSONObject joRoute, String url, String responseType) {
+        final BlockStmt methodBody = new BlockStmt();
+        final MethodCallExpr postCall = new MethodCallExpr();
+        final FieldDeclaration postResponse = new FieldDeclaration();
+        final FieldDeclaration requestBodyData = new FieldDeclaration();
+        final FieldDeclaration parsedResponse = new FieldDeclaration();
+        Utils.initializeField(requestBodyData, "String", "requestBody", generateRequestBody(joRoute));
+        Utils.addDeclarationsToBlock(methodBody, requestBodyData);
+
+        postCall.setName(Utils.POST_METHOD_NAME);
+        postCall.addArgument(url);
+        postCall.addArgument("requestBody");
+
+        return handleTestResponse(responseType, methodBody, postCall, postResponse, parsedResponse);
+    }
+
+    private static BlockStmt handleTestResponse(String responseType, BlockStmt methodBody, MethodCallExpr postCall, FieldDeclaration postResponse, FieldDeclaration parsedResponse) {
+        Utils.initializeField(postResponse, "Response", "response", postCall.toString());
+        Utils.addDeclarationsToBlock(methodBody, postResponse);
+        methodBody.addStatement(generateAssertEquals());
+
+        if (!responseType.equals("void")) {
+            Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(responseType),
+                    "response", "gson.fromJson(response.body().string(), " + responseType + ".class)");
             Utils.addDeclarationsToBlock(methodBody, parsedResponse);
         }
-        methodDeclaration.setBody(methodBody);
+
+        return methodBody;
+    }
+
+    private static String generateURL(JSONObject joRoute, String path) {
+        final StringBuilder url = new StringBuilder("BASE_URL");
+        final StringBuilder getURLParams = new StringBuilder("\"");
+        if (joRoute.has("parameters")) {
+            generateRouteParameters(joRoute.getJSONArray("parameters"))
+                    .forEach(parameter -> getURLParams.append(parameter.name() + "=" + generateMockDataForType(parameter)));
+            getURLParams.append("\"");
+            url.append(" + " + getURLParams.toString());
+        }
+
+        return url.toString();
+    }
+
+    private static MethodCallExpr generateAssertEquals() {
+        final MethodCallExpr assertEqualsCall = new MethodCallExpr();
+        assertEqualsCall.setName("assertEquals");
+        assertEqualsCall.addArgument("response.code()");
+        assertEqualsCall.addArgument("200");
+
+        return assertEqualsCall;
+    }
+
+    private static String generateRequestBody(JSONObject joRoute) {
+        if (joRoute.has("requestBody")) {
+            JSONObject joSchema = joRoute.getJSONObject("requestBody").getJSONObject("content")
+                    .getJSONObject("application/json").getJSONObject("schema");
+            return "\"" + convertSchemaToJSON(Schema.parseSchema(joSchema, components, ""), "") + "\"";
+        }
+
+        return "\"\"";
+    }
+
+    private static String convertSchemaToJSON(Schema schema, String name) {
+        if (schema.isObject()) {
+            StringBuilder json = new StringBuilder();
+            json.append('{');
+            schema.properties().forEach((key, propertySchema) -> json.append(key + ": " + convertSchemaToJSON(propertySchema, key) + ", "));
+            json.append('}');
+            return json.toString();
+        }
+
+        if (schema.isArray()) {
+            StringBuilder json = new StringBuilder();
+            json.append('[');
+            json.append(convertSchemaToJSON(schema.arrayOfType(), ""));
+            json.append(']');
+            return json.toString();
+        }
+
+        if (schema.type().equals("String")) {
+            return "\\\"" + generateMockDataForType(new Parameter(schema, name, "")) + "\\\"";
+        }
+
+        return generateMockDataForType(new Parameter(schema, name, ""));
     }
 
     /**
@@ -163,15 +239,15 @@ public class GenerateRoutesAndTestsUtils {
      * generated more precisely. This method handles parameters that
      * aren't common.
      *
-     * @param type of the parameter to generate mock data for
+     * @param type of the parameter for which to generate mock data
      * @return the mock data for the given parameter
      */
     private static String generateMockDataForUnrecognizedName(String type) {
         return switch (type) {
             case "String" -> faker.food().fruit();
             case "long", "int" -> String.valueOf(faker.number().numberBetween(1, 100));
-            case "boolean" -> faker.bool().toString();
-            default -> "UNKNOWN";
+            case "boolean" -> Boolean.toString(faker.bool().bool());
+            default -> throw new IllegalArgumentException("type wasn't one of the expected values.");
         };
     }
 
@@ -180,15 +256,13 @@ public class GenerateRoutesAndTestsUtils {
      * @return the mock data for the given schema.
      */
     private static String generateMockDataForType(Parameter parameter) {
-        final String parameterName = parameter.name() + "=";
         return switch (parameter.name()) {
-            case "name" -> parameterName + faker.name().name();
-            case "fullname" -> parameterName + faker.name().fullName();
-            case "firstname" -> parameterName + faker.name().firstName();
-            case "lastname" -> parameterName + faker.name().lastName();
-            case "address" -> parameterName + faker.address().fullAddress();
-            default -> parameterName +
-                    generateMockDataForUnrecognizedName(parameter.schema().type());
+            case "name" -> faker.name().name();
+            case "fullname" -> faker.name().fullName();
+            case "firstname" -> faker.name().firstName();
+            case "lastname" -> faker.name().lastName();
+            case "address" -> faker.address().fullAddress();
+            default -> generateMockDataForUnrecognizedName(parameter.schema().type());
         };
     }
 }

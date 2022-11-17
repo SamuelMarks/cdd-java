@@ -35,13 +35,6 @@ public class CreateTests {
         assertEquals(generatedComponents.get("Dog"), dogComponentCode);
     }
 
-    @Test
-    public void generateSchemas2Test() {
-        final ImmutableMap<String, Schema> generatedComponents = create.generateSchemas();
-        Schema schema = generatedComponents.get("Dog");
-        System.out.println(schema.toCode());
-    }
-
     @Test(expected = AssertionError.class)
     public void generateComponentsException() {
         final ImmutableMap<String, String> generatedComponents = improperFormCreate.generateComponents();

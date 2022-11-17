@@ -2,14 +2,11 @@ package io.offscale;
 
 import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.*;
-import com.github.javaparser.ast.stmt.BlockStmt;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
-
 
 /**
  * Given an OpenAPI Spec, generates code for routes and components and tests
@@ -63,24 +60,35 @@ public class Create {
         final ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
                 .setInterface(true).setName("Routes");
         final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
+        final MethodDeclaration runMethod = testsClass.addMethod(Utils.GET_METHOD_NAME);
+        final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
+
+        final MethodDeclaration postMethod = testsClass.addMethod(Utils.POST_METHOD_NAME);
+        final MethodDeclaration postMethodWithBody = Utils.generatePostRequestMethod();
+
         testsClass.addField("OkHttpClient", "client", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new OkHttpClient()");
         testsClass.addField("Gson", "gson", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new GsonBuilder().create()");
         testsClass.addField("String", "BASE_URL", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("\"" + getBaseURL() + "?\"");
-        final MethodDeclaration runMethod = testsClass.addMethod(Utils.GET_METHOD_NAME);
-        final MethodDeclaration runMethodWithBody = Utils.generateGetRequestMethod();
+        testsClass.addField("MediaType", "JSON", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
+                .setInitializer("MediaType.get(\"application/json; charset=utf-8\")");
+
         runMethod.setParameters(runMethodWithBody.getParameters());
         runMethod.setType(runMethodWithBody.getType());
-        final Optional<BlockStmt> body = runMethodWithBody.getBody();
-        body.ifPresent(runMethod::setBody);
+        runMethodWithBody.getBody().ifPresent(runMethod::setBody);
+
+        postMethod.setParameters(postMethodWithBody.getParameters());
+        postMethod.setType(postMethodWithBody.getType());
+        postMethodWithBody.getBody().ifPresent(postMethod::setBody);
+
         GenerateRoutesAndTestsUtils.setComponents(generateSchemas());
 
         for (final String path : paths) {
             for (final String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
                 GenerateRoutesAndTestsUtils.generateRoute(routesInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
-                GenerateRoutesAndTestsUtils.generateTest(testsClass, joPaths.getJSONObject(path).getJSONObject(operation));
+                GenerateRoutesAndTestsUtils.generateTest(testsClass, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
             }
         }
         routesAndTests.put("routes", routesInterface.toString());
