@@ -200,6 +200,10 @@ public class GenerateRoutesAndTestsUtils {
         return assertEqualsCall;
     }
 
+    /**
+     * @param joRoute to generate the request body from.
+     * @return A string with either the request body or an empty string if there is no request body.
+     */
     private static String generateRequestBody(JSONObject joRoute) {
         if (joRoute.has("requestBody")) {
             JSONObject joSchema = joRoute.getJSONObject("requestBody").getJSONObject("content")
@@ -210,11 +214,24 @@ public class GenerateRoutesAndTestsUtils {
         return "\"\"";
     }
 
+    /**
+     * @param schema object to convert into json
+     * @param name of the schema object to convert to json. Useful for common names such as "address" or "fullname"
+     * @return the json as a string.
+     */
     private static String convertSchemaToJSON(Schema schema, String name) {
         if (schema.isObject()) {
             StringBuilder json = new StringBuilder();
             json.append('{');
-            schema.properties().forEach((key, propertySchema) -> json.append(key + ": " + convertSchemaToJSON(propertySchema, key) + ", "));
+            int i = 0;
+            for (String key: schema.properties().keySet()) {
+                if (i == schema.properties().size()-1) {
+                    json.append(key + ": " + convertSchemaToJSON(schema.properties().get(key), key));
+                } else {
+                    json.append(key + ": " + convertSchemaToJSON(schema.properties().get(key), key) + ", ");
+                }
+                i++;
+            }
             json.append('}');
             return json.toString();
         }
@@ -235,6 +252,21 @@ public class GenerateRoutesAndTestsUtils {
     }
 
     /**
+     * @param parameter for which to generate the mock data
+     * @return the mock data for the given schema.
+     */
+    private static String generateMockDataForType(Parameter parameter) {
+        return switch (parameter.name()) {
+            case "name" -> faker.name().name();
+            case "fullname" -> faker.name().fullName();
+            case "firstname" -> faker.name().firstName();
+            case "lastname" -> faker.name().lastName();
+            case "address" -> faker.address().fullAddress();
+            default -> generateMockDataForUnrecognizedName(parameter.schema().type());
+        };
+    }
+
+    /**
      * Some parameter names are common such as firstname and can be
      * generated more precisely. This method handles parameters that
      * aren't common.
@@ -248,21 +280,6 @@ public class GenerateRoutesAndTestsUtils {
             case "long", "int" -> String.valueOf(faker.number().numberBetween(1, 100));
             case "boolean" -> Boolean.toString(faker.bool().bool());
             default -> throw new IllegalArgumentException("type wasn't one of the expected values.");
-        };
-    }
-
-    /**
-     * @param parameter for which to generate the mock data
-     * @return the mock data for the given schema.
-     */
-    private static String generateMockDataForType(Parameter parameter) {
-        return switch (parameter.name()) {
-            case "name" -> faker.name().name();
-            case "fullname" -> faker.name().fullName();
-            case "firstname" -> faker.name().firstName();
-            case "lastname" -> faker.name().lastName();
-            case "address" -> faker.address().fullAddress();
-            default -> generateMockDataForUnrecognizedName(parameter.schema().type());
         };
     }
 }
