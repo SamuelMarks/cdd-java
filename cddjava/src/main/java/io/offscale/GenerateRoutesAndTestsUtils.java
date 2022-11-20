@@ -4,6 +4,7 @@ import com.github.javafaker.Faker;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.stmt.BlockStmt;
@@ -11,7 +12,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +19,6 @@ import java.util.Optional;
 public class GenerateRoutesAndTestsUtils {
     private static final Faker faker = new Faker();
     private static record Parameter(Schema schema, String name, String description) { }
-
     private static ImmutableMap<String, Schema> components;
 
     public static void setComponents(ImmutableMap<String, Schema> generatedComponents) {
@@ -115,7 +114,6 @@ public class GenerateRoutesAndTestsUtils {
 
     /**
      * Given a route, generates a test corresponding the route.
-     *
      * @param routesInterface
      * @param joRoute
      */
@@ -127,7 +125,7 @@ public class GenerateRoutesAndTestsUtils {
 
         switch (operation) {
             case "get":
-                methodDeclaration.setBody(generateGetRequestTest(joRoute, generateURL(joRoute, path), responseType));
+                methodDeclaration.setBody(generateGetRequestTest(generateURL(joRoute, path), responseType));
                 break;
             case "post":
                 methodDeclaration.setBody(generatePostRequestTest(joRoute, generateURL(joRoute, path), responseType));
@@ -136,7 +134,12 @@ public class GenerateRoutesAndTestsUtils {
         }
     }
 
-    private static BlockStmt generateGetRequestTest(JSONObject joRoute, String url, String responseType) {
+    /**
+     * @param url to generate the get request test
+     * @param responseType of the get request
+     * @return code representing the generated test
+     */
+    private static BlockStmt generateGetRequestTest(String url, String responseType) {
         final BlockStmt methodBody = new BlockStmt();
         final MethodCallExpr getCall = new MethodCallExpr();
         final FieldDeclaration getResponse = new FieldDeclaration();
@@ -148,6 +151,12 @@ public class GenerateRoutesAndTestsUtils {
         return handleTestResponse(responseType, methodBody, getCall, getResponse, parsedResponse);
     }
 
+    /**
+     * @param joRoute to generate the post request test
+     * @param url to generate the post request test
+     * @param responseType of the post of the post request
+     * @return code representing the generated test.
+     */
     private static BlockStmt generatePostRequestTest(JSONObject joRoute, String url, String responseType) {
         final BlockStmt methodBody = new BlockStmt();
         final MethodCallExpr postCall = new MethodCallExpr();
@@ -164,33 +173,67 @@ public class GenerateRoutesAndTestsUtils {
         return handleTestResponse(responseType, methodBody, postCall, postResponse, parsedResponse);
     }
 
-    private static BlockStmt handleTestResponse(String responseType, BlockStmt methodBody, MethodCallExpr postCall, FieldDeclaration postResponse, FieldDeclaration parsedResponse) {
-        Utils.initializeField(postResponse, "Response", "response", postCall.toString());
-        Utils.addDeclarationsToBlock(methodBody, postResponse);
+    /**
+     *
+     * @param responseType of the api call
+     * @param methodBody for which to add the code
+     * @param requestCall http call for the test
+     * @param response response of the requestCall
+     * @param parsedResponse to check if the response is parsable into the expected type.
+     * @return the code to check if the response has 200 status code and has a response of the right form.
+     */
+    private static BlockStmt handleTestResponse(String responseType, BlockStmt methodBody, MethodCallExpr requestCall, FieldDeclaration response, FieldDeclaration parsedResponse) {
+        Utils.initializeField(response, "Response", "response", requestCall.toString());
+        Utils.addDeclarationsToBlock(methodBody, response);
         methodBody.addStatement(generateAssertEquals());
 
         if (!responseType.equals("void")) {
-            Utils.initializeField(parsedResponse, Utils.getPrimitivesToClassTypes(responseType),
-                    "response", "gson.fromJson(response.body().string(), " + responseType + ".class)");
-            Utils.addDeclarationsToBlock(methodBody, parsedResponse);
+            MethodCallExpr parseResponse = new MethodCallExpr("gson.fromJson").addArgument("response.body().string()").addArgument(responseType + ".class");
+            parseResponse.addOrphanComment(new BlockComment("Testing if the response can be parsed into the expected type"));
+            methodBody.addOrphanComment(new BlockComment("Testing if the response can be parsed into the expected type"));
+            methodBody.addStatement(parseResponse);
         }
 
         return methodBody;
     }
 
+    /**
+     * @param joRoute from which to generate the URL
+     * @param path of the api call
+     * @return the generated url with all necessary parameters
+     */
     private static String generateURL(JSONObject joRoute, String path) {
         final StringBuilder url = new StringBuilder("BASE_URL");
-        final StringBuilder getURLParams = new StringBuilder("\"");
+        final StringBuilder getURLParams = new StringBuilder();
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
                     .forEach(parameter -> getURLParams.append(parameter.name() + "=" + generateMockDataForType(parameter)));
-            getURLParams.append("\"");
-            url.append(" + " + getURLParams.toString());
+            url.append(" + " + "\"" + path.substring(0, indexOfParams(path)) + getURLParams + "\"");
         }
 
         return url.toString();
     }
 
+    /**
+     *
+     * @param path of the api call
+     * @return the index of the first '{' if there is one.
+     * If there isn't than return the string length. The logic
+     * behind this is that we want the api path without the params
+     * because those will be added after.
+     */
+    private static int indexOfParams(String path) {
+        if (path.indexOf('{') != -1) {
+            return path.indexOf('{');
+        }
+
+        return path.length();
+    }
+
+    /**
+     * Small method to generate the assertEquals(200, response.code())
+     * @return the assertEquals method call.
+     */
     private static MethodCallExpr generateAssertEquals() {
         final MethodCallExpr assertEqualsCall = new MethodCallExpr();
         assertEqualsCall.setName("assertEquals");
