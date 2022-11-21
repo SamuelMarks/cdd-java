@@ -83,12 +83,6 @@ public class GenerateRoutesAndTestsUtils {
                     "");
         }
 
-//        final Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
-//        if (response.isPresent() && joRouteResponse.getJSONObject(response.get()).has("content")) {
-//            JSONObject joRouteResponseSchema = joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema");
-//            return Schema.parseSchema(joRouteResponseSchema, components, "" );
-//        }
-
         return new Schema("void");
     }
 
