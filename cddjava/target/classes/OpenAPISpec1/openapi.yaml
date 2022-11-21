@@ -48,7 +48,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Pet'
+              $ref: '#/components/schemas/Pets'
       responses:
         '201':
           description: Null response
@@ -86,6 +86,10 @@ paths:
                 $ref: "#/components/schemas/Error"
 components:
   schemas:
+    Pets:
+      type: array
+      items:
+        $ref: "#/components/schemas/Pet"
     Pet:
       required:
         - id

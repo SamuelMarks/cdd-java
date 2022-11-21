@@ -16,7 +16,7 @@ import java.util.Optional;
 public class Utils {
     private static final String GET_METHOD = """
                 public class Test {
-                    Response run(String url) throws IOException {
+                    Response get(String url) throws IOException {
                       Request request = new Request.Builder()
                           .url(url)
                           .build();
@@ -38,7 +38,7 @@ public class Utils {
                     }
                 }
                 """;
-    public static final String GET_METHOD_NAME = "run";
+    public static final String GET_METHOD_NAME = "get";
     public static final String POST_METHOD_NAME = "post";
     /**
      * Gets a map between Types in OpenAPI and Types in Java. Going from OpenAPI -> Java.
@@ -87,11 +87,11 @@ public class Utils {
     }
 
     public static MethodDeclaration generateGetRequestMethod() throws AssertionError {
-        return generateHttpRequestMethod(GET_METHOD, "run");
+        return generateHttpRequestMethod(GET_METHOD, GET_METHOD_NAME);
     }
 
     public static MethodDeclaration generatePostRequestMethod() throws AssertionError {
-        return generateHttpRequestMethod(POST_METHOD, "post");
+        return generateHttpRequestMethod(POST_METHOD, POST_METHOD_NAME);
     }
 
     private static MethodDeclaration generateHttpRequestMethod(String method, String methodName) throws AssertionError {

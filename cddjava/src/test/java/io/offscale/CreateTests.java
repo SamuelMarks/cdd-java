@@ -12,7 +12,6 @@ import java.nio.file.Path;
 
 public class CreateTests {
     private Create create;
-    private Create improperFormCreate;
     static private final String PET_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode1.txt";
     static private final String PETS_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode4.txt";
     static private final String DOG_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode3.txt";
@@ -21,13 +20,11 @@ public class CreateTests {
     @Before
     public void init() {
         this.create = new Create("OpenAPISpec1/openapi.yaml");
-        this.improperFormCreate = new Create("improperFormOpenAPI.yaml");
     }
 
     @Test
     public void generateComponentsSuccess() throws IOException {
         final String petComponentCode = Files.readString(Path.of(PET_COMPONENT_FILE_PATH));
-        final String petsComponentCode = Files.readString(Path.of(PETS_COMPONENT_FILE_PATH)); // will get to this.
         final String dogComponentCode = Files.readString(Path.of(DOG_COMPONENT_FILE_PATH));
         final ImmutableMap<String, String> generatedComponents = create.generateComponents();
         assertEquals(3,generatedComponents.size());
@@ -37,7 +34,8 @@ public class CreateTests {
 
     @Test(expected = AssertionError.class)
     public void generateComponentsException() {
-        final ImmutableMap<String, String> generatedComponents = improperFormCreate.generateComponents();
+        Create improperFormCreate = new Create("improperFormOpenAPI.yaml");
+        improperFormCreate.generateComponents();
     }
 
     @Test

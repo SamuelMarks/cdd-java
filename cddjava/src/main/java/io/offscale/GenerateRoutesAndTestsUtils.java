@@ -74,11 +74,20 @@ public class GenerateRoutesAndTestsUtils {
      */
     private static Schema generateRouteType(JSONObject joRouteResponse) {
         final List<String> responses = Lists.newArrayList(joRouteResponse.keys());
-        final Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
-        if (response.isPresent() && joRouteResponse.getJSONObject(response.get()).has("content")) {
-            JSONObject joRouteResponseSchema = joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema");
-            return Schema.parseSchema(joRouteResponseSchema, components, "" );
+        if (joRouteResponse.has("200")) {
+            JSONObject successResponse = joRouteResponse.getJSONObject("200");
+            assert successResponse.has("content");
+            return Schema.parseSchema(
+                    successResponse.getJSONObject("content").getJSONObject("application/json").getJSONObject("schema"),
+                    components,
+                    "");
         }
+
+//        final Optional<String> response = responses.stream().filter(r -> r.equals("200")).findFirst();
+//        if (response.isPresent() && joRouteResponse.getJSONObject(response.get()).has("content")) {
+//            JSONObject joRouteResponseSchema = joRouteResponse.getJSONObject(response.get()).getJSONObject("content").getJSONObject("application/json").getJSONObject("schema");
+//            return Schema.parseSchema(joRouteResponseSchema, components, "" );
+//        }
 
         return new Schema("void");
     }
@@ -208,7 +217,7 @@ public class GenerateRoutesAndTestsUtils {
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters"))
                     .forEach(parameter -> getURLParams.append(parameter.name() + "=" + generateMockDataForType(parameter)));
-            url.append(" + " + "\"" + path.substring(0, indexOfParams(path)) + getURLParams + "\"");
+            url.append(" + " + "\"" + path.substring(0, indexOfParams(path)) + "?" + getURLParams + "\"");
         }
 
         return url.toString();

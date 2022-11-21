@@ -14,8 +14,10 @@ import java.util.List;
  */
 public class Create {
     private final JSONObject jo;
+    private final ImmutableMap<String, Schema> schemas;
     public Create(String filePath) {
         this.jo = Utils.getJSONObjectFromFile(filePath, this.getClass());
+        this.schemas = generateSchemas();
     }
 
     /**
@@ -26,7 +28,11 @@ public class Create {
     public ImmutableMap<String, String> generateComponents() {
         final ImmutableMap<String, Schema> generatedSchemas = generateSchemas();
         final HashMap<String, String> generatedComponents = new HashMap<>();
-        generatedSchemas.forEach((name, schema) -> generatedComponents.put(name, schema.toCode()));
+        generatedSchemas.forEach((name, schema) -> {
+            if (schema.isObject()) {
+                generatedComponents.put(name, schema.toCode());
+            }
+        });
         return ImmutableMap.copyOf(generatedComponents);
     }
 
@@ -34,14 +40,11 @@ public class Create {
         final HashMap<String, Schema> generatedSchemas = new HashMap<>();
         final JSONObject joSchemas = jo.getJSONObject("components").getJSONObject("schemas");
         final List<String> schemas = Lists.newArrayList(joSchemas.keys());
-        int i = 0;
-        while (generatedSchemas.size() < schemas.size()) {
+        for (int i = 0; generatedSchemas.size() < schemas.size(); i = (i + 1) % schemas.size()) {
             Schema generatedSchema = Schema.parseSchema(joSchemas.getJSONObject(schemas.get(i)), generatedSchemas, schemas.get(i));
             if (generatedSchema != null) {
                 generatedSchemas.put(schemas.get(i), generatedSchema);
             }
-
-            i = (i + 1) % schemas.size();
         }
 
         return ImmutableMap.copyOf(generatedSchemas);
@@ -71,7 +74,7 @@ public class Create {
         testsClass.addField("Gson", "gson", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("new GsonBuilder().create()");
         testsClass.addField("String", "BASE_URL", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
-                .setInitializer("\"" + getBaseURL() + "?\"");
+                .setInitializer("\"" + getBaseURL() + "\"");
         testsClass.addField("MediaType", "JSON", Modifier.Keyword.PRIVATE, Modifier.Keyword.FINAL).getVariable(0)
                 .setInitializer("MediaType.get(\"application/json; charset=utf-8\")");
 
