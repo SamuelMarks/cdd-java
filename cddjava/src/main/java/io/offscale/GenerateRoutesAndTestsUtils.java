@@ -155,7 +155,7 @@ public class GenerateRoutesAndTestsUtils {
         getCall.setName(Utils.GET_METHOD_NAME);
         getCall.addArgument(url);
 
-        return handleTestResponse(responseType, methodBody, getCall, getResponse, parsedResponse);
+        return handleTestResponse(responseType, methodBody, getCall, getResponse);
     }
 
     /**
@@ -169,7 +169,6 @@ public class GenerateRoutesAndTestsUtils {
         final MethodCallExpr postCall = new MethodCallExpr();
         final FieldDeclaration postResponse = new FieldDeclaration();
         final FieldDeclaration requestBodyData = new FieldDeclaration();
-        final FieldDeclaration parsedResponse = new FieldDeclaration();
         Utils.initializeField(requestBodyData, "String", "requestBody", generateRequestBody(joRoute));
         Utils.addDeclarationsToBlock(methodBody, requestBodyData);
 
@@ -177,7 +176,7 @@ public class GenerateRoutesAndTestsUtils {
         postCall.addArgument(url);
         postCall.addArgument("requestBody");
 
-        return handleTestResponse(responseType, methodBody, postCall, postResponse, parsedResponse);
+        return handleTestResponse(responseType, methodBody, postCall, postResponse);
     }
 
     /**
@@ -186,10 +185,9 @@ public class GenerateRoutesAndTestsUtils {
      * @param methodBody for which to add the code
      * @param requestCall http call for the test
      * @param response response of the requestCall
-     * @param parsedResponse to check if the response is parsable into the expected type.
      * @return the code to check if the response has 200 status code and has a response of the right form.
      */
-    private static BlockStmt handleTestResponse(String responseType, BlockStmt methodBody, MethodCallExpr requestCall, FieldDeclaration response, FieldDeclaration parsedResponse) {
+    private static BlockStmt handleTestResponse(String responseType, BlockStmt methodBody, MethodCallExpr requestCall, FieldDeclaration response) {
         Utils.initializeField(response, "Response", "response", requestCall.toString());
         Utils.addDeclarationsToBlock(methodBody, response);
         methodBody.addStatement(generateAssertEquals());
