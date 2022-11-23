@@ -20,6 +20,8 @@ public class Create {
         this.schemas = generateSchemas();
     }
 
+    public record RoutesAndTests(String routes, String tests, ImmutableMap<String, String> schemas) {}
+
     /**
      * Generates the classes corresponding to the components in the OpenAPI spec
      *
@@ -50,16 +52,13 @@ public class Create {
         return ImmutableMap.copyOf(generatedSchemas);
     }
 
-
     /**
-     * @return Map with two key-value pairs: routes and tests.
-     * routes is the code for the generated routes interface.
-     * tests is the code for generated tests for all routes.
+     * @return generated routes, tests, and new classes to be created
      */
-    public ImmutableMap<String, String> generateRoutesAndTests() {
-        final HashMap<String, String> routesAndTests = new HashMap<>();
+    public RoutesAndTests generateRoutesAndTests() {
         final JSONObject joPaths = jo.getJSONObject("paths");
         final List<String> paths = Lists.newArrayList(joPaths.keys());
+        final HashMap<String, String> addedSchemas = new HashMap<>();
         final ClassOrInterfaceDeclaration routesInterface = new ClassOrInterfaceDeclaration()
                 .setInterface(true).setName("Routes");
         final ClassOrInterfaceDeclaration testsClass = new ClassOrInterfaceDeclaration().setName("Tests");
@@ -90,13 +89,17 @@ public class Create {
 
         for (final String path : paths) {
             for (final String operation : Lists.newArrayList(joPaths.getJSONObject(path).keys())) {
-                GenerateRoutesAndTestsUtils.generateRoute(routesInterface, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
-                GenerateRoutesAndTestsUtils.generateTest(testsClass, joPaths.getJSONObject(path).getJSONObject(operation), path, operation);
+                final JSONObject joRoute = joPaths.getJSONObject(path).getJSONObject(operation);
+                Schema routeResponseSchema = GenerateRoutesAndTestsUtils.generateRouteType(joRoute.getJSONObject("responses"), path, operation);
+                GenerateRoutesAndTestsUtils.generateRoute(routesInterface, joRoute, routeResponseSchema.type(), path, operation);
+                GenerateRoutesAndTestsUtils.generateTest(testsClass, joRoute, routeResponseSchema.type(), path, operation);
+                if (routeResponseSchema.isObject() && !schemas.containsKey(routeResponseSchema.type())) {
+                    addedSchemas.put(routeResponseSchema.type(), routeResponseSchema.toCode());
+                }
             }
         }
-        routesAndTests.put("routes", routesInterface.toString());
-        routesAndTests.put("tests", testsClass.toString());
-        return ImmutableMap.copyOf(routesAndTests);
+
+        return new RoutesAndTests(routesInterface.toString(), testsClass.toString(), ImmutableMap.copyOf(addedSchemas));
     }
 
     /**

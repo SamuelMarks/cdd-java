@@ -133,6 +133,44 @@ public class Schema {
         return null;
     }
 
+    private boolean equalsAux(Schema schema1, Schema schema2) {
+        if (schema1.isObject() && schema2.isObject()) {
+            if (!schema1.type().equals(schema2.type())) {
+                return false;
+            }
+
+            for (String key: schema1.properties().keySet()) {
+                if (!schema2.properties().containsKey(key)) {
+                    return false;
+                }
+
+                if (!equalsAux(schema1.properties().get(key), schema2.properties().get(key))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if (schema1.isArray() && schema2.isArray()) {
+            return equalsAux(schema1.arrayOfType(), schema2.arrayOfType());
+        }
+
+        return schema1.type().equals(schema2.type);
+    }
+
+    @Override
+    public boolean equals(Object schema) {
+        if (this == schema) {
+            return true;
+        }
+
+        if (schema instanceof Schema) {
+            return equalsAux(this, (Schema) schema);
+        }
+
+        return false;
+    }
+
     public boolean isObject() {
         return this.properties != null;
     }

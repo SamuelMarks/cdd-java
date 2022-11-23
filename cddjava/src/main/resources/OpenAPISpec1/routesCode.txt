@@ -22,4 +22,10 @@ interface Routes {
      */
     @GET(path = "/pets/{petId}")
     Call<Pet> showDogById(int petId);
+
+    /**
+     * @return (Status Code 200),
+     */
+    @GET(path = "/pets/getInfoById")
+    Call<Petsgetinfobyidget> getInfoById();
 }

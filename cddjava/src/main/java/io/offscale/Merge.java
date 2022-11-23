@@ -81,7 +81,7 @@ public class Merge {
      * @return merged routes between existing code and openAPI spec.
      */
     public String mergeRoutes() {
-        final String openAPIRoutes = create.generateRoutesAndTests().get("routes");
+        final String openAPIRoutes = create.generateRoutesAndTests().routes();
         final CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
         final CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
 

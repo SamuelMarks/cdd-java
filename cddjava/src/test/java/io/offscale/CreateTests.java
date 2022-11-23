@@ -1,7 +1,6 @@
 package io.offscale;
 
 import com.google.common.collect.ImmutableMap;
-import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -13,7 +12,7 @@ import java.nio.file.Path;
 public class CreateTests {
     private Create create;
     static private final String PET_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode1.txt";
-    static private final String PETS_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode4.txt";
+    static private final String UNNAMED_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode2.txt";
     static private final String DOG_COMPONENT_FILE_PATH = "src/main/resources/OpenAPISpec1/componentCode3.txt";
     static private final String ROUTES_FILE_PATH = "src/main/resources/OpenAPISpec1/routesCode.txt";
 
@@ -42,16 +41,22 @@ public class CreateTests {
     public void generateRoutesSuccess() throws IOException {
         final Path filePath = Path.of(ROUTES_FILE_PATH);
         final String routesCode = Files.readString(filePath);
-        assertEquals(create.generateRoutesAndTests().get("routes"), routesCode);
+        assertEquals(create.generateRoutesAndTests().routes(), routesCode);
     }
 
     @Test
     public void generateTestsSuccess() {
-        final String testClass = create.generateRoutesAndTests().get("tests");
+        final String testClass = create.generateRoutesAndTests().tests();
         System.out.println(testClass);
         assertThat(testClass, containsString("createPetsTest()"));
         assertThat(testClass, containsString("listPetsTest()"));
         assertThat(testClass, containsString("showDogByIdTest()"));
+    }
+
+    @Test
+    public void generateUnnamedComponentsSuccess() throws IOException {
+        final String unnamedComponentCode = Files.readString(Path.of(UNNAMED_COMPONENT_FILE_PATH));
+        assertEquals(create.generateRoutesAndTests().schemas().get("Petsgetinfobyidget"), unnamedComponentCode);
     }
 
 //    Response run(String url, OkHttpClient client) throws IOException {

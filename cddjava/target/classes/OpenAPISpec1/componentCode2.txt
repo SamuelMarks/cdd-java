@@ -1,4 +1,4 @@
-class Error {
+class Petsgetinfobyidget {
 
     /**
      * Type of int32

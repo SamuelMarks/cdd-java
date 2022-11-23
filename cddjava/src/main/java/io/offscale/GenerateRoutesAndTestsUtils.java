@@ -14,10 +14,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class GenerateRoutesAndTestsUtils {
     private static final Faker faker = new Faker();
+
     private static record Parameter(Schema schema, String name, String description) { }
     private static ImmutableMap<String, Schema> components;
 
@@ -33,13 +33,12 @@ public class GenerateRoutesAndTestsUtils {
      * @param routeName
      * @param operation such as GET or POST
      */
-    public static MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeName, String operation) {
+    public static MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeType, String routeName, String operation) {
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
                 .removeBody()
                 .setJavadocComment(generateJavadocForRoute(joRoute));
         final NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
         expr.addPair("path", "\"" + routeName + "\"");
-        final String routeType = generateRouteType(joRoute.getJSONObject("responses")).type();
         if (routeType.equals("void")) {
             methodDeclaration.setType("void");
         } else {
@@ -72,15 +71,14 @@ public class GenerateRoutesAndTestsUtils {
      * @param joRouteResponse the OpenAPI representation of the route response.
      * @return the type of the route
      */
-    private static Schema generateRouteType(JSONObject joRouteResponse) {
-        final List<String> responses = Lists.newArrayList(joRouteResponse.keys());
+    public static Schema generateRouteType(JSONObject joRouteResponse, String path, String operation) {
         if (joRouteResponse.has("200")) {
             JSONObject successResponse = joRouteResponse.getJSONObject("200");
             assert successResponse.has("content");
             return Schema.parseSchema(
                     successResponse.getJSONObject("content").getJSONObject("application/json").getJSONObject("schema"),
                     components,
-                    "");
+                    Utils.capitalizeFirstLetter((path + operation).replaceAll("[^a-zA-Z0-9]", "")));
         }
 
         return new Schema("void");
@@ -93,7 +91,11 @@ public class GenerateRoutesAndTestsUtils {
     private static String generateJavadocForRoute(JSONObject joRoute) {
         final JSONObject joResponses = joRoute.getJSONObject("responses");
         final List<String> responses = Lists.newArrayList(joResponses.keys());
-        final StringBuilder javaDocForRoute = new StringBuilder(joRoute.getString("summary") + "\n");
+        final StringBuilder javaDocForRoute = new StringBuilder();
+        if (joRoute.has("summary")) {
+            javaDocForRoute.append(joRoute.getString("summary") + "\n");
+        }
+
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
                 final String param = "@param " + parameter.name() + " of type " + parameter.schema.strictType() + ". " + parameter.description + ". \n";
@@ -112,7 +114,10 @@ public class GenerateRoutesAndTestsUtils {
      * @return the javadoc return statement
      */
     private static String generateJavadocReturn(JSONObject joResponse, String responseName) {
-        return joResponse.getString("description") + " (Status Code " + responseName + "), ";
+        if (joResponse.has("description")) {
+            return joResponse.getString("description") + " (Status Code " + responseName + "), ";
+        }
+        return "(Status Code " + responseName + "), ";
     }
 
     /**
@@ -120,8 +125,7 @@ public class GenerateRoutesAndTestsUtils {
      * @param routesInterface
      * @param joRoute
      */
-    public static void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String path, String operation) {
-        final String responseType = generateRouteType(joRoute.getJSONObject("responses")).type();
+    public static void generateTest(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String responseType, String path, String operation) {
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId") + "Test");
 
         methodDeclaration.addAnnotation("Test");

@@ -84,6 +84,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /pets/getInfoById:
+    get:
+      operationId: getInfoById
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  message:
+                    type: integer
 components:
   schemas:
     Pets:
