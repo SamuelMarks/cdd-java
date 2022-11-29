@@ -9,6 +9,12 @@ interface Routes {
     Call<Pet> showDogById(int petId);
 
     /**
+     * @return (Status Code 200),
+     */
+    @GET(path = "/pets/getInfoById")
+    Call<Petsgetinfobyidget> getInfoById();
+
+    /**
      * Create a pet
      * @return unexpected error (Status Code default), Null response (Status Code 201),
      */

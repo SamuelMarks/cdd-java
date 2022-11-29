@@ -103,4 +103,9 @@ public class Utils {
     public static String capitalizeFirstLetter(String s) {
         return s.substring(0,1).toUpperCase() + s.substring(1).toLowerCase();
     }
+
+    public static String getFileNameUntilDot(String fileName) {
+        assert fileName.contains(".");
+        return fileName.substring(0, fileName.indexOf('.'));
+    }
 }

@@ -4,9 +4,7 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.comments.JavadocComment;
 import com.google.common.collect.ImmutableMap;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -20,7 +18,8 @@ public class Merge {
 
     private final Create create;
 
-    public Merge(ImmutableMap<String, String> components, String routes, String filePath) {
+    public Merge(ImmutableMap<String, String> components,
+                 String routes, String filePath) {
         this.components = components;
         this.routes = routes;
         this.create = new Create(filePath);
@@ -45,7 +44,7 @@ public class Merge {
      * @param componentName the openAPI component name
      * @return the merged code for a component
      */
-    public String mergeComponent(String componentCode, String componentName) {
+    private String mergeComponent(String componentCode, String componentName) {
         if (!this.components.containsKey(componentName)) {
             return componentCode;
         }
@@ -85,9 +84,9 @@ public class Merge {
         final CompilationUnit cuOpenAPIRoutes = StaticJavaParser.parse(openAPIRoutes);
         final CompilationUnit cuJavaCodeRoutes = StaticJavaParser.parse(this.routes);
 
-        if (cuJavaCodeRoutes.getInterfaceByName("Routes").isEmpty()
-                || cuOpenAPIRoutes.getInterfaceByName("Routes").isEmpty()) {
-            throw new IllegalArgumentException("Couldn't find Routes interface in openAPI Spec or Java code"); // perhaps change this to a different exceptions
+        //Routes doesn't exist yet
+        if (cuJavaCodeRoutes.getInterfaceByName("Routes").isEmpty()) {
+            return openAPIRoutes;
         }
 
         ClassOrInterfaceDeclaration cuJavaCodeRoutesInterface = cuJavaCodeRoutes.getInterfaceByName("Routes").get();

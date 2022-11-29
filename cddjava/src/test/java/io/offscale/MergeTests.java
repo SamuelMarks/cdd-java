@@ -34,7 +34,6 @@ public class MergeTests {
         final ImmutableMap<String, String> mergedComponents = merge.mergeComponents();
         assertEquals(3, mergedComponents.size());
         assertEquals(mergedComponents.get("Pet"), readFileToString("src/main/resources/Merged/mergedComponent1.txt"));
-        assertEquals(mergedComponents.get("Error"), readFileToString("src/main/resources/OpenAPISpec1/componentCode2.txt"));
     }
 
     @Test

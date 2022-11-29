@@ -89,6 +89,7 @@ paths:
       operationId: getInfoById
       responses:
         '200':
+          description: mock description
           content:
             application/json:
               schema:

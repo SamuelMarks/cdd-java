@@ -10,7 +10,6 @@ import java.util.List;
 
 /**
  * Given an OpenAPI Spec, generates code for routes and components and tests
- * when no code previously exists
  */
 public class Create {
     private final JSONObject jo;
