@@ -5,10 +5,10 @@ import org.apache.commons.io.FileUtils;
 import picocli.CommandLine;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
 
@@ -18,49 +18,42 @@ public final class Main implements Callable<Integer> {
 
     @CommandLine.Parameters(index = "0", description = "openapi -> java or java -> openapi")
     private String to;
-    @CommandLine.Parameters(index = "1", description = "The openapi spec file")
+
+    @CommandLine.Parameters(index = "1", description = "The openapi spec file path")
     private String openAPIFilePath;
-    private static final String mainPath = "src/main/java/io/offscale"; // this is a simplification for now
 
-    private void writeToFile(String name, String contents, String path) throws IOException {
-        File directory = new File(path);
-        String pathWithName = path + name + ".java";
-        directory.mkdirs();
-        File newFile = new File(pathWithName);
-        newFile.createNewFile();
-        FileWriter myWriter = new FileWriter(pathWithName);
-        myWriter.write(contents);
-        myWriter.close();
-    }
-
-    private void addComponents(ImmutableMap<String, String> components, String path) throws IOException {
+    @CommandLine.Parameters(index = "2", description = "The filepath to the main package to generate api code")
+    private String mainFilePath;
+    @CommandLine.Parameters(index = "3", description = "The filepath to the test package to generate api tests")
+    private String testFilePath;
+    private void addComponents(ImmutableMap<String, String> components, String path) {
         components.forEach((name, code) -> {
-            try {
-                writeToFile(name, code, path);
-            } catch (IOException e) {
-                System.err.println("Failed to create/modify " + name + ".java");
-            }
+            Utils.writeToFile(name, code, path);
         });
     }
 
-    private ImmutableMap<String, String> getComponents(File folder) throws IOException {
+    private ImmutableMap<String, String> getComponents(File folder) {
         HashMap<String, String> components = new HashMap<>();
         File[] listOfFiles = folder.listFiles();
         if (listOfFiles == null) {
             return ImmutableMap.copyOf(components);
         }
 
-        for (int i = 0; i < listOfFiles.length; i++) {
-            if (listOfFiles[i].isFile()) {
-                System.out.println("File " + listOfFiles[i].getName());
-                components.put(Utils.getFileNameUntilDot(listOfFiles[i].getName()),
-                        FileUtils.readFileToString(listOfFiles[i], "UTF-8"));
+        Arrays.stream(listOfFiles).forEach(file -> {
+            if (file.isFile()) {
+                try {
+                    components.put(Utils.getFileNameUntilDot(file.getName()),
+                            FileUtils.readFileToString(file, "UTF-8"));
+                } catch (IOException e) {
+                    System.err.println("Failed to read file: " + file.getName());
+                }
             }
-        }
+        });
+
         return ImmutableMap.copyOf(components);
     }
 
-    private String getRoutes(String filePath) {
+    private String fileToString(String filePath) {
         try {
             return Files.readString(Path.of(filePath));
         } catch (IOException e) {
@@ -73,11 +66,16 @@ public final class Main implements Callable<Integer> {
         switch (to) {
             case "openapi": throw new UnsupportedOperationException("Need to implement");
             case "java" : {
-                Merge code = new Merge(getComponents(new File(mainPath + "/api/components")),
-                        getRoutes(mainPath + "/api/routes.java"),
+                final String apiPath = mainFilePath + "/api";
+                final String testPath = testFilePath + "/api";
+                Merge code = new Merge(getComponents(new File(apiPath + "/components")),
+                        fileToString(apiPath + "/routes.java"),fileToString(testPath + "/tests.java"),
                         openAPIFilePath);
-                addComponents(code.mergeComponents(), mainPath + "/api/components/");
-                writeToFile("Routes", code.mergeRoutes(), mainPath + "/api/");
+                if (true) {
+                    addComponents(code.mergeComponents(), apiPath + "/components/");
+                    Utils.writeToFile("Routes", code.mergeRoutes(), apiPath + "/");
+                    Utils.writeToFile("Tests", code.mergeTests(), testPath + "/");
+                }
                 return 0;
             }
             default: throw new IllegalArgumentException("Only valid values are openapi and java");

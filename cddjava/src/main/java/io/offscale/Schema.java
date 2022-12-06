@@ -90,7 +90,7 @@ public class Schema {
     }
 
     public static Schema parseSchema(JSONObject joSchema, Map<String, Schema> schemas, String type) {
-        if (joSchema.has("type") && joSchema.get("type").equals("object") || joSchema.has("properties")) {
+        if (joSchema.has("properties")) {
             assert (!type.isEmpty());
             HashMap<String, Schema> schemaProperties = new HashMap<>();
             final List<String> propertyKeys = Lists.newArrayList(joSchema.getJSONObject("properties").keys());

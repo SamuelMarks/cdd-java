@@ -26,6 +26,9 @@ public class CreateTests {
         final String petComponentCode = Files.readString(Path.of(PET_COMPONENT_FILE_PATH));
         final String dogComponentCode = Files.readString(Path.of(DOG_COMPONENT_FILE_PATH));
         final ImmutableMap<String, String> generatedComponents = create.generateComponents();
+        for (String key: generatedComponents.keySet()) {
+            System.out.println(generatedComponents.get(key));
+        }
         assertEquals(3,generatedComponents.size());
         assertEquals(generatedComponents.get("Pet"), petComponentCode);
         assertEquals(generatedComponents.get("Dog"), dogComponentCode);
@@ -41,6 +44,7 @@ public class CreateTests {
     public void generateRoutesSuccess() throws IOException {
         final Path filePath = Path.of(ROUTES_FILE_PATH);
         final String routesCode = Files.readString(filePath);
+        System.out.println(routesCode);
         assertEquals(create.generateRoutesAndTests().routes(), routesCode);
     }
 

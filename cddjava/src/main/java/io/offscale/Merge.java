@@ -5,6 +5,8 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.google.common.collect.ImmutableMap;
+
+import javax.xml.crypto.dsig.keyinfo.KeyValue;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -15,14 +17,16 @@ import java.util.Optional;
 public class Merge {
     private final ImmutableMap<String, String> components;
     private final String routes;
+    private final String tests;
 
     private final Create create;
 
     public Merge(ImmutableMap<String, String> components,
-                 String routes, String filePath) {
+                 String routes, String tests, String openAPIFilePath) {
         this.components = components;
         this.routes = routes;
-        this.create = new Create(filePath);
+        this.tests = tests;
+        this.create = new Create(openAPIFilePath);
     }
 
     /**
@@ -33,10 +37,18 @@ public class Merge {
      * are the component code.
      */
     public ImmutableMap<String, String> mergeComponents() {
-        final ImmutableMap<String, String> openAPIComponents = create.generateComponents();
+        final ImmutableMap<String, String> openAPIComponents =
+                combineMaps(create.generateComponents(), create.generateRoutesAndTests().schemas());
         final Map<String, String> mergedComponents = new HashMap<>();
         openAPIComponents.forEach((key, value) -> mergedComponents.put(key, mergeComponent(value, key)));
         return ImmutableMap.copyOf(mergedComponents);
+    }
+
+    private ImmutableMap<String, String> combineMaps(Map<String, String> m1, Map<String, String> m2) {
+        HashMap<String, String> map = new HashMap<>();
+        map.putAll(m1);
+        map.putAll(m2);
+        return ImmutableMap.copyOf(map);
     }
 
     /**
@@ -104,5 +116,31 @@ public class Merge {
         });
 
         return cuJavaCodeRoutes.toString();
+    }
+
+    public String mergeTests() {
+        final String openAPITests = create.generateRoutesAndTests().tests();
+        final CompilationUnit cuOpenAPITests = StaticJavaParser.parse(openAPITests);
+        final CompilationUnit cuJavaCodeTests = StaticJavaParser.parse(this.tests);
+
+        //Tests doesn't exist yet
+        if (cuJavaCodeTests.getClassByName("Tests").isEmpty()) {
+            return openAPITests;
+        }
+
+        ClassOrInterfaceDeclaration cuJavaCodeTestsClass = cuJavaCodeTests.getInterfaceByName("Tests").get();
+        ClassOrInterfaceDeclaration cuOpenAPITestsClass = cuOpenAPITests.getInterfaceByName("Tests").get();
+        cuOpenAPITestsClass.getMethods().forEach(method -> {
+            if (!cuJavaCodeTestsClass.getMethodsByName(method.getNameAsString()).isEmpty()) {
+                cuJavaCodeTestsClass.getMethodsByName(method.getNameAsString()).get(0).remove();
+            }
+            cuJavaCodeTestsClass.addMethod(method.getNameAsString())
+                    .setModifiers(method.getModifiers())
+                    .setType(method.getType())
+                    .setParameters(method.getParameters())
+                    .setJavadocComment(method.getJavadocComment().get());
+        });
+
+        return cuJavaCodeTests.toString();
     }
 }

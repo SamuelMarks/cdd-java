@@ -9,7 +9,7 @@ interface Routes {
     Call<Pet> showDogById(int petId);
 
     /**
-     * @return (Status Code 200),
+     * @return mock description (Status Code 200),
      */
     @GET(path = "/pets/getInfoById")
     Call<Petsgetinfobyidget> getInfoById();

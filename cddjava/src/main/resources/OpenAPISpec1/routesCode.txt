@@ -2,10 +2,11 @@ interface Routes {
 
     /**
      * Create a pet
+     * @param pets of type Pet[]. .
      * @return unexpected error (Status Code default), Null response (Status Code 201),
      */
     @POST(path = "/pets")
-    void createPets();
+    void createPets(@body Pet[] pets);
 
     /**
      * List all pets
@@ -24,7 +25,7 @@ interface Routes {
     Call<Pet> showDogById(int petId);
 
     /**
-     * @return (Status Code 200),
+     * @return mock description (Status Code 200),
      */
     @GET(path = "/pets/getInfoById")
     Call<Petsgetinfobyidget> getInfoById();

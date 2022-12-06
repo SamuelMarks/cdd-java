@@ -9,7 +9,12 @@ import com.github.javaparser.ast.stmt.BlockStmt;
 import com.google.common.collect.ImmutableMap;
 import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,6 +57,8 @@ public class Utils {
                 .put("object", "object")
                 .put("boolean", "boolean")
                 .put("array", "array")
+                .put("date-time", "String")
+                .put("binary", "String")
                 .build();
     }
 
@@ -101,11 +108,51 @@ public class Utils {
     }
 
     public static String capitalizeFirstLetter(String s) {
+        if (s.length() == 0) {
+            return s;
+        }
         return s.substring(0,1).toUpperCase() + s.substring(1).toLowerCase();
+    }
+
+    public static String getFirstKey(JSONObject jo) {
+        assert jo.keys().hasNext();
+        return jo.keys().next();
+    }
+
+    public static String convertTypeToName(String type) {
+        while (type.contains("[]")) {
+            type = type.replace("[]", "s");
+        }
+        return type.toLowerCase();
     }
 
     public static String getFileNameUntilDot(String fileName) {
         assert fileName.contains(".");
         return fileName.substring(0, fileName.indexOf('.'));
+    }
+
+    public static ImmutableMap<String, Schema> union(ImmutableMap<String, Schema> m1, ImmutableMap<String, Create.RequestBody> m2) {
+        HashMap<String, Schema> m = new HashMap<>();
+        m.putAll(m1);
+        for (String key: m2.keySet()) {
+            m.put(key, m2.get(key).schema());
+        }
+
+        return ImmutableMap.copyOf(m);
+    }
+
+    public static void writeToFile(String name, String contents, String path) {
+        File directory = new File(path);
+        String pathWithName = path + name + ".java";
+        directory.mkdirs();
+        File newFile = new File(pathWithName);
+        try {
+            newFile.createNewFile();
+            FileWriter myWriter = new FileWriter(pathWithName);
+            myWriter.write(contents);
+            myWriter.close();
+        } catch (IOException e) {
+            System.err.println("Failed to write to File: " + name + ".java");
+        }
     }
 }

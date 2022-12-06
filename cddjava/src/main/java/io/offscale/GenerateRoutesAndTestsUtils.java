@@ -18,7 +18,7 @@ import java.util.List;
 public class GenerateRoutesAndTestsUtils {
     private static final Faker faker = new Faker();
 
-    private static record Parameter(Schema schema, String name, String description) { }
+    private record Parameter(Schema schema, String name, String description) { }
     private static ImmutableMap<String, Schema> components;
 
     public static void setComponents(ImmutableMap<String, Schema> generatedComponents) {
@@ -33,10 +33,10 @@ public class GenerateRoutesAndTestsUtils {
      * @param routeName
      * @param operation such as GET or POST
      */
-    public static MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, String routeType, String routeName, String operation) {
+    public static MethodDeclaration generateRoute(ClassOrInterfaceDeclaration routesInterface, JSONObject joRoute, Create.RequestBody requestBody, String routeType, String routeName, String operation) {
         final MethodDeclaration methodDeclaration = routesInterface.addMethod(joRoute.getString("operationId"))
                 .removeBody()
-                .setJavadocComment(generateJavadocForRoute(joRoute));
+                .setJavadocComment(generateJavadocForRoute(joRoute, requestBody));
         final NormalAnnotationExpr expr = methodDeclaration.addAndGetAnnotation(operation.toUpperCase());
         expr.addPair("path", "\"" + routeName + "\"");
         if (routeType.equals("void")) {
@@ -47,6 +47,11 @@ public class GenerateRoutesAndTestsUtils {
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(param -> methodDeclaration.addParameter(param.schema.type(), param.name()));
         }
+
+        if (requestBody.schema() != null) {
+            methodDeclaration.addParameter("@body " + requestBody.schema().type(), Utils.convertTypeToName(requestBody.schema().type()));
+        }
+
         return methodDeclaration;
     }
 
@@ -63,6 +68,17 @@ public class GenerateRoutesAndTestsUtils {
             routeParameters.add(parameter);
         }
         return routeParameters;
+    }
+
+    public static Schema generateRequestBody(JSONObject joRoute, String path, String operation) {
+        if (joRoute.has("requestBody")) {
+            JSONObject joContent = joRoute.getJSONObject("requestBody").getJSONObject("content");
+            return Schema.parseSchema(
+                    joContent.getJSONObject(Utils.getFirstKey(joContent)).getJSONObject("schema"),
+                    components,
+                    Utils.capitalizeFirstLetter((path + operation + "RequestBody").replaceAll("[^a-zA-Z0-9]", "")));
+        }
+        return null;
     }
 
     /**
@@ -88,7 +104,7 @@ public class GenerateRoutesAndTestsUtils {
      * @param joRoute JSON Object of route
      * @return javadoc for given route
      */
-    private static String generateJavadocForRoute(JSONObject joRoute) {
+    private static String generateJavadocForRoute(JSONObject joRoute, Create.RequestBody requestBody) {
         final JSONObject joResponses = joRoute.getJSONObject("responses");
         final List<String> responses = Lists.newArrayList(joResponses.keys());
         final StringBuilder javaDocForRoute = new StringBuilder();
@@ -98,9 +114,14 @@ public class GenerateRoutesAndTestsUtils {
 
         if (joRoute.has("parameters")) {
             generateRouteParameters(joRoute.getJSONArray("parameters")).forEach(parameter -> {
-                final String param = "@param " + parameter.name() + " of type " + parameter.schema.strictType() + ". " + parameter.description + ". \n";
-                javaDocForRoute.append(param);
+                javaDocForRoute.append("@param " + parameter.name() + " of type " +
+                        parameter.schema.strictType() + ". " + parameter.description + ". \n");
             });
+        }
+
+        if (requestBody.schema() != null) {
+            javaDocForRoute.append("@param " + Utils.convertTypeToName(requestBody.schema().type()) + " of type " +
+                    requestBody.schema().strictType() + ". " + requestBody.description() + ". \n");
         }
         javaDocForRoute.append("@return ");
         responses.forEach((response) -> javaDocForRoute.append(generateJavadocReturn(joResponses.getJSONObject(response), response)));
@@ -135,6 +156,8 @@ public class GenerateRoutesAndTestsUtils {
                 methodDeclaration.setBody(generateGetRequestTest(generateURL(joRoute, path), responseType));
                 break;
             case "post":
+            case "put":
+            case "delete":
                 methodDeclaration.setBody(generatePostRequestTest(joRoute, generateURL(joRoute, path), responseType));
                 break;
             default: assert false;
@@ -254,8 +277,8 @@ public class GenerateRoutesAndTestsUtils {
      */
     private static String generateRequestBody(JSONObject joRoute) {
         if (joRoute.has("requestBody")) {
-            JSONObject joSchema = joRoute.getJSONObject("requestBody").getJSONObject("content")
-                    .getJSONObject("application/json").getJSONObject("schema");
+            JSONObject joContent = joRoute.getJSONObject("requestBody").getJSONObject("content");
+            JSONObject joSchema = joContent.getJSONObject(Utils.getFirstKey(joContent)).getJSONObject("schema");
             return "\"" + convertSchemaToJSON(Schema.parseSchema(joSchema, components, ""), "") + "\"";
         }
 
@@ -323,6 +346,9 @@ public class GenerateRoutesAndTestsUtils {
      * @return the mock data for the given parameter
      */
     private static String generateMockDataForUnrecognizedName(String type) {
+        if (type.contains("[]")) {
+            return "[" + generateMockDataForUnrecognizedName(type.replace("[]", "")) + "]";
+        }
         return switch (type) {
             case "String" -> faker.food().fruit();
             case "long", "int" -> String.valueOf(faker.number().numberBetween(1, 100));
