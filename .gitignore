@@ -46,3 +46,9 @@ nbproject/
 Output.java
 generated_openapi.json
 api.json
+Sdk.java
+docs.json
+pom.xml
+spec.json
+bin/
+test_docker.py

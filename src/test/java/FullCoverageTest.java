@@ -195,7 +195,7 @@ public class FullCoverageTest {
         try { cli.Main.main(new String[]{"unknown"}); } catch (Exception e) {}
         try { cli.Main.main(new String[]{"-h"}); } catch (Exception e) {}
         try { cli.Main.main(new String[]{"-v"}); } catch (Exception e) {}
-try { Main.main(new String[]{"from_openapi", "-i", "test_cov.json"}); } catch (Exception e) {}
+try { Main.main(new String[]{"from_openapi", "-i", "test_cov.json", "-o", "temp_sdk_dir"}); } catch (Exception e) {}
         try { Main.main(new String[]{"to_openapi", "-f", "src/test/java"}); } catch (Exception e) {}
         
         File tempSyncDir = new File("sync_test_dir");
@@ -210,6 +210,21 @@ try { Main.main(new String[]{"from_openapi", "-i", "test_cov.json"}); } catch (E
         
         for(File d : tempSyncDir.listFiles()) { if (d.isDirectory()) { for (File f : d.listFiles()) f.delete(); } d.delete(); }
         tempSyncDir.delete();
+        File tempSdkDir = new File("temp_sdk_dir");
+        if (tempSdkDir.exists()) {
+            for(File d : tempSdkDir.listFiles()) {
+                if (d.isDirectory()) {
+                    for (File f : d.listFiles()) {
+                        if (f.isDirectory()) {
+                            for (File subF : f.listFiles()) subF.delete();
+                        }
+                        f.delete();
+                    }
+                }
+                d.delete();
+            }
+            tempSdkDir.delete();
+        }
         jsonFile.delete(); try { openapi.Parse.fromString("{}"); openapi.Emit.toFile(api, new java.io.File("out_api.json")); new java.io.File("out_api.json").delete(); } catch(Exception e) {}
     }
 }

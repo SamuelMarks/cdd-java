@@ -7,8 +7,11 @@ if "%~1"=="all" goto help
 if "%~1"=="install_base" goto install_base
 if "%~1"=="install_deps" goto install_deps
 
-if "%~1"=="build_docs" (
 if "%~1"=="build_wasm" goto build_wasm
+if "%~1"=="build_docker" goto build_docker
+if "%~1"=="run_docker" goto run_docker
+
+if "%~1"=="build_docs" (
     if not "%~2"=="" (
         call :build_docs "%~2"
     ) else (
@@ -36,10 +39,13 @@ goto help
 echo Available targets:
 echo   install_base : install language runtime (Java JDK)
 echo   install_deps : install local dependencies
-echo   build_docs   : build the API docs (specify dir as second arg, e.g. make build_docs custom_dir)
-echo   build        : build the CLI binary (specify dir as second arg, e.g. make build custom_dir)
+echo   build_docs   : build the API docs (specify dir as second arg, e.g. make.bat build_docs custom_dir)
+echo   build        : build the CLI binary (specify dir as second arg, e.g. make.bat build custom_dir)
+echo   build_wasm   : build WASM variant (Not implemented)
+echo   build_docker : build Docker images
+echo   run_docker   : run Docker images
 echo   test         : run tests locally
-echo   run          : run the CLI (e.g. make run --version)
+echo   run          : run the CLI (e.g. make.bat run --version)
 echo   help         : show this help text
 echo   all          : show this help text
 goto :eof
@@ -98,4 +104,15 @@ goto :eof
 
 :build_wasm
 echo WASM Support is not implemented for cdd-java. See WASM.md
+goto :eof
+
+:build_docker
+echo Building docker images...
+docker build -t cdd-java-alpine -f alpine.Dockerfile .
+docker build -t cdd-java-debian -f debian.Dockerfile .
+goto :eof
+
+:run_docker
+echo Testing docker images...
+python test_docker.py
 goto :eof
