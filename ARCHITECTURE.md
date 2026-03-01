@@ -1,31 +1,94 @@
-# Architecture of `cdd-java`
+# cdd-java Architecture
 
-`cdd-java` is designed as a standalone, bidirectional transpiler acting as a bridge between OpenAPI 3.2.0 representations and pure Java code. It operates independently of massive frameworks (like Spring or Netty) to keep the footprint small and the generated artifacts purely standard Java.
+<!-- BADGES_START -->
+<!-- Replace these placeholders with your repository-specific badges -->
+[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CI/CD](https://github.com/offscale/cdd-java/workflows/CI/badge.svg)](https://github.com/offscale/cdd-java/actions)
+[![Coverage](https://codecov.io/gh/offscale/cdd-java/branch/master/graph/badge.svg)](https://codecov.io/gh/offscale/cdd-java)
+<!-- BADGES_END -->
 
-## High-Level Operations
+The **cdd-java** tool acts as a dedicated compiler and transpiler. Its fundamental architecture follows standard compiler design principles, divided into three distinct phases: **Frontend (Parsing)**, **Intermediate Representation (IR)**, and **Backend (Emitting)**.
 
-The system is built around three core operational modes:
+This decoupled design ensures that any format capable of being parsed into the IR can subsequently be emitted into any supported output format, whether that is a server-side route, a client-side SDK, a database ORM, or an OpenAPI specification.
 
-1. **`from_openapi` (Emit):** Reads an `openapi.json` file and synthesizes standard Java code, including Data Models (DTOs), Route Clients (`java.net.http.HttpClient`), Mock Servers (`com.sun.net.httpserver.HttpServer`), and integration tests.
-2. **`to_openapi` (Parse):** Analyzes existing `.java` source files using `javaparser-core`, mapping `public class` properties to OpenAPI schemas and `HttpClient` routes to API paths, culminating in a compliant `openapi.json`.
-3. **`to_docs_json`:** Flattens complex OpenAPI structures into simplified JSON layouts specifically purposed for static documentation generation.
+## 🏗 High-Level Overview
 
-## Directory Structure & Modules
+```mermaid
+graph TD
+    %% Styling Definitions
+    classDef frontend fill:#57caff,stroke:#4285f4,stroke-width:2px,color:#20344b,font-family:Roboto Mono
+    classDef core fill:#ffd427,stroke:#f9ab00,stroke-width:3px,color:#20344b,font-family:Google Sans,font-weight:bold
+    classDef backend fill:#5cdb6d,stroke:#34a853,stroke-width:2px,color:#20344b,font-family:Roboto Mono
+    classDef endpoint fill:#ffffff,stroke:#20344b,stroke-width:1px,color:#20344b,font-family:Google Sans
 
-The internal architecture is split into functional domains located under `src/main/java/`:
+    subgraph Frontend [Parsers]
+        A[OpenAPI .yaml/.json]:::endpoint --> P1(OpenAPI Parser):::frontend
+        B[Java Models / Source]:::endpoint --> P2(Java Parser):::frontend
+        C[Server Routes / Frameworks]:::endpoint --> P3(Framework Parser):::frontend
+        D[Client SDKs / ORMs]:::endpoint --> P4(Ext Parser):::frontend
+    end
 
-* **`cli/`:** Contains the main entrypoint (`Main.java`) which handles argument parsing, delegates execution to the appropriate modules, and outputs results.
-* **`openapi/`:** Contains the internal Java representations of the OpenAPI 3.2.0 specification (e.g., `OpenAPI.java`, `Schema.java`, `PathItem.java`). It acts as the canonical data model used by all transformations.
-* **`classes/`:** Handles the synthesis (`Emit.java`) and extraction (`Parse.java`) of standard Java classes/DTOs.
-* **`routes/`:** Manages the synthesis of `java.net.http.HttpClient` API clients and the reverse parsing of routing logic.
-* **`mocks/`:** Responsible for generating zero-dependency `com.sun.net.httpserver.HttpServer` mock instances based on OpenAPI paths.
-* **`tests/`:** Generates self-contained execution loops (using Java Reflection) to form a complete testing suite against the generated clients and models.
-* **`docstrings/`:** Manages the extraction and injection of JavaDoc comments to ensure the generated code is 100% documented and that OpenAPI descriptions are derived from code comments.
-* **`functions/`:** Shared utilities and helper methods spanning the translation lifecycles.
+    subgraph Core [Intermediate Representation]
+        IR((CDD IR)):::core
+    end
 
-## Core Technologies
+    subgraph Backend [Emitters]
+        E1(OpenAPI Emitter):::backend --> X[OpenAPI .yaml/.json]:::endpoint
+        E2(Java Emitter):::backend --> Y[Java Models / Structs]:::endpoint
+        E3(Server Emitter):::backend --> Z[Server Routes / Controllers]:::endpoint
+        E4(Client Emitter):::backend --> W[Client SDKs / API Calls]:::endpoint
+        E5(Data Emitter):::backend --> V[ORM Models / CLI Parsers]:::endpoint
+    end
 
-* **Language:** Java (JDK 11+ required for Native HTTP Client and Server APIs).
-* **Dependencies:**
-  * `javaparser-core` for Abstract Syntax Tree (AST) evaluation of `.java` files during reverse extraction (`to_openapi`).
-  * `jackson-core`, `jackson-databind`, `jackson-annotations` for JSON serialization and deserialization.
+    P1 --> IR
+    P2 --> IR
+    P3 --> IR
+    P4 --> IR
+
+    IR --> E1
+    IR --> E2
+    IR --> E3
+    IR --> E4
+    IR --> E5
+```
+
+## 🧩 Core Components
+
+### 1. The Frontend (Parsers)
+
+The Frontend's responsibility is to read an input source and translate it into the universal CDD Intermediate Representation (IR).
+
+* **Static Analysis (AST-Driven)**: For `Java` source code, the tool **does not** use dynamic reflection or execute the code. Instead, it reads the source files, generates an Abstract Syntax Tree (AST), and navigates the tree to extract classes, structs, functions, type signatures, API client definitions, server routes, and docstrings.
+* **OpenAPI Parsing**: For OpenAPI and JSON Schema inputs, the parser normalizes the structure, resolving internal `$ref`s and extracting properties, endpoints (client or server perspectives), and metadata into the IR.
+
+### 2. Intermediate Representation (IR)
+
+The Intermediate Representation is the crucial "glue" of the architecture. It is a normalized, language-agnostic data structure that represents concepts like:
+* **Models**: Entities containing typed properties, required fields, defaults, and descriptions.
+* **Endpoints / Operations**: HTTP verbs, paths, path/query/body parameters, and responses. In the IR, an operation is an abstract concept that can represent *either* a Server Route receiving a request *or* an API Client dispatching a request.
+* **Metadata**: Tooling hints, docstrings, and validations.
+
+By standardizing on a single IR (heavily inspired by OpenAPI / JSON Schema primitives), the system guarantees that parsing logic and emitting logic remain completely decoupled.
+
+### 3. The Backend (Emitters)
+
+The Backend's responsibility is to take the universal IR and generate valid target output. Emitters can be written to support various environments (e.g., Client vs Server, Web vs CLI).
+
+* **Code Generation**: Emitters iterate over the IR and generate idiomatic `Java` source code. 
+  * A **Server Emitter** creates routing controllers and request-validation logic.
+  * A **Client Emitter** creates API wrappers, fetch functions, and response-parsing logic.
+* **Database & CLI Generation**: Emitters can also target ORM models or command-line parsers by mapping IR properties to database columns or CLI arguments.
+* **Specification Generation**: Emitters translating back to OpenAPI serialize the IR into standard OpenAPI 3.x JSON or YAML, rigorously formatting descriptions, type constraints, and endpoint schemas based on what was parsed from the source code.
+
+## 🔄 Extensibility
+
+Because of the IR-centric design, adding support for a new `Java` framework (e.g., a new Client library, Web framework, or ORM) requires minimal effort:
+1. **To support parsing a new framework**: Write a parser that converts the framework's AST/DSL into the CDD IR. Once written, the framework can automatically be exported to OpenAPI, Client SDKs, CLI parsers, or any other existing output target.
+2. **To support emitting a new framework**: Write an emitter that converts the CDD IR into the framework's DSL/AST. Once written, the framework can automatically be generated from OpenAPI or any other supported input.
+
+## 🛡 Design Principles
+
+1. **A Single Source of Truth**: Developers should be able to maintain their definitions in whichever format is most ergonomic for their team (OpenAPI files, Native Code, Client libraries, ORM models) and generate the rest.
+2. **Zero-Execution Parsing**: Ensure security and resilience by strictly statically analyzing inputs. The compiler must never need to run the target code to understand its structure.
+3. **Lossless Conversion**: Maximize the retention of metadata (e.g., type annotations, docstrings, default values, validators) during the transition `Source -> IR -> Target`.
+4. **Symmetric Operations**: An Endpoint in the IR holds all the information necessary to generate both the Server-side controller that fulfills it, and the Client-side SDK method that calls it.

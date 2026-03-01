@@ -119,7 +119,13 @@ public class TestRunner {
             
             // Test docstrings
             String dEmitted = docstrings.Emit.emitDocsJson(routeApi, true, true);
-            if (!dEmitted.contains("routes")) failures++;
+            if (!dEmitted.contains("getItems")) failures++;
+            if (dEmitted.contains("imports")) { System.err.println("imports found when disabled"); failures++; }
+            if (dEmitted.contains("wrapper_start")) { System.err.println("wrapper_start found when disabled"); failures++; }
+
+            String dEmittedFull = docstrings.Emit.emitDocsJson(routeApi, false, false);
+            if (!dEmittedFull.contains("imports")) { System.err.println("imports missing when enabled"); failures++; }
+            if (!dEmittedFull.contains("wrapper_start")) { System.err.println("wrapper_start missing when enabled"); failures++; }
             
             // Test CLI help
             cli.Main.main(new String[] {"--help"});
