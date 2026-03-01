@@ -1,0 +1,57 @@
+.PHONY: install_base install_deps build_docs build test run help all default
+
+ifeq (build_docs,$(firstword $(MAKECMDGOALS)))
+  DOCS_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(DOCS_ARGS),)
+    DOCS_DIR := $(word 1,$(DOCS_ARGS))
+    $(eval $(DOCS_DIR):;@:)
+  else
+    DOCS_DIR := docs
+  endif
+else
+  DOCS_DIR := docs
+endif
+
+ifeq (build,$(firstword $(MAKECMDGOALS)))
+  BUILD_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(BUILD_ARGS),)
+    BIN_DIR := $(word 1,$(BUILD_ARGS))
+    $(eval $(BIN_DIR):;@:)
+  else
+    BIN_DIR := bin
+  endif
+else
+  BIN_DIR := bin
+endif
+
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
+
+default: help
+all: help
+
+install_base:
+	@echo "Installing Java runtime..."
+
+install_deps:
+	@echo "Dependencies already in lib/"
+
+build_docs:
+	@echo "Building API docs to $(DOCS_DIR)..."
+
+build:
+	@echo "Building CLI to $(BIN_DIR)..."
+
+test:
+	@echo "Running tests..."
+
+run:
+	@if [ ! -f "$(BIN_DIR)/cli/Main.class" ]; then \
+		$(MAKE) -f Makefile.test build BIN_DIR="$(BIN_DIR)"; \
+	fi
+	@echo "Running java -cp \"lib/*:$(BIN_DIR)\" cli.Main $(RUN_ARGS)"
+
+help:
+	@echo "Help text"

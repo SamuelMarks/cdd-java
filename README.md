@@ -1,74 +1,122 @@
-![Doc Coverage](https://img.shields.io/badge/Doc_Coverage-100%25-brightgreen.svg)
-![Test Coverage](https://img.shields.io/badge/Test_Coverage-100%25-brightgreen.svg)
-# CDD Java (cdd-java)
+cdd-java
+============
 
-A bidirectional transpiler that acts as a bridge between OpenAPI 3.2.0 representations and pure Java code.
+[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CI/CD](https://github.com/offscale/cdd-java/workflows/CI/badge.svg)](https://github.com/offscale/cdd-java/actions)
+[![Doc Coverage](https://img.shields.io/badge/Doc%20Coverage-100%25-success.svg)](#)
+[![Test Coverage](https://img.shields.io/badge/Coverage-100%25-success.svg)](#)
 
-Designed under strict **Contract-Driven Development** principles.
+OpenAPI ↔ Java. This is one compiler in a suite, all focussed on the same task: Compiler Driven Development (CDD).
 
-`cdd-java` provides full 100% interoperability between language and documentation.
+Each compiler is written in its target language, is whitespace and comment sensitive, and has both an SDK and CLI.
 
-## Overview
-`cdd-java` allows you to:
-1. **Emit (from_openapi):** Generate 100% dependency-free (`java.net.http`, `com.sun.net.httpserver`) Route Clients, Data Models (DTOs), Mock Servers, and integration tests directly from your `openapi.json`.
-2. **Parse (to_openapi):** Perform reverse extraction from standard, untampered Java class and routing files to synthesize a compliant `openapi.json` file.
-3. **Docs Extraction (to_docs_json):** Translate standard OpenAPI structures into flattened, un-wrapped JSON formats uniquely suited for simplified doc-generation.
+The CLI—at a minimum—has:
+- `cdd-java --help`
+- `cdd-java --version`
+- `cdd-java from_openapi -i spec.json`
+- `cdd-java to_openapi -f path/to/code`
+- `cdd-java to_docs_json --no-imports --no-wrapping -i spec.json`
 
-## Installation
+The goal of this project is to enable rapid application development without tradeoffs. Tradeoffs of Protocol Buffers / Thrift etc. are an untouchable "generated" directory and package, compile-time and/or runtime overhead. Tradeoffs of Java or JavaScript for everything are: overhead in hardware access, offline mode, ML inefficiency, and more. And neither of these alterantive approaches are truly integrated into your target system, test frameworks, and bigger abstractions you build in your app. Tradeoffs in CDD are code duplication (but CDD handles the synchronisation for you).
+
+## 🚀 Capabilities
+
+The `cdd-java` compiler leverages a unified architecture to support various facets of API and code lifecycle management.
+
+* **Compilation**:
+  * **OpenAPI → `Java`**: Generate idiomatic native models, network routes, client SDKs, database schemas, and boilerplate directly from OpenAPI (`.json` / `.yaml`) specifications.
+  * **`Java` → OpenAPI**: Statically parse existing `Java` source code and emit compliant OpenAPI specifications.
+* **AST-Driven & Safe**: Employs static analysis (Abstract Syntax Trees) instead of unsafe dynamic execution or reflection, allowing it to safely parse and emit code even for incomplete or un-compilable project states.
+* **Seamless Sync**: Keep your docs, tests, database, clients, and routing in perfect harmony. Update your code, and generate the docs; or update the docs, and generate the code.
+
+## 📦 Installation
+
+To install `cdd-java`, you need the Java Development Kit (JDK) 11 or higher.
 
 ```bash
 # Clone the repository
-git clone <your-repo>/cdd-java
+git clone https://github.com/offscale/cdd-java.git
 cd cdd-java
 
-# Ensure the executable has correct permissions
-chmod +x cdd-java
+# Install base dependencies (like JDK, if needed)
+make install_base
+
+# Build the CLI
+make build
 ```
 
-*(Note: It requires Jackson JSON mapping libraries under `lib/`. A JDK environment >= 11 is required due to `java.net.http.HttpClient` usage).*
+## 🛠 Usage
 
-## CLI Usage
+### Command Line Interface
 
-The CLI—at a minimum—has:
-
-### `cdd-java --help`
-Prints the help documentation.
-
-### `cdd-java --version`
-Prints the version (`1.0.0`).
-
-### `cdd-java from_openapi -i <spec.json>`
-Generates code artifacts from the OpenAPI specification and prints them. This includes Data Models, API Clients, Mock Server configurations, and testing stubs.
-
-**Example:**
 ```bash
-./cdd-java from_openapi -i api.json > Output.java
+# Generate Java code from an OpenAPI spec
+make run -- from_openapi -i swagger.json
+
+# Extract OpenAPI definitions from a Java project
+make run -- to_openapi -f src/main/java/
+
+# Get documentation snippet in JSON format
+make run -- to_docs_json --no-imports --no-wrapping -i swagger.json
 ```
 
-### `cdd-java to_openapi -f <path/to/code>`
-Parses standard `.java` files within the targeted directory or file and constructs a normalized OpenAPI 3.2.0 description mapping the discovered `public class` configurations to schemas and `HttpClient` routings to API paths.
+### Programmatic SDK / Library
 
-**Example:**
-```bash
-./cdd-java to_openapi -f src/main/java/ > generated_openapi.json
+```java
+import openapi.OpenAPI;
+import openapi.Parse;
+import java.io.File;
+
+public class MyCddApp {
+    public static void main(String[] args) throws Exception {
+        // Parse OpenAPI from a file
+        OpenAPI api = Parse.fromFile(new File("swagger.json"));
+        
+        // Generate Java Classes
+        String generatedClasses = classes.Emit.emit(api, null);
+        System.out.println(generatedClasses);
+        
+        // Generate API documentation JSON snippet
+        String docsJson = docstrings.Emit.emitDocsJson(api, true, true);
+        System.out.println(docsJson);
+    }
+}
 ```
 
-### `cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json>`
-Transforms complex nested OpenAPI schemas (`components.schemas`, `paths`) into a flat, doc-friendly JSON projection (`models`, `routes`) specifically formatting output to align with the referenced `@TO_DOCS_JSON.md` specifications.
+## Design choices
 
-**Example:**
-```bash
-./cdd-java to_docs_json --no-wrapping -i api.json
-```
+We use `javaparser` to safely and losslessly build an Abstract Syntax Tree (AST) of Java source code without requiring dynamic execution or reflection. This enables true AST-to-AST translation between OpenAPI representations and native Java components. `Jackson` is utilized for robust JSON parsing and serialization when loading or saving OpenAPI schemas.
 
-## Architecture
+## 🏗 Supported Conversions for Java
 
-* **Models / DTOs:** Uses standard Java `public class` syntax with primitive wrappers (`Integer`, `Double`, `String`, etc.).
-* **Routing:** Implements Native `java.net.http.HttpClient`.
-* **Mock Servers:** Uses `com.sun.net.httpserver.HttpServer`. Zero external Spring or Netty overhead.
-* **Testing:** Emits a `main` execution loop utilizing Java Reflection and assertions to establish a complete testing suite.
+*(The boxes below reflect the features supported by this specific `cdd-java` implementation)*
 
-## Development Constraints Addressed
-- **100% Core Java:** Uses no third party library abstractions besides basic Jackson.
-- **100% Documented:** Every generated and internal class contains Javadoc `/** ... */` annotations.
-- **100% Tested:** Features a custom reflection-based coverage suite spanning all internal system configurations.
+| Concept | Parse (From) | Emit (To) |
+|---------|--------------|-----------|
+| OpenAPI (JSON/YAML) | [✅] | [✅] |
+| `Java` Models / Structs / Types | [✅] | [✅] |
+| `Java` Server Routes / Endpoints | [✅] | [✅] |
+| `Java` API Clients / SDKs | [✅] | [✅] |
+| `Java` ORM / DB Schemas | [ ] | [ ] |
+| `Java` CLI Argument Parsers | [ ] | [ ] |
+| `Java` Docstrings / Comments | [✅] | [✅] |
+| WebAssembly (WASM) | [ ] | [ ] |
+
+WASM Support: Direct WebAssembly compilation for standard Java applications using `emsdk` is not implemented in this project because Java requires a specialized compiler like TeaVM, CheerpJ, or GraalVM to target WASM, whereas Emscripten is primarily designed for C/C++. Emscripten cannot easily compile a Java JAR directly to WebAssembly.
+
+---
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
