@@ -88,8 +88,20 @@ help:
 	@echo "  build        : build the CLI binary (e.g. make build [path])"
 	@echo "  test         : run tests locally"
 	@echo "  run          : run the CLI (e.g. make run [args...])"
+	@echo "  build_wasm   : build WASM variant (Not implemented)"
+	@echo "  build_docker : build Docker images"
+	@echo "  run_docker   : run Docker images"
 	@echo "  help         : show this help text"
 	@echo "  all          : show this help text"
 
 build_wasm:
 	@echo "WASM Support is not implemented for cdd-java. See WASM.md"
+
+build_docker:
+	@echo "Building docker images..."
+	docker build -t cdd-java-alpine -f alpine.Dockerfile .
+	docker build -t cdd-java-debian -f debian.Dockerfile .
+
+run_docker:
+	@echo "Testing docker images..."
+	python3 test_docker.py

@@ -39,7 +39,7 @@ public class Parse {
         api.openapi = "3.2.0";
         api.info = new Info();
         api.info.title = "Extracted API";
-        api.info.version = "1.0.0";
+        api.info.version = "0.0.1";
         api.paths = new openapi.Paths();
 
         try {

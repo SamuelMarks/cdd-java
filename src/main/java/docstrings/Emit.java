@@ -51,6 +51,12 @@ public class Emit {
                 if (pi.head != null) operations.add(createOperation("HEAD", path, pi.head, noImports, noWrapping));
                 if (pi.patch != null) operations.add(createOperation("PATCH", path, pi.patch, noImports, noWrapping));
                 if (pi.trace != null) operations.add(createOperation("TRACE", path, pi.trace, noImports, noWrapping));
+                if (pi.query != null) operations.add(createOperation("QUERY", path, pi.query, noImports, noWrapping));
+                if (pi.additionalOperations != null) {
+                    for (Map.Entry<String, Operation> addOp : pi.additionalOperations.entrySet()) {
+                        operations.add(createOperation(addOp.getKey().toUpperCase(), path, addOp.getValue(), noImports, noWrapping));
+                    }
+                }
             }
         }
 
