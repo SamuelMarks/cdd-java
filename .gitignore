@@ -1,0 +1,48 @@
+.idea/
+.vscode/
+*.iml
+*.class
+target/
+jacoco.exec
+jacoco-report/
+jacoco/
+jacoco.zip
+missing_docs.txt
+missing_docs2.txt
+missed_lines.txt
+test.json
+test_cov.json
+test_jacoco*
+TestJ*
+sync_test_dir/
+out_api.json
+*.pyc
+__pycache__/
+
+# --- Javadocs Output ---
+docs/
+target/apidocs/
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+
+# --- Java Crash Logs & Logs ---
+hs_err_pid*
+*.log
+
+# --- Other IDEs (Eclipse, NetBeans) ---
+.project
+.classpath
+.settings/
+nbproject/
+
+# --- Editor Temp Files ---
+*.swp
+*~
+*.bak
+
+# --- Common Ad-Hoc CLI Outputs ---
+Output.java
+generated_openapi.json
+api.json

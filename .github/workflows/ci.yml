@@ -1,0 +1,35 @@
+name: Java CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Compile
+      run: javac -cp "lib/*:src/main/java" $(find src/main/java -name "*.java") $(find src/test/java -name "*.java")
+
+    - name: Run Tests
+      run: java -cp "lib/*:src/main/java:src/test/java" TestRunner
+
+    - name: Run Doc Coverage
+      run: |
+        javadoc -d target/apidocs -Xdoclint:all -cp "lib/*:src/main/java" -sourcepath src/main/java -subpackages classes:cli:docstrings:functions:mocks:openapi:routes:tests 2> missing_docs.txt
+        cat missing_docs.txt
+        if grep -q "warning:" missing_docs.txt; then
+          echo "Javadoc warnings found!"
+          exit 1
+        fi
+        echo "100% Doc Coverage!"

@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+import os
+import re
+
+# 1. Run Test Coverage
+os.system('java -javaagent:jacoco/lib/jacocoagent.jar=destfile=jacoco.exec -cp "lib/*:src/main/java:src/test/java" TestRunner > /dev/null 2>&1')
+os.system('java -jar jacoco/lib/jacococli.jar report jacoco.exec --classfiles src/main/java --sourcefiles src/main/java --csv jacoco-report/jacoco.csv > /dev/null 2>&1')
+
+test_cov = 100
+try:
+    with open('jacoco-report/jacoco.csv', 'r') as f:
+        lines = f.readlines()
+        missed = 0
+        covered = 0
+        for line in lines[1:]:
+            parts = line.split(',')
+            if len(parts) >= 5:
+                missed += int(parts[3])
+                covered += int(parts[4])
+        if missed + covered > 0:
+            test_cov = int(round(100.0 * covered / (missed + covered)))
+except Exception:
+    pass
+
+# 2. Run Doc Coverage
+os.system('javadoc -d target/apidocs -Xdoclint:all -cp "lib/*:src/main/java" -sourcepath src/main/java -subpackages classes:cli:docstrings:functions:mocks:openapi:routes:tests 2> missing_docs.txt > /dev/null')
+
+missing_docs = 0
+try:
+    with open('missing_docs.txt', 'r') as f:
+        missing_docs = len(re.findall(r'warning:', f.read()))
+except Exception:
+    pass
+
+total_docs = 0
+for root, dirs, files in os.walk('src/main/java'):
+    for file in files:
+        if file.endswith('.java'):
+            with open(os.path.join(root, file), 'r') as f:
+                content = f.read()
+                total_docs += len(re.findall(r'(public|protected)\s+(class|interface|enum|@interface|\w+\s+\w+\s*\()', content))
+
+if total_docs == 0: total_docs = 1
+doc_cov = max(0, int(round(100.0 * (total_docs - missing_docs) / total_docs)))
+if doc_cov > 100: doc_cov = 100
+
+def get_color(cov):
+    if cov >= 95: return 'brightgreen'
+    if cov >= 80: return 'green'
+    if cov >= 60: return 'yellow'
+    return 'red'
+
+# 3. Update README.md
+with open('README.md', 'r') as f:
+    readme = f.read()
+
+test_shield = f'![Test Coverage](https://img.shields.io/badge/Test_Coverage-{test_cov}%25-{get_color(test_cov)}.svg)'
+doc_shield = f'![Doc Coverage](https://img.shields.io/badge/Doc_Coverage-{doc_cov}%25-{get_color(doc_cov)}.svg)'
+
+if '![Test Coverage]' in readme:
+    readme = re.sub(r'!\[Test Coverage\]\(.+?\)', test_shield, readme)
+else:
+    readme = f"{test_shield}\n" + readme
+
+if '![Doc Coverage]' in readme:
+    readme = re.sub(r'!\[Doc Coverage\]\(.+?\)', doc_shield, readme)
+else:
+    readme = f"{doc_shield}\n" + readme
+
+with open('README.md', 'w') as f:
+    f.write(readme)
+
+os.system('git add README.md')

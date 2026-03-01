@@ -1,0 +1,5 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Compile just in time to ensure our changes are reflected
+javac -cp "$DIR/lib/*:$DIR/src/main/java" $(find "$DIR/src/main/java" -name "*.java")
+java -cp "$DIR/lib/*:$DIR/src/main/java" cli.Main "$@"
