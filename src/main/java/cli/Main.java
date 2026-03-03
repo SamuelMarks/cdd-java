@@ -206,6 +206,28 @@ public class Main {
                 "        <maven.compiler.source>11</maven.compiler.source>\n" +
                 "        <maven.compiler.target>11</maven.compiler.target>\n" +
                 "    </properties>\n" +
+                "    <dependencies>\n" +
+                "        <dependency>\n" +
+                "            <groupId>io.javalin</groupId>\n" +
+                "            <artifactId>javalin</artifactId>\n" +
+                "            <version>5.6.3</version>\n" +
+                "        </dependency>\n" +
+                "        <dependency>\n" +
+                "            <groupId>org.hibernate.orm</groupId>\n" +
+                "            <artifactId>hibernate-core</artifactId>\n" +
+                "            <version>6.4.4.Final</version>\n" +
+                "        </dependency>\n" +
+                "        <dependency>\n" +
+                "            <groupId>org.postgresql</groupId>\n" +
+                "            <artifactId>postgresql</artifactId>\n" +
+                "            <version>42.7.2</version>\n" +
+                "        </dependency>\n" +
+                "        <dependency>\n" +
+                "            <groupId>com.fasterxml.jackson.core</groupId>\n" +
+                "            <artifactId>jackson-databind</artifactId>\n" +
+                "            <version>2.15.2</version>\n" +
+                "        </dependency>\n" +
+                "    </dependencies>\n" +
                 "</project>";
         Files.write(new File(dir, "pom.xml").toPath(), pom.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
