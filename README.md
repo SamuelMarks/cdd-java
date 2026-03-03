@@ -1,4 +1,4 @@
-cdd-java
+cdd-LANGUAGE
 ============
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -11,14 +11,19 @@ OpenAPI ↔ Java. This is one compiler in a suite, all focussed on the same task
 Each compiler is written in its target language, is whitespace and comment sensitive, and has both an SDK and CLI.
 
 The CLI—at a minimum—has:
-- `cdd-java --help`
-- `cdd-java --version`
-- `cdd-java to_openapi -f path/to/code -o spec.json`
-- `cdd-java to_docs_json --no-imports --no-wrapping -i spec.json -o docs.json`
-- `cdd-java from_openapi to_sdk_cli -i spec.json -o target_directory`
-- `cdd-java from_openapi to_sdk -i spec.json -o target_directory`
-- `cdd-java from_openapi to_server -i spec.json -o target_directory`
-- `cdd-java server_json_rpc --port 8080 --listen 0.0.0.0`
+
+```text
+cdd-java CLI
+Usage:
+  cdd-java --help
+  cdd-java --version
+  cdd-java serve_json_rpc [--port <port>] [--listen <ip>]
+  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
+  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
+  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
+  cdd-java to_openapi -f <path/to/code> [-o <spec.json>]
+  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
+```
 
 The goal of this project is to enable rapid application development without tradeoffs. Tradeoffs of Protocol Buffers / Thrift etc. are an untouchable "generated" directory and package, compile-time and/or runtime overhead. Tradeoffs of Java or JavaScript for everything are: overhead in hardware access, offline mode, ML inefficiency, and more. And neither of these alterantive approaches are truly integrated into your target system, test frameworks, and bigger abstractions you build in your app. Tradeoffs in CDD are code duplication (but CDD handles the synchronisation for you).
 
@@ -34,38 +39,21 @@ The `cdd-java` compiler leverages a unified architecture to support various face
 
 ## 📦 Installation
 
-Requires Java 11+. Clone the repository and run `make install_deps` and `make build`.
+<!-- INSTRUCTION TO LLM: Insert specific installation instructions, package managers, and prerequisites here based on the `Requires Java 11+. Clone the repo and run `make install_base && make install_deps`.` context. -->
 
 ## 🛠 Usage
 
 ### Command Line Interface
 
-```sh
-cdd-java CLI
-Usage:
-  cdd-java --help
-  cdd-java --version
-  cdd-java serve_json_rpc [--port <port>] [--listen <ip>]
-  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
-  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
-  cdd-java to_openapi -f <path/to/code> [-o <spec.json>]
-  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
-```
+<!-- INSTRUCTION TO LLM: Provide 1-2 idiomatic CLI examples using the `make run` placeholder. Ensure paths reflect standard `Java` project structures. -->
 
 ### Programmatic SDK / Library
 
-```java
-import openapi.OpenAPI;
-import classes.Emit;
-
-OpenAPI api = openapi.Parse.fromFile(new File("spec.json"));
-String code = classes.Emit.emit(api, null);
-```
+<!-- INSTRUCTION TO LLM: Provide a small code snippet in `Java` demonstrating how to invoke the compiler as a library, using the `java`. -->
 
 ## Design choices
 
-The Java AST parsing leverages JavaParser (v3.25.8). It natively handles whitespace and comment lexical preservation, allowing modifications of AST nodes in-place without mangling manually formatted user source files. Jackson is used for reading and serializing OpenAPI json and yaml files securely. Everything is built natively for bidirectional OpenAPI conversion without bloated intermediate data models besides `openapi.*` primitives.
+The compiler is built using `javaparser-core` for robust AST-driven extraction of Java classes and routes without the need to compile them first. It avoids reflection entirely. Jackson is used for parsing and writing JSON specs.
 
 ## 🏗 Supported Conversions for Java
 
@@ -73,21 +61,15 @@ The Java AST parsing leverages JavaParser (v3.25.8). It natively handles whitesp
 
 | Concept | Parse (From) | Emit (To) |
 |---------|--------------|-----------|
-| OpenAPI (JSON/YAML) | [✅] | [✅] |
-| `Java` Models / Structs / Types | [✅] | [✅] |
-| `Java` Server Routes / Endpoints | [✅] | [✅] |
-| `Java` API Clients / SDKs | [✅] | [✅] |
+| OpenAPI (JSON/YAML) | ✅ | ✅ |
+| `Java` Models / Structs / Types | [ ] | [ ] |
+| `Java` Server Routes / Endpoints | [ ] | [ ] |
+| `Java` API Clients / SDKs | [ ] | [ ] |
 | `Java` ORM / DB Schemas | [ ] | [ ] |
-| `Java` CLI Argument Parsers | [✅] | [✅] |
-| `Java` Docstrings / Comments | [✅] | [✅] |
+| `Java` CLI Argument Parsers | [ ] | [ ] |
+| `Java` Docstrings / Comments | [ ] | [ ] |
 
-## WebAssembly (WASM)
-
-| Target | Is WASM Possible? | Is WASM Implemented? |
-|--------|-------------------|----------------------|
-| cdd-java | Yes (via TeaVM/J2CL/GraalVM) | No |
-
-WASM compilation is currently out-of-scope for the native cdd-java Makefile using emsdk, as Java requires JVM-to-WASM compilers like GraalVM, J2CL, or TeaVM. See `WASM.md`.
+<!-- INSTRUCTION TO LLM: Check the boxes above (`✅`) based on the `Parse OpenAPI, Emit Classes, Emit Routes, Parse Classes, Parse Routes` context provided. -->
 
 ---
 
@@ -99,3 +81,9 @@ Licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
 at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.

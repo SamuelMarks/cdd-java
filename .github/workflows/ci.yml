@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
@@ -27,7 +27,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
@@ -38,7 +38,7 @@ jobs:
     - name: Package CLI
       run: zip -r cdd-java-cli.zip bin/ lib/
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           cdd-java-cli.zip
@@ -46,3 +46,11 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Try WASM Build
+      run: make build_wasm
+
