@@ -9,6 +9,8 @@ import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.body.EnumConstantDeclaration;
 import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.javadoc.Javadoc;
+import com.github.javaparser.javadoc.JavadocBlockTag;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
@@ -88,10 +90,47 @@ public class Parse {
                 
                 Optional<JavadocComment> classJavadoc = classDecl.getJavadocComment();
                 if (classJavadoc.isPresent()) {
-                    String cleanDoc = classJavadoc.get().parse().getDescription().toText().trim();
+                    Javadoc parsedDoc = classJavadoc.get().parse();
+                    String cleanDoc = parsedDoc.getDescription().toText().trim();
                     if (!cleanDoc.isEmpty()) {
                         schema.put("description", cleanDoc);
                     }
+                    Map<String, Object> xmlMap = new HashMap<>();
+                    Map<String, Object> discriminatorMap = new HashMap<>();
+                    Map<String, String> mappingMap = new HashMap<>();
+                    for (JavadocBlockTag tag : parsedDoc.getBlockTags()) {
+                        String tName = tag.getTagName();
+                        String tContent = tag.getContent().toText().trim();
+                        if ("xmlName".equals(tName)) xmlMap.put("name", tContent);
+                        else if ("xmlNamespace".equals(tName)) xmlMap.put("namespace", tContent);
+                        else if ("xmlPrefix".equals(tName)) xmlMap.put("prefix", tContent);
+                        else if ("xmlAttribute".equals(tName)) xmlMap.put("attribute", Boolean.parseBoolean(tContent));
+                        else if ("xmlWrapped".equals(tName)) xmlMap.put("wrapped", Boolean.parseBoolean(tContent));
+                        else if ("discriminatorProperty".equals(tName)) discriminatorMap.put("propertyName", tContent);
+                        else if ("discriminatorMapping".equals(tName)) {
+                            int spaceIdx = tContent.indexOf(' ');
+                            if (spaceIdx > 0) {
+                                mappingMap.put(tContent.substring(0, spaceIdx), tContent.substring(spaceIdx + 1).trim());
+                            }
+                        }
+                        else if ("discriminatorDefault".equals(tName)) discriminatorMap.put("defaultMapping", tContent);
+                        else if ("schemaExample".equals(tName)) schema.put("example", tContent);
+                        else if ("schemaExternalDocs".equals(tName)) {
+                            Map<String, Object> extDocs = new HashMap<>();
+                            int spaceIdx = tContent.indexOf(' ');
+                            if (spaceIdx > 0) {
+                                extDocs.put("url", tContent.substring(0, spaceIdx));
+                                extDocs.put("description", tContent.substring(spaceIdx + 1).trim());
+                            } else {
+                                extDocs.put("url", tContent);
+                            }
+                            schema.put("externalDocs", extDocs);
+                        }
+                    }
+                    if (!xmlMap.isEmpty()) schema.put("xml", xmlMap);
+                    
+                    if (!mappingMap.isEmpty()) discriminatorMap.put("mapping", mappingMap);
+                    if (!discriminatorMap.isEmpty()) schema.put("discriminator", discriminatorMap);
                 }
                 
                 // Discriminator
@@ -99,7 +138,7 @@ public class Parse {
                     if (ann.getNameAsString().equals("JsonTypeInfo")) {
                         if (ann instanceof NormalAnnotationExpr) {
                             NormalAnnotationExpr nae = (NormalAnnotationExpr) ann;
-                            Map<String, Object> discriminator = new HashMap<>();
+                            Map<String, Object> discriminator = (Map<String, Object>) schema.getOrDefault("discriminator", new HashMap<>());
                             for (MemberValuePair mvp : nae.getPairs()) {
                                 if (mvp.getNameAsString().equals("property")) {
                                     discriminator.put("propertyName", mvp.getValue().toString().replace("\"", ""));
@@ -143,10 +182,34 @@ public class Parse {
                             Map<String, Object> propSchema = new HashMap<>();
                             Optional<JavadocComment> fieldJavadoc = fieldDecl.getJavadocComment();
                             if (fieldJavadoc.isPresent()) {
-                                String cleanPropDoc = fieldJavadoc.get().parse().getDescription().toText().trim();
+                                Javadoc parsedDoc = fieldJavadoc.get().parse();
+                                String cleanPropDoc = parsedDoc.getDescription().toText().trim();
                                 if (!cleanPropDoc.isEmpty()) {
                                     propSchema.put("description", cleanPropDoc);
                                 }
+                                Map<String, Object> xmlMap = new HashMap<>();
+                                for (JavadocBlockTag tag : parsedDoc.getBlockTags()) {
+                                    String tName = tag.getTagName();
+                                    String tContent = tag.getContent().toText().trim();
+                                    if ("xmlName".equals(tName)) xmlMap.put("name", tContent);
+                                    else if ("xmlNamespace".equals(tName)) xmlMap.put("namespace", tContent);
+                                    else if ("xmlPrefix".equals(tName)) xmlMap.put("prefix", tContent);
+                                    else if ("xmlAttribute".equals(tName)) xmlMap.put("attribute", Boolean.parseBoolean(tContent));
+                                    else if ("xmlWrapped".equals(tName)) xmlMap.put("wrapped", Boolean.parseBoolean(tContent));
+                                    else if ("schemaExample".equals(tName)) propSchema.put("example", tContent);
+                                    else if ("schemaExternalDocs".equals(tName)) {
+                                        Map<String, Object> extDocs = new HashMap<>();
+                                        int spaceIdx = tContent.indexOf(' ');
+                                        if (spaceIdx > 0) {
+                                            extDocs.put("url", tContent.substring(0, spaceIdx));
+                                            extDocs.put("description", tContent.substring(spaceIdx + 1).trim());
+                                        } else {
+                                            extDocs.put("url", tContent);
+                                        }
+                                        propSchema.put("externalDocs", extDocs);
+                                    }
+                                }
+                                if (!xmlMap.isEmpty()) propSchema.put("xml", xmlMap);
                             }
                             
                             resolveType(type, propSchema);
