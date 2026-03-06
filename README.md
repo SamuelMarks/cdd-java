@@ -62,12 +62,12 @@ The compiler is built using `javaparser-core` for robust AST-driven extraction o
 | Concept | Parse (From) | Emit (To) |
 |---------|--------------|-----------|
 | OpenAPI (JSON/YAML) | ✅ | ✅ |
-| `Java` Models / Structs / Types | [ ] | [ ] |
-| `Java` Server Routes / Endpoints | [ ] | [ ] |
-| `Java` API Clients / SDKs | [ ] | [ ] |
+| `Java` Models / Structs / Types | ✅ | ✅ |
+| `Java` Server Routes / Endpoints | ✅ | ✅ |
+| `Java` API Clients / SDKs | ✅ | ✅ |
 | `Java` ORM / DB Schemas | [ ] | [ ] |
-| `Java` CLI Argument Parsers | [ ] | [ ] |
-| `Java` Docstrings / Comments | [ ] | [ ] |
+| `Java` CLI Argument Parsers | ✅ | ✅ |
+| `Java` Docstrings / Comments | ✅ | ✅ |
 
 <!-- INSTRUCTION TO LLM: Check the boxes above (`✅`) based on the `Parse OpenAPI, Emit Classes, Emit Routes, Parse Classes, Parse Routes` context provided. -->
 

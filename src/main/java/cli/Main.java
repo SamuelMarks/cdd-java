@@ -51,7 +51,7 @@ public class Main {
                 subCmdIdx = 2;
             }
 
-            if (!subCommand.equals("to_sdk_cli") && !subCommand.equals("to_sdk") && !subCommand.equals("to_server")) {
+            if (!subCommand.equals("to_sdk_cli") && !subCommand.equals("to_sdk") && !subCommand.equals("to_server") && !subCommand.equals("to_orm")) {
                 System.err.println("Unknown from_openapi subcommand: " + subCommand);
                 throw new Exception("Exit 1");
             }
@@ -109,6 +109,10 @@ public class Main {
                     String code = routes.Emit.emit(api, null);
                     Files.write(new File(outDir, "ServerRoutes.java").toPath(), code.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                     System.out.println("Generated Server Routes in " + outDir.getAbsolutePath());
+                } else if (subCommand.equals("to_orm")) {
+                    String code = orm.Emit.emit(api, null);
+                    Files.write(new File(outDir, "OrmEntities.java").toPath(), code.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    System.out.println("Generated ORM Entities in " + outDir.getAbsolutePath());
                 }
             }
 
@@ -168,6 +172,8 @@ public class Main {
                 String newSource = source;
                 if (jf.getAbsolutePath().contains("/classes/")) {
                      newSource = classes.Emit.emit(fullApi, source);
+                } else if (jf.getAbsolutePath().contains("/orm/")) {
+                     newSource = orm.Emit.emit(fullApi, source);
                 } else if (jf.getAbsolutePath().contains("/routes/")) {
                      newSource = routes.Emit.emit(fullApi, source);
                 } else if (jf.getAbsolutePath().contains("/mocks/")) {
@@ -312,6 +318,11 @@ public class Main {
             OpenAPI apiClasses = classes.Parse.parse(source);
             if (apiClasses.components != null && apiClasses.components.schemas != null) {
                 fullApi.components.schemas.putAll(apiClasses.components.schemas);
+            }
+            
+            OpenAPI ormClasses = orm.Parse.parse(source);
+            if (ormClasses.components != null && ormClasses.components.schemas != null) {
+                fullApi.components.schemas.putAll(ormClasses.components.schemas);
             }
             
             OpenAPI testsPaths = tests.Parse.parse(source);

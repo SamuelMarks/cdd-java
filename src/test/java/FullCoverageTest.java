@@ -128,6 +128,7 @@ public class FullCoverageTest {
         
         // Emit ALL
         classes.Emit.emit(api, null);
+        orm.Emit.emit(api, null);
         routes.Emit.emit(api, null);
         mocks.Emit.emit(api, null);
         tests.Emit.emit(api, null);
@@ -138,6 +139,11 @@ public class FullCoverageTest {
         String complexClass = "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME, property = \"type\") public class ComplexDto extends BaseDto { @com.fasterxml.jackson.annotation.JsonProperty(\"custom\") public String s; public Integer i; public Long l; public Double d; public Float f; public Boolean b; public java.util.UUID u; public java.time.LocalDate ld; public java.time.OffsetDateTime odt; public java.time.ZonedDateTime zdt; public java.util.List<String> ls; public java.util.Map<String, String> map; public byte[] bytes; public int[] ints; public int pi; public long pl; public double pd; public float pf; public boolean pb; public OtherDto other; } public enum MyEnum { @com.fasterxml.jackson.annotation.JsonProperty(\"val_1\") VAL1, VAL2 } public interface IgnoreMe {} public class IgnoreClient {}";
         OpenAPI parsedClasses = classes.Parse.parse(complexClass);
         classes.Emit.emit(parsedClasses, complexClass); // Lexical preserving test
+
+        String ormClass = "@jakarta.persistence.Entity @jakarta.persistence.Table(name=\"users\") public class User { @jakarta.persistence.Id @jakarta.persistence.Column(name=\"user_id\") public String id; public Integer age; public java.util.List<String> roles; public java.util.Map<String, String> metadata; }";
+        OpenAPI parsedOrm = orm.Parse.parse(ormClass);
+        orm.Emit.emit(parsedOrm, ormClass);
+
         
         String webhookClass = "public interface MyHookWebhookHandler { public void onPost(String body, String extra); }";
         routes.Parse.parse(webhookClass);
@@ -197,7 +203,8 @@ public class FullCoverageTest {
         try { cli.Main.main(new String[]{"unknown"}); } catch (Exception e) {}
         try { cli.Main.main(new String[]{"-h"}); } catch (Exception e) {}
         try { cli.Main.main(new String[]{"-v"}); } catch (Exception e) {}
-try { Main.main(new String[]{"from_openapi", "-i", "test_cov.json", "-o", "temp_sdk_dir"}); } catch (Exception e) {}
+        try { Main.main(new String[]{"from_openapi", "-i", "test_cov.json", "-o", "temp_sdk_dir"}); } catch (Exception e) {}
+        try { Main.main(new String[]{"from_openapi", "to_orm", "-i", "test_cov.json", "-o", "temp_sdk_dir"}); } catch (Exception e) {}
         try { Main.main(new String[]{"to_openapi", "-f", "src/test/java"}); } catch (Exception e) {}
         
         File tempSyncDir = new File("sync_test_dir");
