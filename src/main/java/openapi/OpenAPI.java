@@ -23,7 +23,7 @@ public class OpenAPI {
 
     /** The self property. */
     @JsonProperty("$self")
-    public String self;
+    public String $self;
 
     /** The info property. */
     @JsonProperty("info")

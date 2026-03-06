@@ -45,7 +45,13 @@ public class Emit {
             sb.append("import java.io.IOException;\n");
             sb.append("import java.net.URLEncoder;\n");
             sb.append("import java.nio.charset.StandardCharsets;\n\n");
-            sb.append("/**\n * Auto-generated client for ").append(title).append(".\n */\n");
+            StringBuilder classDoc = new StringBuilder();
+            classDoc.append("/**\n * Auto-generated client for ").append(title).append(".\n");
+            if (model.openapi != null) classDoc.append(" * @openapiVersion ").append(model.openapi).append("\n");
+            if (model.$self != null) classDoc.append(" * @openapiSelf ").append(model.$self).append("\n");
+            if (model.jsonSchemaDialect != null) classDoc.append(" * @jsonSchemaDialect ").append(model.jsonSchemaDialect).append("\n");
+            classDoc.append(" */\n");
+            sb.append(classDoc.toString());
             sb.append("public class ").append(title).append("Client {\n");
             sb.append("    private final HttpClient httpClient;\n");
             sb.append("    private final String baseUrl;\n\n");
@@ -74,12 +80,12 @@ public class Emit {
                     String path = entry.getKey();
                     PathItem item = entry.getValue();
                     
-                    if (item.get != null) emitMethodToAST(classDecl, "GET", path, item.get, item.parameters, model);
-                    if (item.post != null) emitMethodToAST(classDecl, "POST", path, item.post, item.parameters, model);
-                    if (item.put != null) emitMethodToAST(classDecl, "PUT", path, item.put, item.parameters, model);
-                    if (item.delete != null) emitMethodToAST(classDecl, "DELETE", path, item.delete, item.parameters, model);
-                    if (item.patch != null) emitMethodToAST(classDecl, "PATCH", path, item.patch, item.parameters, model);
-                    if (item.query != null) emitMethodToAST(classDecl, "QUERY", path, item.query, item.parameters, model);
+                    if (item.get != null) emitMethodToAST(classDecl, "GET", path, item.get, item, model);
+                    if (item.post != null) emitMethodToAST(classDecl, "POST", path, item.post, item, model);
+                    if (item.put != null) emitMethodToAST(classDecl, "PUT", path, item.put, item, model);
+                    if (item.delete != null) emitMethodToAST(classDecl, "DELETE", path, item.delete, item, model);
+                    if (item.patch != null) emitMethodToAST(classDecl, "PATCH", path, item.patch, item, model);
+                    if (item.query != null) emitMethodToAST(classDecl, "QUERY", path, item.query, item, model);
 
                     if (item.get != null && item.get.callbacks != null) emitCallbacksToAST(classDecl, item.get.callbacks);
                     if (item.post != null && item.post.callbacks != null) emitCallbacksToAST(classDecl, item.post.callbacks);
@@ -173,16 +179,16 @@ public class Emit {
                     sb.append("public interface ").append(interfaceName).append(" {\n");
                     if (cb.pathItems != null) {
                         for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
-                            PathItem item = piEntry.getValue();
-                            if (item.post != null) {
+                            PathItem innerItem = piEntry.getValue();
+                            if (innerItem.post != null) {
                                 sb.append("    void onPost(");
                                 boolean first = true;
-                                if (item.post.requestBody != null) {
+                                if (innerItem.post.requestBody != null) {
                                     sb.append("String body");
                                     first = false;
                                 }
-                                if (item.parameters != null) {
-                                    for (Object o : item.parameters) {
+                                if (innerItem.parameters != null) {
+                                    for (Object o : innerItem.parameters) {
                                         if (o instanceof Parameter) {
                                             if (!first) sb.append(", ");
                                             sb.append("String ").append(((Parameter)o).name.replaceAll("[^a-zA-Z0-9_]", ""));
@@ -213,7 +219,7 @@ public class Emit {
      * @param pathParams param doc
      * @param model param doc
      */
-    private static void emitMethodToAST(ClassOrInterfaceDeclaration classDecl, String httpMethod, String path, Operation op, List<Object> pathParams, OpenAPI model) {
+    private static void emitMethodToAST(ClassOrInterfaceDeclaration classDecl, String httpMethod, String path, Operation op, openapi.PathItem item, OpenAPI model) {
         String methodName = op.operationId;
         if (methodName == null || methodName.isEmpty()) {
             methodName = httpMethod.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
@@ -242,8 +248,8 @@ public class Emit {
         }
         
         java.util.List<Parameter> allParams = new java.util.ArrayList<>();
-        if (pathParams != null) {
-            for (Object po : pathParams) {
+        if (item != null && item.parameters != null) {
+            for (Object po : item.parameters) {
                 if (po instanceof Parameter) allParams.add((Parameter) po);
             }
         }
@@ -335,7 +341,7 @@ public class Emit {
                     openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
                     if (cb.pathItems != null) {
                         for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
-                            PathItem item = piEntry.getValue();
+                            PathItem innerItem = piEntry.getValue();
                             String method = "POST";
                             if (item.get != null) method = "GET";
                             else if (item.put != null) method = "PUT";
@@ -348,6 +354,211 @@ public class Emit {
                 }
             }
         }
+        
+        if (item != null) {
+            if (item.ref != null && !item.ref.isEmpty()) {
+                docBuilder.append(" * @pathRef ").append(path).append(" ").append(item.ref).append("\n");
+            }
+            if (item.summary != null && !item.summary.isEmpty()) {
+                docBuilder.append(" * @pathSummary ").append(path).append(" ").append(item.summary.replace("\n", " ")).append("\n");
+            }
+            if (item.description != null && !item.description.isEmpty()) {
+                docBuilder.append(" * @pathDescription ").append(path).append(" ").append(item.description.replace("\n", " ")).append("\n");
+            }
+        }
+
+        if (op.requestBody instanceof openapi.RequestBody) {
+            openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
+            if (rb.content != null) {
+                for (java.util.Map.Entry<String, openapi.MediaType> mEntry : rb.content.entrySet()) {
+                    String mtStr = mEntry.getKey();
+                    openapi.MediaType mt = mEntry.getValue();
+                    docBuilder.append(" * @requestBodyContent ").append(mtStr).append("\n");
+                    if (mt.schema != null && mt.schema instanceof java.util.Map) {
+                        java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
+                        if (schMap.containsKey("type")) {
+                            docBuilder.append(" * @requestBodyContentSchema ").append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+                        }
+                    }
+                    if (mt.itemSchema != null && mt.itemSchema instanceof java.util.Map) {
+                        java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
+                        if (schMap.containsKey("type")) {
+                            docBuilder.append(" * @requestBodyContentItemSchema ").append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+                        }
+                    }
+                    if (mt.prefixEncoding != null) {
+                        for (openapi.Encoding enc : mt.prefixEncoding) {
+                            if (enc.contentType != null) docBuilder.append(" * @requestBodyContentPrefixEncoding ").append(mtStr).append(" ").append(enc.contentType).append("\n");
+                        }
+                    }
+                    if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
+                        docBuilder.append(" * @requestBodyContentItemEncoding ").append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
+                    }
+                    if (mt.encoding != null) {
+                        for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
+                            String encKey = encEntry.getKey();
+                            openapi.Encoding enc = encEntry.getValue();
+                            if (enc.contentType != null) {
+                                docBuilder.append(" * @requestBodyEncoding ").append(mtStr).append(" ").append(encKey).append(" ").append(enc.contentType).append("\n");
+                            }
+                            if (enc.prefixEncoding != null) {
+                                for (openapi.Encoding pEnc : enc.prefixEncoding) {
+                                    if (pEnc.contentType != null) docBuilder.append(" * @requestBodyEncodingPrefixEncoding ").append(mtStr).append(" ").append(encKey).append(" ").append(pEnc.contentType).append("\n");
+                                }
+                            }
+                            if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
+                                docBuilder.append(" * @requestBodyEncodingItemEncoding ").append(mtStr).append(" ").append(encKey).append(" ").append(enc.itemEncoding.contentType).append("\n");
+                            }
+                        }
+                    }
+                    if (mt.example != null) {
+                        docBuilder.append(" * @requestBodyContentExample ").append(mtStr).append(" ").append(mt.example).append("\n");
+                    }
+                    if (mt.examples != null) {
+                        for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
+                            if (exEntry.getValue() instanceof openapi.Example) {
+                                openapi.Example ex = (openapi.Example) exEntry.getValue();
+                                String exValue = ex.value != null ? ex.value.toString() : "";
+                                String exSummary = ex.summary != null ? ex.summary : "";
+                                String exDesc = ex.description != null ? ex.description : "";
+                                docBuilder.append(" * @requestBodyContentExamples ").append(mtStr).append(" ").append(exEntry.getKey()).append(" ").append(exSummary.replace(" ", "_")).append("|").append(exDesc.replace(" ", "_")).append("|").append(exValue).append("\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (op.responses != null && op.responses.statusCodes != null) {
+            for (java.util.Map.Entry<String, Object> rEntry : op.responses.statusCodes.entrySet()) {
+                String statusCode = rEntry.getKey();
+                if (rEntry.getValue() instanceof openapi.Response) {
+                    openapi.Response r = (openapi.Response) rEntry.getValue();
+                    if (r.content != null) {
+                        for (java.util.Map.Entry<String, openapi.MediaType> mEntry : r.content.entrySet()) {
+                            String mtStr = mEntry.getKey();
+                            openapi.MediaType mt = mEntry.getValue();
+                            docBuilder.append(" * @responseContent ").append(statusCode).append(" ").append(mtStr).append("\n");
+                            if (mt.schema != null && mt.schema instanceof java.util.Map) {
+                                java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
+                                if (schMap.containsKey("type")) {
+                                    docBuilder.append(" * @responseContentSchema ").append(statusCode).append(" ").append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+                                }
+                            }
+                            if (mt.example != null) {
+                                docBuilder.append(" * @responseContentExample ").append(statusCode).append(" ").append(mtStr).append(" ").append(mt.example).append("\n");
+                            }
+                            if (mt.examples != null) {
+                                for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
+                                    if (exEntry.getValue() instanceof openapi.Example) {
+                                        openapi.Example ex = (openapi.Example) exEntry.getValue();
+                                        String exValue = ex.value != null ? ex.value.toString() : "";
+                                        String exSummary = ex.summary != null ? ex.summary : "";
+                                        String exDesc = ex.description != null ? ex.description : "";
+                                        docBuilder.append(" * @responseContentExamples ").append(statusCode).append(" ").append(mtStr).append(" ").append(exEntry.getKey()).append(" ").append(exSummary.replace(" ", "_")).append("|").append(exDesc.replace(" ", "_")).append("|").append(exValue).append("\n");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (op.responses != null && op.responses.defaultResponse instanceof openapi.Response) {
+            openapi.Response r = (openapi.Response) op.responses.defaultResponse;
+            String statusCode = "default";
+            if (r.content != null) {
+                for (java.util.Map.Entry<String, openapi.MediaType> mEntry : r.content.entrySet()) {
+                    String mtStr = mEntry.getKey();
+                    openapi.MediaType mt = mEntry.getValue();
+                    docBuilder.append(" * @responseContent ").append(statusCode).append(" ").append(mtStr).append("\n");
+                    if (mt.schema != null && mt.schema instanceof java.util.Map) {
+                        java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
+                        if (schMap.containsKey("type")) {
+                            docBuilder.append(" * @responseContentSchema ").append(statusCode).append(" ").append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+                        }
+                    }
+                    if (mt.itemSchema != null && mt.itemSchema instanceof java.util.Map) {
+                        java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
+                        if (schMap.containsKey("type")) {
+                            docBuilder.append(" * @responseContentItemSchema ").append(statusCode).append(" ").append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+                        }
+                    }
+                    if (mt.prefixEncoding != null) {
+                        for (openapi.Encoding enc : mt.prefixEncoding) {
+                            if (enc.contentType != null) docBuilder.append(" * @responseContentPrefixEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(enc.contentType).append("\n");
+                        }
+                    }
+                    if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
+                        docBuilder.append(" * @responseContentItemEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
+                    }
+                    if (mt.encoding != null) {
+                        for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
+                            String encKey = encEntry.getKey();
+                            openapi.Encoding enc = encEntry.getValue();
+                            if (enc.contentType != null) {
+                                docBuilder.append(" * @responseEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(encKey).append(" ").append(enc.contentType).append("\n");
+                            }
+                            if (enc.prefixEncoding != null) {
+                                for (openapi.Encoding pEnc : enc.prefixEncoding) {
+                                    if (pEnc.contentType != null) docBuilder.append(" * @responseEncodingPrefixEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(encKey).append(" ").append(pEnc.contentType).append("\n");
+                                }
+                            }
+                            if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
+                                docBuilder.append(" * @responseEncodingItemEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(encKey).append(" ").append(enc.itemEncoding.contentType).append("\n");
+                            }
+                        }
+                    }
+                    if (mt.itemSchema != null && mt.itemSchema instanceof java.util.Map) {
+                        java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
+                        if (schMap.containsKey("type")) {
+                            docBuilder.append(" * @responseContentItemSchema ").append(statusCode).append(" ").append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+                        }
+                    }
+                    if (mt.prefixEncoding != null) {
+                        for (openapi.Encoding enc : mt.prefixEncoding) {
+                            if (enc.contentType != null) docBuilder.append(" * @responseContentPrefixEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(enc.contentType).append("\n");
+                        }
+                    }
+                    if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
+                        docBuilder.append(" * @responseContentItemEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
+                    }
+                    if (mt.encoding != null) {
+                        for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
+                            String encKey = encEntry.getKey();
+                            openapi.Encoding enc = encEntry.getValue();
+                            if (enc.contentType != null) {
+                                docBuilder.append(" * @responseEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(encKey).append(" ").append(enc.contentType).append("\n");
+                            }
+                            if (enc.prefixEncoding != null) {
+                                for (openapi.Encoding pEnc : enc.prefixEncoding) {
+                                    if (pEnc.contentType != null) docBuilder.append(" * @responseEncodingPrefixEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(encKey).append(" ").append(pEnc.contentType).append("\n");
+                                }
+                            }
+                            if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
+                                docBuilder.append(" * @responseEncodingItemEncoding ").append(statusCode).append(" ").append(mtStr).append(" ").append(encKey).append(" ").append(enc.itemEncoding.contentType).append("\n");
+                            }
+                        }
+                    }
+                    if (mt.example != null) {
+                        docBuilder.append(" * @responseContentExample ").append(statusCode).append(" ").append(mtStr).append(" ").append(mt.example).append("\n");
+                    }
+                    if (mt.examples != null) {
+                        for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
+                            if (exEntry.getValue() instanceof openapi.Example) {
+                                openapi.Example ex = (openapi.Example) exEntry.getValue();
+                                String exValue = ex.value != null ? ex.value.toString() : "";
+                                String exSummary = ex.summary != null ? ex.summary : "";
+                                String exDesc = ex.description != null ? ex.description : "";
+                                docBuilder.append(" * @responseContentExamples ").append(statusCode).append(" ").append(mtStr).append(" ").append(exEntry.getKey()).append(" ").append(exSummary.replace(" ", "_")).append("|").append(exDesc.replace(" ", "_")).append("|").append(exValue).append("\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         docBuilder.append(" * @return HttpResponse\n");
         docBuilder.append(" * @throws IOException on error\n");
         docBuilder.append(" * @throws InterruptedException on error\n");

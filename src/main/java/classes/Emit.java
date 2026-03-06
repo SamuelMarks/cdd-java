@@ -101,9 +101,48 @@ public class Emit {
             classDecl = cu.addClass(className);
         }
 
+        StringBuilder classDoc = new StringBuilder();
         String classDescription = (String) schemaMap.get("description");
         if (classDescription != null && !classDescription.isEmpty()) {
-            classDecl.setJavadocComment(classDescription);
+            classDoc.append(classDescription);
+        }
+        if (schemaMap.containsKey("xml") && schemaMap.get("xml") instanceof Map) {
+            Map<String, Object> xmlMap = (Map<String, Object>) schemaMap.get("xml");
+            if (xmlMap.containsKey("name")) classDoc.append("\n@xmlName ").append(xmlMap.get("name"));
+            if (xmlMap.containsKey("namespace")) classDoc.append("\n@xmlNamespace ").append(xmlMap.get("namespace"));
+            if (xmlMap.containsKey("prefix")) classDoc.append("\n@xmlPrefix ").append(xmlMap.get("prefix"));
+            if (xmlMap.containsKey("attribute")) classDoc.append("\n@xmlAttribute ").append(xmlMap.get("attribute"));
+            if (xmlMap.containsKey("wrapped")) classDoc.append("\n@xmlWrapped ").append(xmlMap.get("wrapped"));
+        }
+        if (schemaMap.containsKey("externalDocs") && schemaMap.get("externalDocs") instanceof Map) {
+            Map<String, Object> extDocsMap = (Map<String, Object>) schemaMap.get("externalDocs");
+            if (extDocsMap.containsKey("url")) {
+                classDoc.append("\n@schemaExternalDocs ").append(extDocsMap.get("url"));
+                if (extDocsMap.containsKey("description")) {
+                    classDoc.append(" ").append(extDocsMap.get("description"));
+                }
+            }
+        }
+        if (schemaMap.containsKey("example")) {
+            classDoc.append("\n@schemaExample ").append(schemaMap.get("example"));
+        }
+        if (schemaMap.containsKey("discriminator") && schemaMap.get("discriminator") instanceof Map) {
+            Map<String, Object> discMap = (Map<String, Object>) schemaMap.get("discriminator");
+            if (discMap.containsKey("propertyName")) {
+                classDoc.append("\n@discriminatorProperty ").append(discMap.get("propertyName"));
+            }
+            if (discMap.containsKey("mapping") && discMap.get("mapping") instanceof Map) {
+                Map<String, String> mapping = (Map<String, String>) discMap.get("mapping");
+                for (Map.Entry<String, String> entry : mapping.entrySet()) {
+                    classDoc.append("\n@discriminatorMapping ").append(entry.getKey()).append(" ").append(entry.getValue());
+                }
+            }
+            if (discMap.containsKey("defaultMapping")) {
+                classDoc.append("\n@discriminatorDefault ").append(discMap.get("defaultMapping"));
+            }
+        }
+        if (classDoc.length() > 0) {
+            classDecl.setJavadocComment(classDoc.toString().trim());
         }
 
         Map<String, Object> properties = (Map<String, Object>) schemaMap.get("properties");
@@ -125,12 +164,33 @@ public class Emit {
                     
                     if (prop.getValue() instanceof Map) {
                         Map<String, Object> propMap = (Map<String, Object>) prop.getValue();
+                        StringBuilder fieldDoc = new StringBuilder();
                         String propDescription = (String) propMap.get("description");
                         if (propDescription != null && !propDescription.isEmpty()) {
-                            fd.setJavadocComment(propDescription);
-                        /**
-                         * Generated JavaDoc.
-                         */
+                            fieldDoc.append(propDescription);
+                        }
+                        if (propMap.containsKey("externalDocs") && propMap.get("externalDocs") instanceof Map) {
+                            Map<String, Object> extDocsMap = (Map<String, Object>) propMap.get("externalDocs");
+                            if (extDocsMap.containsKey("url")) {
+                                fieldDoc.append("\n@schemaExternalDocs ").append(extDocsMap.get("url"));
+                                if (extDocsMap.containsKey("description")) {
+                                    fieldDoc.append(" ").append(extDocsMap.get("description"));
+                                }
+                            }
+                        }
+                        if (propMap.containsKey("example")) {
+                            fieldDoc.append("\n@schemaExample ").append(propMap.get("example"));
+                        }
+                        if (propMap.containsKey("xml") && propMap.get("xml") instanceof Map) {
+                            Map<String, Object> xmlMap = (Map<String, Object>) propMap.get("xml");
+                            if (xmlMap.containsKey("name")) fieldDoc.append("\n@xmlName ").append(xmlMap.get("name"));
+                            if (xmlMap.containsKey("namespace")) fieldDoc.append("\n@xmlNamespace ").append(xmlMap.get("namespace"));
+                            if (xmlMap.containsKey("prefix")) fieldDoc.append("\n@xmlPrefix ").append(xmlMap.get("prefix"));
+                            if (xmlMap.containsKey("attribute")) fieldDoc.append("\n@xmlAttribute ").append(xmlMap.get("attribute"));
+                            if (xmlMap.containsKey("wrapped")) fieldDoc.append("\n@xmlWrapped ").append(xmlMap.get("wrapped"));
+                        }
+                        if (fieldDoc.length() > 0) {
+                            fd.setJavadocComment(fieldDoc.toString().trim());
                         }
                     }
                 }
