@@ -87,3 +87,46 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+## CLI Help
+
+```
+$ cli.Main --help
+cdd-java CLI
+Usage:
+  cdd-java --help
+  cdd-java --version
+  cdd-java serve_json_rpc [--port <port>] [--listen <ip>]
+  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
+  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
+  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
+  cdd-java to_openapi -f <path/to/code> [-o <spec.json>]
+  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
+```
+
+### `from_openapi`
+
+```
+$ cli.Main from_openapi --help
+Missing -i <spec.json> or --input-dir <dir>
+Exception in thread "main" java.lang.Exception: Exit 1
+	at cli.Main.main(Main.java:69)
+```
+
+### `to_openapi`
+
+```
+$ cli.Main to_openapi --help
+Missing -i <path/to/code>
+Exception in thread "main" java.lang.Exception: Exit 1
+	at cli.Main.main(Main.java:124)
+```
+
+### `to_docs_json`
+
+```
+$ cli.Main to_docs_json --help
+Missing -i <spec.json>
+Exception in thread "main" java.lang.Exception: Exit 1
+	at cli.Main.main(Main.java:142)
+```
