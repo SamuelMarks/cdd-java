@@ -117,10 +117,10 @@ public class Main {
             }
 
         } else if (command.equals("to_openapi")) {
-            String filePath = getArg(args, "-f", "CDD_FILE_PATH");
+            String filePath = getArg(args, "-i", "CDD_INPUT_FILE");
             String outputFile = getArg(args, "-o", "CDD_OUTPUT_FILE");
             if (filePath == null) {
-                System.err.println("Missing -f <path/to/code>");
+                System.err.println("Missing -i <path/to/code>");
                 throw new Exception("Exit 1");
             }
             if (outputFile == null) {
