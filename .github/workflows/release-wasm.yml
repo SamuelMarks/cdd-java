@@ -18,16 +18,9 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: 'graalvm-community'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Download WASI SDK
-        run: |
-          curl -L -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz
-          tar xzf wasi-sdk.tar.gz
-          export WASI_SDK_PATH=$PWD/wasi-sdk-20.0
-          echo "WASI_SDK_PATH=$WASI_SDK_PATH" >> $GITHUB_ENV
           
       - name: Build JAR
         run: mvn clean package -DskipTests
