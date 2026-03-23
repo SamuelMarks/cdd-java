@@ -98,7 +98,7 @@ build_wasm:
 	@echo "Building WASM fallback..."
 	mkdir -p build_wasm
 	mkdir -p bin
-	printf '\x00\x61\x73\x6d\x01\x00\x00\x00' > bin/cdd-java.wasm
+	printf '\0asm\1\0\0\0' > bin/cdd-java.wasm
 	cp bin/cdd-java.wasm cdd-java.wasm || true
 
 build_docker:
