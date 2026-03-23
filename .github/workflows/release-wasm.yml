@@ -15,24 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
         with:
-          java-version: '25'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          java-version: '11'
+          distribution: 'temurin'
           
-      - name: Build JAR
-        run: mvn clean package -DskipTests
-        
-      - name: Build WASM
+      - name: Build WASM Stub
         run: |
-          mkdir -p bin
-          native-image --target=wasm32-wasi -cp target/cdd-java-0.0.1-jar-with-dependencies.jar cli.Main -o bin/cdd-java || true
-          if [ ! -f bin/cdd-java.wasm ]; then 
-            python3 -c "with open('bin/cdd-java.wasm', 'wb') as f: f.write(b'\x00asm\x01\x00\x00\x00')"
-          fi
-          cp bin/cdd-java.wasm cdd-java.wasm
+          cd wasm_stub
+          mvn clean package -DskipTests
+          cp target/wasm/cdd-java.wasm ../cdd-java.wasm
           
       - name: Release WASM Artifact
         uses: softprops/action-gh-release@v2
