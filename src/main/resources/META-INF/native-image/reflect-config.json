@@ -1,0 +1,166 @@
+[
+{
+  "name":"com.fasterxml.jackson.databind.ext.Java7SupportImpl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.github.javaparser.ast.CompilationUnit",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.BodyDeclaration",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.CallableDeclaration",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.ClassOrInterfaceDeclaration",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.ConstructorDeclaration",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.FieldDeclaration",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.Parameter",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.body.TypeDeclaration",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.expr.FieldAccessExpr",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.expr.MethodCallExpr",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.expr.VariableDeclarationExpr",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.stmt.BlockStmt",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.type.ClassOrInterfaceType",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.type.ReferenceType",
+  "allDeclaredFields":true
+},
+{
+  "name":"com.github.javaparser.ast.type.Type",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicBoolean",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicMarkableReference",
+  "fields":[{"name":"pair"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicReference",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"openapi.Components",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"getExtensions","parameterTypes":[] }]
+},
+{
+  "name":"openapi.Contact",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.ExternalDocumentation",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.Info",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"getExtensions","parameterTypes":[] }]
+},
+{
+  "name":"openapi.License",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.OpenAPI",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"getExtensions","parameterTypes":[] }]
+},
+{
+  "name":"openapi.Operation",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.PathItem",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.Paths",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"getProperties","parameterTypes":[] }]
+},
+{
+  "name":"openapi.Responses",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.SecurityRequirement",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.Server",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.ServerVariable",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"openapi.Tag",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+}
+]
