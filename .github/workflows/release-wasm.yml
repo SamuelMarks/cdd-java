@@ -18,7 +18,7 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '21'
+          java-version: '23'
           distribution: 'graalvm-community'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           
@@ -35,7 +35,7 @@ jobs:
       - name: Build WASM
         run: |
           mkdir -p bin
-          native-image --march=wasm -jar target/cdd-java-0.0.1-jar-with-dependencies.jar -o bin/cdd-java || true
+          native-image --target=wasm32-wasi -cp target/cdd-java-0.0.1-jar-with-dependencies.jar cli.Main -o bin/cdd-java || true
           if [ ! -f bin/cdd-java.wasm ]; then 
             python3 -c "with open('bin/cdd-java.wasm', 'wb') as f: f.write(b'\x00asm\x01\x00\x00\x00')"
           fi
