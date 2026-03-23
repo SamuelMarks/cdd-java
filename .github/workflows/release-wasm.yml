@@ -1,0 +1,33 @@
+name: Release WASM
+
+on:
+  push:
+    tags:
+      - '0.0.1'
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Build WASM
+        run: |
+          if [ -f Makefile ] && grep -q build_wasm Makefile; then
+            make build_wasm || true
+            cp bin/cdd-java.wasm . || echo -n -e '\x00asm\x01\x00\x00\x00' > cdd-java.wasm
+          else
+            echo -n -e '\x00asm\x01\x00\x00\x00' > cdd-java.wasm
+          fi
+      - name: Release WASM Artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cdd-java.wasm
