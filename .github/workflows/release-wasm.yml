@@ -23,9 +23,9 @@ jobs:
         run: |
           if [ -f Makefile ] && grep -q build_wasm Makefile; then
             make build_wasm || true
-            cp bin/cdd-java.wasm . || echo -n -e '\x00\x61\x73\x6d\x01\x00\x00\x00' > cdd-java.wasm
+            cp bin/cdd-java.wasm . || python3 -c "with open('cdd-java.wasm', 'wb') as f: f.write(b'\x00asm\x01\x00\x00\x00')"
           else
-            echo -n -e '\x00\x61\x73\x6d\x01\x00\x00\x00' > cdd-java.wasm
+            python3 -c "with open('cdd-java.wasm', 'wb') as f: f.write(b'\x00asm\x01\x00\x00\x00')"
           fi
       - name: Release WASM Artifact
         uses: softprops/action-gh-release@v2
