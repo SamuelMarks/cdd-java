@@ -23,9 +23,9 @@ jobs:
     - name: Download WASI SDK
       run: |
         WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz"
-        wget -qO wasi-sdk.tar.gz $WASI_SDK_URL
+        curl -sL -o wasi-sdk.tar.gz $WASI_SDK_URL
         tar -xf wasi-sdk.tar.gz
-        echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0" >> $GITHUB_ENV
+        echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
         
     - name: Build Standard JAR
       run: mvn clean package
