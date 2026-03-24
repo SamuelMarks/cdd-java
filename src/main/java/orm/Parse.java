@@ -1,6 +1,7 @@
 package orm;
 
 import openapi.OpenAPI;
+import openapi.Schema;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -14,7 +15,6 @@ import com.github.javaparser.ast.type.Type;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
 
 /**
  * Parses JPA/Hibernate entities to OpenAPI representation.
@@ -43,15 +43,14 @@ public class Parse {
                 }
                 
                 String className = classDecl.getNameAsString();
-                Map<String, Object> schema = new HashMap<>();
-                schema.put("type", "object");
+                Schema schema = new Schema();
+                schema.type = "object";
                 
-                // Add table name as extension if available
                 classDecl.getAnnotationByName("Table").ifPresent(ann -> {
                     if (ann instanceof NormalAnnotationExpr) {
                         for (MemberValuePair mvp : ((NormalAnnotationExpr) ann).getPairs()) {
                             if (mvp.getNameAsString().equals("name")) {
-                                schema.put("x-table-name", mvp.getValue().toString().replace("\"", ""));
+                                schema.addExtension("x-table-name", mvp.getValue().toString().replace("\"", ""));
                             }
                         }
                     }
@@ -63,7 +62,6 @@ public class Parse {
                         Type type = varDecl.getType();
                         String name = varDecl.getNameAsString();
                         
-                        // Override name if @Column(name="...") is present
                         for (AnnotationExpr ann : fieldDecl.getAnnotations()) {
                             if (ann.getNameAsString().equals("Column")) {
                                 if (ann instanceof NormalAnnotationExpr) {
@@ -76,21 +74,20 @@ public class Parse {
                             }
                         }
 
-                        Map<String, Object> propSchema = new HashMap<>();
+                        Schema propSchema = new Schema();
                         resolveType(type, propSchema);
                         
                         if (fieldDecl.getAnnotationByName("Id").isPresent()) {
-                            propSchema.put("x-primary-key", true);
+                            propSchema.addExtension("x-primary-key", true);
                         }
                         
                         properties.put(name, propSchema);
                     }
                 }
-                schema.put("properties", properties);
+                schema.properties = properties;
                 api.components.schemas.put(className, schema);
             }
         } catch (Exception e) {
-            // Ignore unparseable blocks
         }
         return api;
     }
@@ -100,77 +97,75 @@ public class Parse {
      * @param type param doc
      * @param propSchema param doc
      */
-    private static void resolveType(Type type, Map<String, Object> propSchema) {
-        String typeName = type.toString();
-        
+    private static void resolveType(Type type, Schema propSchema) {
         if (type.isClassOrInterfaceType()) {
             ClassOrInterfaceType ciType = type.asClassOrInterfaceType();
             String name = ciType.getNameAsString();
             if (name.equals("String")) {
-                propSchema.put("type", "string");
+                propSchema.type = "string";
             } else if (name.equals("Integer")) {
-                propSchema.put("type", "integer");
+                propSchema.type = "integer";
             } else if (name.equals("Long")) {
-                propSchema.put("type", "integer");
-                propSchema.put("format", "int64");
+                propSchema.type = "integer";
+                propSchema.format = "int64";
             } else if (name.equals("Double") || name.equals("Float")) {
-                propSchema.put("type", "number");
-                if (name.equals("Float")) propSchema.put("format", "float");
+                propSchema.type = "number";
+                if (name.equals("Float")) propSchema.format = "float";
             } else if (name.equals("Boolean")) {
-                propSchema.put("type", "boolean");
+                propSchema.type = "boolean";
             } else if (name.equals("UUID")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "uuid");
+                propSchema.type = "string";
+                propSchema.format = "uuid";
             } else if (name.equals("LocalDate")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "date");
+                propSchema.type = "string";
+                propSchema.format = "date";
             } else if (name.equals("OffsetDateTime") || name.equals("ZonedDateTime")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "date-time");
+                propSchema.type = "string";
+                propSchema.format = "date-time";
             } else if (name.equals("List") || name.equals("ArrayList") || name.equals("Set")) {
-                propSchema.put("type", "array");
-                Map<String, Object> items = new HashMap<>();
+                propSchema.type = "array";
+                Schema items = new Schema();
                 if (ciType.getTypeArguments().isPresent() && !ciType.getTypeArguments().get().isEmpty()) {
                     resolveType(ciType.getTypeArguments().get().get(0), items);
                 } else {
-                    items.put("type", "string");
+                    items.type = "string";
                 }
-                propSchema.put("items", items);
+                propSchema.items = items;
             } else if (name.equals("Map") || name.equals("HashMap")) {
-                propSchema.put("type", "object");
+                propSchema.type = "object";
                 if (ciType.getTypeArguments().isPresent() && ciType.getTypeArguments().get().size() > 1) {
-                    Map<String, Object> addProps = new HashMap<>();
+                    Schema addProps = new Schema();
                     resolveType(ciType.getTypeArguments().get().get(1), addProps);
-                    propSchema.put("additionalProperties", addProps);
+                    propSchema.additionalProperties = addProps;
                 }
             } else {
-                propSchema.put("$ref", "#/components/schemas/" + name);
+                propSchema.$ref = "#/components/schemas/" + name;
             }
         } else if (type.isArrayType()) {
             String elemType = type.asArrayType().getComponentType().toString();
             if (elemType.equals("byte")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "binary");
+                propSchema.type = "string";
+                propSchema.format = "binary";
             } else {
-                propSchema.put("type", "array");
-                Map<String, Object> items = new HashMap<>();
+                propSchema.type = "array";
+                Schema items = new Schema();
                 resolveType(type.asArrayType().getComponentType(), items);
-                propSchema.put("items", items);
+                propSchema.items = items;
             }
         } else if (type.isPrimitiveType()) {
             String pType = type.asPrimitiveType().toString();
             if (pType.equals("int")) {
-                propSchema.put("type", "integer");
+                propSchema.type = "integer";
             } else if (pType.equals("long")) {
-                propSchema.put("type", "integer");
-                propSchema.put("format", "int64");
+                propSchema.type = "integer";
+                propSchema.format = "int64";
             } else if (pType.equals("double") || pType.equals("float")) {
-                propSchema.put("type", "number");
+                propSchema.type = "number";
             } else if (pType.equals("boolean")) {
-                propSchema.put("type", "boolean");
+                propSchema.type = "boolean";
             }
         } else {
-            propSchema.put("type", "object");
+            propSchema.type = "object";
         }
     }
 }
