@@ -18,12 +18,14 @@ cdd-java CLI
 Usage:
   cdd-java --help
   cdd-java --version
-  cdd-java serve_json_rpc [--port <port>] [--listen <ip>]
+  cdd-java serve_json_rpc [--wasi]
   cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
   cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
   cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
-  cdd-java to_openapi -f <path/to/code> [-o <spec.json>]
+  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]
+  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
   cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
+  cdd-java sync -d <dir>
 ```
 
 The goal of this project is to enable rapid application development without tradeoffs. Tradeoffs of Protocol Buffers / Thrift etc. are an untouchable "generated" directory and package, compile-time and/or runtime overhead. Tradeoffs of Java or JavaScript for everything are: overhead in hardware access, offline mode, ML inefficiency, and more. And neither of these alterantive approaches are truly integrated into your target system, test frameworks, and bigger abstractions you build in your app. Tradeoffs in CDD are code duplication (but CDD handles the synchronisation for you).
@@ -97,37 +99,60 @@ cdd-java CLI
 Usage:
   cdd-java --help
   cdd-java --version
-  cdd-java serve_json_rpc [--port <port>] [--listen <ip>]
+  cdd-java serve_json_rpc [--wasi]
   cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
   cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
   cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
-  cdd-java to_openapi -f <path/to/code> [-o <spec.json>]
+  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]
+  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
   cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
+  cdd-java sync -d <dir>
 ```
 
 ### `from_openapi`
 
 ```
 $ cli.Main from_openapi --help
-Missing -i <spec.json> or --input-dir <dir>
-Exception in thread "main" java.lang.Exception: Exit 1
-	at cli.Main.main(Main.java:69)
+cdd-java from_openapi
+Usage:
+  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
+  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
+  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
+  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]
 ```
 
 ### `to_openapi`
 
 ```
 $ cli.Main to_openapi --help
-Missing -i <path/to/code>
-Exception in thread "main" java.lang.Exception: Exit 1
-	at cli.Main.main(Main.java:124)
+cdd-java to_openapi
+Usage:
+  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
 ```
 
 ### `to_docs_json`
 
 ```
 $ cli.Main to_docs_json --help
-Missing -i <spec.json>
-Exception in thread "main" java.lang.Exception: Exit 1
-	at cli.Main.main(Main.java:142)
+cdd-java to_docs_json
+Usage:
+  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
+```
+
+### `serve_json_rpc`
+
+```
+$ cli.Main serve_json_rpc --help
+cdd-java serve_json_rpc
+Usage:
+  cdd-java serve_json_rpc [--wasi]
+```
+
+### `sync`
+
+```
+$ cli.Main sync --help
+cdd-java sync
+Usage:
+  cdd-java sync -d <dir>
 ```
