@@ -52,3 +52,26 @@ spec.json
 bin/
 test_docker.py
 jdk-17/
+
+# --- WASM & GraalVM ---
+wasi-sdk-*
+graalvm*
+target/wasm/
+cdd-java
+cdd-java.wasm
+test.wasm
+teavm-cli-*.jar
+
+# --- Directories ---
+java_source_dir/
+out1/
+out2/
+out3/
+out_traced/
+META-INF/
+
+# --- Tracing JSON ---
+docs_traced.json
+out_docs.json
+out_spec.json
+traced_out.json

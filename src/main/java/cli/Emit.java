@@ -70,53 +70,12 @@ public class Emit {
         
         if (api.components != null) {
             if (api.components.schemas != null) {
-                for (java.util.Map.Entry<String, Object> entry : api.components.schemas.entrySet()) {
+                for (java.util.Map.Entry<String, openapi.Schema> entry : api.components.schemas.entrySet()) {
                     String k = entry.getKey();
                     sb.append("        System.out.println(\"Component schemas ").append(escape(k)).append("\");\n");
-                    Object val = entry.getValue();
-                    if (val instanceof java.util.Map) {
-                        java.util.Map<String, Object> map = (java.util.Map<String, Object>) val;
-                        if (map.containsKey("discriminator")) {
-                            Object dObj = map.get("discriminator");
-                            if (dObj instanceof openapi.Discriminator) {
-                                openapi.Discriminator d = (openapi.Discriminator) dObj;
-                                String mappingStr = "";
-                                if (d.mapping != null) {
-                                    java.util.List<String> mappings = new java.util.ArrayList<>();
-                                    for (java.util.Map.Entry<String, String> me : d.mapping.entrySet()) {
-                                        mappings.add(me.getKey() + "=" + me.getValue());
-                                    }
-                                    mappingStr = String.join(",", mappings);
-                                }
-                                sb.append("        System.out.println(\"  Discriminator propertyName=").append(escape(d.propertyName)).append(" mapping=").append(escape(mappingStr)).append(" defaultMapping=").append(escape(d.defaultMapping)).append("\");\n");
-                            } else if (dObj instanceof java.util.Map) {
-                                java.util.Map<String, Object> d = (java.util.Map<String, Object>) dObj;
-                                String mappingStr = "";
-                                if (d.get("mapping") instanceof java.util.Map) {
-                                    java.util.Map<String, String> m = (java.util.Map<String, String>) d.get("mapping");
-                                    java.util.List<String> mappings = new java.util.ArrayList<>();
-                                    for (java.util.Map.Entry<String, String> me : m.entrySet()) {
-                                        mappings.add(me.getKey() + "=" + me.getValue());
-                                    }
-                                    mappingStr = String.join(",", mappings);
-                                }
-                                sb.append("        System.out.println(\"  Discriminator propertyName=").append(escape((String)d.get("propertyName"))).append(" mapping=").append(escape(mappingStr)).append(" defaultMapping=").append(escape((String)d.get("defaultMapping"))).append("\");\n");
-                            }
-                        }
-                        if (map.containsKey("xml")) {
-                            Object xmlObj = map.get("xml");
-                            if (xmlObj instanceof openapi.XML) {
-                                openapi.XML x = (openapi.XML) xmlObj;
-                                sb.append("        System.out.println(\"  XML name=").append(escape(x.name)).append(" namespace=").append(escape(x.namespace)).append(" prefix=").append(escape(x.prefix)).append(" attribute=").append(x.attribute != null && x.attribute ? "true" : "false").append(" wrapped=").append(x.wrapped != null && x.wrapped ? "true" : "false").append("\");\n");
-                            } else if (xmlObj instanceof java.util.Map) {
-                                java.util.Map<String, Object> x = (java.util.Map<String, Object>) xmlObj;
-                                Boolean attr = (Boolean) x.get("attribute");
-                                Boolean wrapped = (Boolean) x.get("wrapped");
-                                sb.append("        System.out.println(\"  XML name=").append(escape((String)x.get("name"))).append(" namespace=").append(escape((String)x.get("namespace"))).append(" prefix=").append(escape((String)x.get("prefix"))).append(" attribute=").append(attr != null && attr ? "true" : "false").append(" wrapped=").append(wrapped != null && wrapped ? "true" : "false").append("\");\n");
-                            }
-                        }
-                    } else if (val instanceof openapi.Schema) {
-                        openapi.Schema schema = (openapi.Schema) val;
+                    openapi.Schema schema = entry.getValue();
+                    if (schema != null) {
+                        
                         if (schema.discriminator != null) {
                             String mappingStr = "";
                             if (schema.discriminator.mapping != null) {

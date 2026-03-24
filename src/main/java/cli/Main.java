@@ -1,22 +1,18 @@
 package cli;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
 import java.util.List;
 import java.util.ArrayList;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
+import org.json.JSONObject;
 
 import openapi.OpenAPI;
-
-import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpExchange;
 
 /**
  * CLI Entrypoint.
@@ -42,6 +38,7 @@ public class Main {
         }
 
         String command = args[0];
+        boolean wasi = hasFlag(args, "--wasi", "CDD_WASI");
 
         if (command.equals("from_openapi")) {
             String subCommand = "to_sdk"; // Default for backward compatibility
@@ -99,19 +96,19 @@ public class Main {
 
                 if (subCommand.equals("to_sdk_cli")) {
                     String code = cli.Emit.emitCli(api);
-                    Files.write(new File(outDir, "SdkCli.java").toPath(), code.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    writeFile(new File(outDir, "SdkCli.java"), code);
                     System.out.println("Generated SDK CLI in " + outDir.getAbsolutePath());
                 } else if (subCommand.equals("to_sdk")) {
                     String code = classes.Emit.emit(api, null);
-                    Files.write(new File(outDir, "Sdk.java").toPath(), code.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    writeFile(new File(outDir, "Sdk.java"), code);
                     System.out.println("Generated SDK in " + outDir.getAbsolutePath());
                 } else if (subCommand.equals("to_server")) {
                     String code = routes.Emit.emit(api, null);
-                    Files.write(new File(outDir, "ServerRoutes.java").toPath(), code.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    writeFile(new File(outDir, "ServerRoutes.java"), code);
                     System.out.println("Generated Server Routes in " + outDir.getAbsolutePath());
                 } else if (subCommand.equals("to_orm")) {
                     String code = orm.Emit.emit(api, null);
-                    Files.write(new File(outDir, "OrmEntities.java").toPath(), code.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    writeFile(new File(outDir, "OrmEntities.java"), code);
                     System.out.println("Generated ORM Entities in " + outDir.getAbsolutePath());
                 }
             }
@@ -128,7 +125,7 @@ public class Main {
             }
             OpenAPI fullApi = extractOpenAPI(new File(filePath));
             String spec = openapi.Emit.toString(fullApi);
-            Files.write(new File(outputFile).toPath(), spec.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            writeFile(new File(outputFile), spec);
             System.out.println("Emitted OpenAPI to " + outputFile);
 
         } else if (command.equals("to_docs_json")) {
@@ -147,17 +144,12 @@ public class Main {
             OpenAPI api = openapi.Parse.fromFile(new File(inputFile));
             
             String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
-            Files.write(new File(outputFile).toPath(), docsJson.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            writeFile(new File(outputFile), docsJson);
             System.out.println("Emitted docs JSON to " + outputFile);
             
         } else if (command.equals("serve_json_rpc")) {
-            String portStr = getArg(args, "--port", "CDD_PORT");
-            String listenStr = getArg(args, "--listen", "CDD_LISTEN");
-            int port = portStr != null ? Integer.parseInt(portStr) : 8080;
-            String listen = listenStr != null ? listenStr : "0.0.0.0";
-            startJsonRpcServer(listen, port);
+            startStdioJsonRpcServer();
         } else if (command.equals("sync")) {
-            // Unchanged for now, keeping compatibility
             String dirPath = getArg(args, "-d", "CDD_DIR");
             if (dirPath == null) {
                 System.err.println("Missing -d <dir>");
@@ -168,25 +160,26 @@ public class Main {
             List<File> javaFiles = new ArrayList<>();
             findJavaFiles(dir, javaFiles);
             for (File jf : javaFiles) {
-                String source = new String(Files.readAllBytes(jf.toPath()));
+                String source = readFile(jf);
                 String newSource = source;
-                if (jf.getAbsolutePath().contains("/classes/")) {
+                String absPath = jf.getAbsolutePath().replace('\\', '/');
+                if (absPath.contains("/classes/")) {
                      newSource = classes.Emit.emit(fullApi, source);
-                } else if (jf.getAbsolutePath().contains("/orm/")) {
+                } else if (absPath.contains("/orm/")) {
                      newSource = orm.Emit.emit(fullApi, source);
-                } else if (jf.getAbsolutePath().contains("/routes/")) {
+                } else if (absPath.contains("/routes/")) {
                      newSource = routes.Emit.emit(fullApi, source);
-                } else if (jf.getAbsolutePath().contains("/mocks/")) {
+                } else if (absPath.contains("/mocks/")) {
                      newSource = mocks.Emit.emit(fullApi, source);
-                } else if (jf.getAbsolutePath().contains("/tests/")) {
+                } else if (absPath.contains("/tests/")) {
                      newSource = tests.Emit.emit(fullApi, source);
-                } else if (jf.getAbsolutePath().contains("/functions/")) {
-                } else if (jf.getAbsolutePath().contains("/cli/")) {
+                } else if (absPath.contains("/functions/")) {
+                } else if (absPath.contains("/cli/")) {
                      newSource = cli.Emit.emitCli(fullApi);
                      newSource = functions.Emit.emit(fullApi, source);
                 }
                 if (!newSource.equals(source)) {
-                    Files.write(jf.toPath(), newSource.getBytes());
+                    writeFile(jf, newSource);
                     System.out.println("Updated: " + jf.getAbsolutePath());
                 }
             }
@@ -195,6 +188,20 @@ public class Main {
             System.err.println("Unknown command: " + command);
             printHelp();
             throw new Exception("Exit 1");
+        }
+    }
+
+    private static void writeFile(File file, String content) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(content.getBytes("UTF-8"));
+        }
+    }
+
+    private static String readFile(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] data = new byte[(int) file.length()];
+            fis.read(data);
+            return new String(data, "UTF-8");
         }
     }
 
@@ -228,58 +235,48 @@ public class Main {
                 "            <artifactId>postgresql</artifactId>\n" +
                 "            <version>42.7.2</version>\n" +
                 "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>com.fasterxml.jackson.core</groupId>\n" +
-                "            <artifactId>jackson-databind</artifactId>\n" +
-                "            <version>2.15.2</version>\n" +
-                "        </dependency>\n" +
                 "    </dependencies>\n" +
                 "</project>";
-        Files.write(new File(dir, "pom.xml").toPath(), pom.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        writeFile(new File(dir, "pom.xml"), pom);
     }
 
     private static void generateGithubActions(File dir) throws IOException {
         File ghDir = new File(dir, ".github/workflows");
         ghDir.mkdirs();
         String ci = "name: CI\non: [push, pull_request]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v3\n    - name: Set up JDK\n      uses: actions/setup-java@v3\n      with:\n        java-version: '11'\n        distribution: 'temurin'\n    - name: Build with Maven\n      run: mvn clean install\n";
-        Files.write(new File(ghDir, "ci.yml").toPath(), ci.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        writeFile(new File(ghDir, "ci.yml"), ci);
     }
 
-    private static void startJsonRpcServer(String listen, int port) throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress(listen, port), 0);
-        server.createContext("/", new HttpHandler() {
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                if ("POST".equals(exchange.getRequestMethod())) {
-                    String reqBody = new String(exchange.getRequestBody().readAllBytes());
-                    String response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":null}";
-                    try {
-                        ObjectMapper mapper = new ObjectMapper();
-                        JsonNode node = mapper.readTree(reqBody);
-                        if (node.has("method") && "version".equals(node.get("method").asText())) {
-                            JsonNode idNode = node.get("id");
-                            String idVal = idNode != null && !idNode.isNull() ? idNode.toString() : "null";
-                            response = "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.1\",\"id\":" + idVal + "}";
-                        }
-                    } catch (Exception e) {
-                        response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error\"},\"id\":null}";
+    private static void startStdioJsonRpcServer() throws Exception {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            
+            String response;
+            try {
+                JSONObject req = new JSONObject(line);
+                Object idObj = req.has("id") && !req.isNull("id") ? req.get("id") : null;
+                String idStr = idObj != null ? idObj.toString() : "null";
+                
+                if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
+                    String method = req.has("method") ? req.getString("method") : "";
+                    if ("version".equals(method)) {
+                        response = "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.1\",\"id\":" + idStr + "}";
+                    } else {
+                        response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":" + idStr + "}";
                     }
-                    exchange.getResponseHeaders().set("Content-Type", "application/json");
-                    byte[] respBytes = response.getBytes();
-                    exchange.sendResponseHeaders(200, respBytes.length);
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(respBytes);
-                    os.close();
                 } else {
-                    exchange.sendResponseHeaders(405, -1);
+                    response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"},\"id\":null}";
                 }
+            } catch (Exception e) {
+                response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error\"},\"id\":null}";
             }
-        });
-        server.setExecutor(null);
-        server.start();
-        System.out.println("JSON-RPC server started at http://" + listen + ":" + port);
-        // keep it running
-        Thread.currentThread().join();
+            
+            System.out.println(response);
+            System.out.flush();
+        }
     }
 
     /**
@@ -303,7 +300,7 @@ public class Main {
         fullApi.components.schemas = new java.util.HashMap<>();
         
         for (File jf : javaFiles) {
-            String source = new String(Files.readAllBytes(jf.toPath()));
+            String source = readFile(jf);
             
             OpenAPI apiPaths = routes.Parse.parse(source);
             if (apiPaths.paths != null && apiPaths.paths.pathItems != null) fullApi.paths.pathItems.putAll(apiPaths.paths.pathItems);
@@ -327,6 +324,10 @@ public class Main {
             
             OpenAPI testsPaths = tests.Parse.parse(source);
             OpenAPI cliPaths = cli.Parse.parse(source);
+
+            if (cliPaths.components != null && cliPaths.components.schemas != null) {
+                fullApi.components.schemas.putAll(cliPaths.components.schemas);
+            }
             if (cliPaths.paths != null && cliPaths.paths.pathItems != null) {
                 for (java.util.Map.Entry<String, openapi.PathItem> entry : cliPaths.paths.pathItems.entrySet()) {
                     fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
@@ -378,7 +379,7 @@ public class Main {
         System.out.println("Usage:");
         System.out.println("  cdd-java --help");
         System.out.println("  cdd-java --version");
-        System.out.println("  cdd-java serve_json_rpc [--port <port>] [--listen <ip>]");
+        System.out.println("  cdd-java serve_json_rpc [--wasi]");
         System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
         System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]");
         System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");

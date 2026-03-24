@@ -15,7 +15,7 @@ public class Parse {
     public static OpenAPI parse(String existingSource) {
         OpenAPI api = new OpenAPI();
         String helpBody = "";
-        Matcher hm = Pattern.compile("(?s)private static void printHelp\\(\\) \\{([^}]+)\\}").matcher(existingSource);
+        Matcher hm = Pattern.compile("(?s)private static void printHelp\\(\\) \\{(.*?)\\n    \\}").matcher(existingSource);
         if (hm.find()) {
             helpBody = hm.group(1);
         }
@@ -26,7 +26,7 @@ public class Parse {
         Parameter currentParameter = null;
         String currentPath = null;
         Response currentResponse = null;
-        Map<String, Object> lastParsedSchema = null;
+        openapi.Schema lastParsedSchema = null;
         
         while (lm.find()) {
             String line = unescape(lm.group(1));
@@ -111,7 +111,7 @@ public class Parse {
                 if (api.components == null) api.components = new Components();
                 if (api.components.schemas == null) api.components.schemas = new HashMap<>();
                 String key = line.substring("Component schemas ".length());
-                lastParsedSchema = new HashMap<>();
+                lastParsedSchema = new openapi.Schema();
                 api.components.schemas.put(key, lastParsedSchema);
             } else if (line.startsWith("  Discriminator propertyName=")) {
                 if (lastParsedSchema != null) {
@@ -128,7 +128,7 @@ public class Parse {
                             }
                         }
                         String dMapping = m.group(3); if (!dMapping.isEmpty() && !dMapping.equals("null")) d.defaultMapping = dMapping;
-                        lastParsedSchema.put("discriminator", d);
+                        lastParsedSchema.discriminator = d;
                     }
                 }
             } else if (line.startsWith("  XML name=")) {
@@ -141,7 +141,7 @@ public class Parse {
                         String prefix = m.group(3); if (!prefix.isEmpty() && !prefix.equals("null")) x.prefix = prefix;
                         String attr = m.group(4); if (attr.equals("true")) x.attribute = true; else if (attr.equals("false")) x.attribute = false;
                         String wrapped = m.group(5); if (wrapped.equals("true")) x.wrapped = true; else if (wrapped.equals("false")) x.wrapped = false;
-                        lastParsedSchema.put("xml", x);
+                        lastParsedSchema.xml = x;
                     }
                 }
             } else if (line.startsWith("Component securitySchemes ")) {

@@ -1,6 +1,11 @@
 package classes;
 
 import openapi.OpenAPI;
+import openapi.Schema;
+import openapi.XML;
+import openapi.Discriminator;
+import openapi.ExternalDocumentation;
+import openapi.Reference;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -48,18 +53,18 @@ public class Parse {
             // Handle enums
             for (EnumDeclaration enumDecl : cu.findAll(EnumDeclaration.class)) {
                 String enumName = enumDecl.getNameAsString();
-                Map<String, Object> schema = new HashMap<>();
-                schema.put("type", "string");
+                Schema schema = new Schema();
+                schema.type = "string";
                 
                 Optional<JavadocComment> javadoc = enumDecl.getJavadocComment();
                 if (javadoc.isPresent()) {
                     String cleanDoc = javadoc.get().parse().getDescription().toText().trim();
                     if (!cleanDoc.isEmpty()) {
-                        schema.put("description", cleanDoc);
+                        schema.description = cleanDoc;
                     }
                 }
                 
-                List<String> enumValues = new ArrayList<>();
+                List<Object> enumValues = new ArrayList<>();
                 for (EnumConstantDeclaration constDecl : enumDecl.getEntries()) {
                     String val = constDecl.getNameAsString();
                     for (AnnotationExpr ann : constDecl.getAnnotations()) {
@@ -71,7 +76,7 @@ public class Parse {
                     }
                     enumValues.add(val);
                 }
-                schema.put("enum", enumValues);
+                schema.enumValues = enumValues;
                 api.components.schemas.put(enumName, schema);
             }
             
@@ -85,52 +90,55 @@ public class Parse {
                     continue;
                 }
 
-                Map<String, Object> schema = new HashMap<>();
-                schema.put("type", "object");
+                Schema schema = new Schema();
+                schema.type = "object";
                 
                 Optional<JavadocComment> classJavadoc = classDecl.getJavadocComment();
                 if (classJavadoc.isPresent()) {
                     Javadoc parsedDoc = classJavadoc.get().parse();
                     String cleanDoc = parsedDoc.getDescription().toText().trim();
                     if (!cleanDoc.isEmpty()) {
-                        schema.put("description", cleanDoc);
+                        schema.description = cleanDoc;
                     }
-                    Map<String, Object> xmlMap = new HashMap<>();
-                    Map<String, Object> discriminatorMap = new HashMap<>();
+                    XML xmlObj = new XML();
+                    Discriminator discriminatorObj = new Discriminator();
                     Map<String, String> mappingMap = new HashMap<>();
+                    boolean hasXml = false;
+                    boolean hasDisc = false;
                     for (JavadocBlockTag tag : parsedDoc.getBlockTags()) {
                         String tName = tag.getTagName();
                         String tContent = tag.getContent().toText().trim();
-                        if ("xmlName".equals(tName)) xmlMap.put("name", tContent);
-                        else if ("xmlNamespace".equals(tName)) xmlMap.put("namespace", tContent);
-                        else if ("xmlPrefix".equals(tName)) xmlMap.put("prefix", tContent);
-                        else if ("xmlAttribute".equals(tName)) xmlMap.put("attribute", Boolean.parseBoolean(tContent));
-                        else if ("xmlWrapped".equals(tName)) xmlMap.put("wrapped", Boolean.parseBoolean(tContent));
-                        else if ("discriminatorProperty".equals(tName)) discriminatorMap.put("propertyName", tContent);
+                        if ("xmlName".equals(tName)) { xmlObj.name = tContent; hasXml = true; }
+                        else if ("xmlNamespace".equals(tName)) { xmlObj.namespace = tContent; hasXml = true; }
+                        else if ("xmlPrefix".equals(tName)) { xmlObj.prefix = tContent; hasXml = true; }
+                        else if ("xmlAttribute".equals(tName)) { xmlObj.attribute = Boolean.parseBoolean(tContent); hasXml = true; }
+                        else if ("xmlWrapped".equals(tName)) { xmlObj.wrapped = Boolean.parseBoolean(tContent); hasXml = true; }
+                        else if ("discriminatorProperty".equals(tName)) { discriminatorObj.propertyName = tContent; hasDisc = true; }
                         else if ("discriminatorMapping".equals(tName)) {
                             int spaceIdx = tContent.indexOf(' ');
                             if (spaceIdx > 0) {
                                 mappingMap.put(tContent.substring(0, spaceIdx), tContent.substring(spaceIdx + 1).trim());
+                                hasDisc = true;
                             }
                         }
-                        else if ("discriminatorDefault".equals(tName)) discriminatorMap.put("defaultMapping", tContent);
-                        else if ("schemaExample".equals(tName)) schema.put("example", tContent);
+                        else if ("discriminatorDefault".equals(tName)) { discriminatorObj.addExtension("defaultMapping", tContent); hasDisc = true; }
+                        else if ("schemaExample".equals(tName)) schema.example = tContent;
                         else if ("schemaExternalDocs".equals(tName)) {
-                            Map<String, Object> extDocs = new HashMap<>();
+                            ExternalDocumentation extDocs = new ExternalDocumentation();
                             int spaceIdx = tContent.indexOf(' ');
                             if (spaceIdx > 0) {
-                                extDocs.put("url", tContent.substring(0, spaceIdx));
-                                extDocs.put("description", tContent.substring(spaceIdx + 1).trim());
+                                extDocs.url = tContent.substring(0, spaceIdx);
+                                extDocs.description = tContent.substring(spaceIdx + 1).trim();
                             } else {
-                                extDocs.put("url", tContent);
+                                extDocs.url = tContent;
                             }
-                            schema.put("externalDocs", extDocs);
+                            schema.externalDocs = extDocs;
                         }
                     }
-                    if (!xmlMap.isEmpty()) schema.put("xml", xmlMap);
+                    if (hasXml) schema.xml = xmlObj;
                     
-                    if (!mappingMap.isEmpty()) discriminatorMap.put("mapping", mappingMap);
-                    if (!discriminatorMap.isEmpty()) schema.put("discriminator", discriminatorMap);
+                    if (!mappingMap.isEmpty()) discriminatorObj.mapping = mappingMap;
+                    if (hasDisc) schema.discriminator = discriminatorObj;
                 }
                 
                 // Discriminator
@@ -138,14 +146,16 @@ public class Parse {
                     if (ann.getNameAsString().equals("JsonTypeInfo")) {
                         if (ann instanceof NormalAnnotationExpr) {
                             NormalAnnotationExpr nae = (NormalAnnotationExpr) ann;
-                            Map<String, Object> discriminator = (Map<String, Object>) schema.getOrDefault("discriminator", new HashMap<>());
+                            Discriminator discriminator = schema.discriminator != null ? schema.discriminator : new Discriminator();
+                            boolean added = false;
                             for (MemberValuePair mvp : nae.getPairs()) {
                                 if (mvp.getNameAsString().equals("property")) {
-                                    discriminator.put("propertyName", mvp.getValue().toString().replace("\"", ""));
+                                    discriminator.propertyName = mvp.getValue().toString().replace("\"", "");
+                                    added = true;
                                 }
                             }
-                            if (!discriminator.isEmpty()) {
-                                schema.put("discriminator", discriminator);
+                            if (added) {
+                                schema.discriminator = discriminator;
                             }
                         }
                     }
@@ -155,12 +165,12 @@ public class Parse {
                 if (!classDecl.getExtendedTypes().isEmpty()) {
                     List<Object> allOf = new ArrayList<>();
                     for (ClassOrInterfaceType extType : classDecl.getExtendedTypes()) {
-                        Map<String, Object> ref = new HashMap<>();
-                        ref.put("$ref", "#/components/schemas/" + extType.getNameAsString());
-                        allOf.add(ref);
+                        Schema refSchema = new Schema();
+                        refSchema.$ref = "#/components/schemas/" + extType.getNameAsString();
+                        allOf.add(refSchema);
                     }
                     if (!allOf.isEmpty()) {
-                        schema.put("allOf", allOf);
+                        schema.allOf = allOf;
                     }
                 }
                 
@@ -179,37 +189,38 @@ public class Parse {
                                 }
                             }
 
-                            Map<String, Object> propSchema = new HashMap<>();
+                            Schema propSchema = new Schema();
                             Optional<JavadocComment> fieldJavadoc = fieldDecl.getJavadocComment();
                             if (fieldJavadoc.isPresent()) {
                                 Javadoc parsedDoc = fieldJavadoc.get().parse();
                                 String cleanPropDoc = parsedDoc.getDescription().toText().trim();
                                 if (!cleanPropDoc.isEmpty()) {
-                                    propSchema.put("description", cleanPropDoc);
+                                    propSchema.description = cleanPropDoc;
                                 }
-                                Map<String, Object> xmlMap = new HashMap<>();
+                                XML xmlObj = new XML();
+                                boolean hasXml = false;
                                 for (JavadocBlockTag tag : parsedDoc.getBlockTags()) {
                                     String tName = tag.getTagName();
                                     String tContent = tag.getContent().toText().trim();
-                                    if ("xmlName".equals(tName)) xmlMap.put("name", tContent);
-                                    else if ("xmlNamespace".equals(tName)) xmlMap.put("namespace", tContent);
-                                    else if ("xmlPrefix".equals(tName)) xmlMap.put("prefix", tContent);
-                                    else if ("xmlAttribute".equals(tName)) xmlMap.put("attribute", Boolean.parseBoolean(tContent));
-                                    else if ("xmlWrapped".equals(tName)) xmlMap.put("wrapped", Boolean.parseBoolean(tContent));
-                                    else if ("schemaExample".equals(tName)) propSchema.put("example", tContent);
+                                    if ("xmlName".equals(tName)) { xmlObj.name = tContent; hasXml = true; }
+                                    else if ("xmlNamespace".equals(tName)) { xmlObj.namespace = tContent; hasXml = true; }
+                                    else if ("xmlPrefix".equals(tName)) { xmlObj.prefix = tContent; hasXml = true; }
+                                    else if ("xmlAttribute".equals(tName)) { xmlObj.attribute = Boolean.parseBoolean(tContent); hasXml = true; }
+                                    else if ("xmlWrapped".equals(tName)) { xmlObj.wrapped = Boolean.parseBoolean(tContent); hasXml = true; }
+                                    else if ("schemaExample".equals(tName)) propSchema.example = tContent;
                                     else if ("schemaExternalDocs".equals(tName)) {
-                                        Map<String, Object> extDocs = new HashMap<>();
+                                        ExternalDocumentation extDocs = new ExternalDocumentation();
                                         int spaceIdx = tContent.indexOf(' ');
                                         if (spaceIdx > 0) {
-                                            extDocs.put("url", tContent.substring(0, spaceIdx));
-                                            extDocs.put("description", tContent.substring(spaceIdx + 1).trim());
+                                            extDocs.url = tContent.substring(0, spaceIdx);
+                                            extDocs.description = tContent.substring(spaceIdx + 1).trim();
                                         } else {
-                                            extDocs.put("url", tContent);
+                                            extDocs.url = tContent;
                                         }
-                                        propSchema.put("externalDocs", extDocs);
+                                        propSchema.externalDocs = extDocs;
                                     }
                                 }
-                                if (!xmlMap.isEmpty()) propSchema.put("xml", xmlMap);
+                                if (hasXml) propSchema.xml = xmlObj;
                             }
                             
                             resolveType(type, propSchema);
@@ -218,7 +229,7 @@ public class Parse {
                         }
                     }
                 }
-                schema.put("properties", properties);
+                schema.properties = properties;
                 api.components.schemas.put(className, schema);
             }
         } catch (Exception e) {
@@ -229,84 +240,80 @@ public class Parse {
     
     /**
      * Generated JavaDoc.
-     */
-    /**
-     * Generated JavaDoc.
      * @param type param doc
      * @param propSchema param doc
      */
-    private static void resolveType(Type type, Map<String, Object> propSchema) {
+    private static void resolveType(Type type, Schema propSchema) {
         String typeName = type.toString();
         
         if (type.isClassOrInterfaceType()) {
             ClassOrInterfaceType ciType = type.asClassOrInterfaceType();
             String name = ciType.getNameAsString();
             if (name.equals("String")) {
-                propSchema.put("type", "string");
+                propSchema.type = "string";
             } else if (name.equals("Integer")) {
-                propSchema.put("type", "integer");
+                propSchema.type = "integer";
             } else if (name.equals("Long")) {
-                propSchema.put("type", "integer");
-                propSchema.put("format", "int64");
+                propSchema.type = "integer";
+                propSchema.format = "int64";
             } else if (name.equals("Double") || name.equals("Float")) {
-                propSchema.put("type", "number");
-                if (name.equals("Float")) propSchema.put("format", "float");
+                propSchema.type = "number";
+                if (name.equals("Float")) propSchema.format = "float";
             } else if (name.equals("Boolean")) {
-                propSchema.put("type", "boolean");
+                propSchema.type = "boolean";
             } else if (name.equals("UUID")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "uuid");
+                propSchema.type = "string";
+                propSchema.format = "uuid";
             } else if (name.equals("LocalDate")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "date");
+                propSchema.type = "string";
+                propSchema.format = "date";
             } else if (name.equals("OffsetDateTime") || name.equals("ZonedDateTime")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "date-time");
+                propSchema.type = "string";
+                propSchema.format = "date-time";
             } else if (name.equals("List") || name.equals("ArrayList") || name.equals("Set")) {
-                propSchema.put("type", "array");
-                Map<String, Object> items = new HashMap<>();
+                propSchema.type = "array";
+                Schema items = new Schema();
                 if (ciType.getTypeArguments().isPresent() && !ciType.getTypeArguments().get().isEmpty()) {
                     resolveType(ciType.getTypeArguments().get().get(0), items);
                 } else {
-                    items.put("type", "string");
+                    items.type = "string";
                 }
-                propSchema.put("items", items);
+                propSchema.items = items;
             } else if (name.equals("Map") || name.equals("HashMap")) {
-                propSchema.put("type", "object");
+                propSchema.type = "object";
                 if (ciType.getTypeArguments().isPresent() && ciType.getTypeArguments().get().size() > 1) {
-                    Map<String, Object> addProps = new HashMap<>();
+                    Schema addProps = new Schema();
                     resolveType(ciType.getTypeArguments().get().get(1), addProps);
-                    propSchema.put("additionalProperties", addProps);
+                    propSchema.additionalProperties = addProps;
                 }
             } else {
-                propSchema.put("$ref", "#/components/schemas/" + name);
+                propSchema.$ref = "#/components/schemas/" + name;
             }
         } else if (type.isArrayType()) {
             String elemType = type.asArrayType().getComponentType().toString();
             if (elemType.equals("byte")) {
-                propSchema.put("type", "string");
-                propSchema.put("format", "binary");
+                propSchema.type = "string";
+                propSchema.format = "binary";
             } else {
-                propSchema.put("type", "array");
-                Map<String, Object> items = new HashMap<>();
+                propSchema.type = "array";
+                Schema items = new Schema();
                 resolveType(type.asArrayType().getComponentType(), items);
-                propSchema.put("items", items);
+                propSchema.items = items;
             }
         } else if (type.isPrimitiveType()) {
             String pType = type.asPrimitiveType().toString();
             if (pType.equals("int")) {
-                propSchema.put("type", "integer");
+                propSchema.type = "integer";
             } else if (pType.equals("long")) {
-                propSchema.put("type", "integer");
-                propSchema.put("format", "int64");
+                propSchema.type = "integer";
+                propSchema.format = "int64";
             } else if (pType.equals("double") || pType.equals("float")) {
-                propSchema.put("type", "number");
+                propSchema.type = "number";
             } else if (pType.equals("boolean")) {
-                propSchema.put("type", "boolean");
+                propSchema.type = "boolean";
             }
         } else {
-            propSchema.put("type", "object");
+            propSchema.type = "object";
         }
     }
 }
-

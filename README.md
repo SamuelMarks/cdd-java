@@ -3,6 +3,7 @@ cdd-java
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml)
+[![WASI Compatible](https://img.shields.io/badge/WASI-Compatible-brightgreen.svg)](#)
 [![Test Coverage](https://img.shields.io/badge/Coverage-100%25-success.svg)](#)
 [![Doc Coverage](https://img.shields.io/badge/Doc%20Coverage-100%25-success.svg)](#)
 
@@ -53,7 +54,7 @@ The `cdd-java` compiler leverages a unified architecture to support various face
 
 ## Design choices
 
-The compiler is built using `javaparser-core` for robust AST-driven extraction of Java classes and routes without the need to compile them first. It avoids reflection entirely. Jackson is used for parsing and writing JSON specs.
+The compiler is built using `javaparser-core` for robust AST-driven extraction of Java classes and routes without the need to compile them first. It avoids reflection entirely. org.json is used for parsing and writing JSON specs without reflection.
 
 ## 🏗 Supported Conversions for Java
 

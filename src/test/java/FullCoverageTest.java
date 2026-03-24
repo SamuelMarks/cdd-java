@@ -1,5 +1,5 @@
 import java.io.File;
-import java.nio.file.Files;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -189,7 +189,7 @@ public class FullCoverageTest {
         // 4. CLI branches
         String testJson = openapi.Emit.toString(api);
         File jsonFile = new File("test_cov.json");
-        Files.write(jsonFile.toPath(), testJson.getBytes());
+        try(java.io.FileOutputStream fos = new java.io.FileOutputStream(jsonFile)) { fos.write(testJson.getBytes()); }
         
         
         try { cli.Main.main(new String[]{"from_openapi"}); } catch (Exception e) {}
@@ -209,11 +209,11 @@ public class FullCoverageTest {
         
         File tempSyncDir = new File("sync_test_dir");
         tempSyncDir.mkdirs();
-        File tc = new File(tempSyncDir, "classes"); tc.mkdirs(); Files.write(new File(tc, "C.java").toPath(), complexClass.getBytes());
-        File tr = new File(tempSyncDir, "routes"); tr.mkdirs(); Files.write(new File(tr, "R.java").toPath(), routeClass.getBytes());
-        File tm = new File(tempSyncDir, "mocks"); tm.mkdirs(); Files.write(new File(tm, "M.java").toPath(), mockClass.getBytes());
-        File tt = new File(tempSyncDir, "tests"); tt.mkdirs(); Files.write(new File(tt, "T.java").toPath(), testClass.getBytes());
-        File tf = new File(tempSyncDir, "functions"); tf.mkdirs(); Files.write(new File(tf, "F.java").toPath(), funcClass.getBytes());
+        File tc = new File(tempSyncDir, "classes"); tc.mkdirs(); try(java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(tc, "C.java"))) { fos.write(complexClass.getBytes()); }
+        File tr = new File(tempSyncDir, "routes"); tr.mkdirs(); try(java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(tr, "R.java"))) { fos.write(routeClass.getBytes()); }
+        File tm = new File(tempSyncDir, "mocks"); tm.mkdirs(); try(java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(tm, "M.java"))) { fos.write(mockClass.getBytes()); }
+        File tt = new File(tempSyncDir, "tests"); tt.mkdirs(); try(java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(tt, "T.java"))) { fos.write(testClass.getBytes()); }
+        File tf = new File(tempSyncDir, "functions"); tf.mkdirs(); try(java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(tf, "F.java"))) { fos.write(funcClass.getBytes()); }
         
         try { Main.main(new String[]{"sync", "-d", "sync_test_dir"}); } catch (Exception e) {}
         
