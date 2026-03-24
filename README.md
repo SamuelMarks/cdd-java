@@ -68,7 +68,7 @@ The compiler is built using `javaparser-core` for robust AST-driven extraction o
 | `Java` Models / Structs / Types | ✅ | ✅ |
 | `Java` Server Routes / Endpoints | ✅ | ✅ |
 | `Java` API Clients / SDKs | ✅ | ✅ |
-| `Java` ORM / DB Schemas | [ ] | [ ] |
+| `Java` ORM / DB Schemas | ✅ | ✅ |
 | `Java` CLI Argument Parsers | ✅ | ✅ |
 | `Java` Docstrings / Comments | ✅ | ✅ |
 
