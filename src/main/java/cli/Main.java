@@ -41,6 +41,16 @@ public class Main {
         boolean wasi = hasFlag(args, "--wasi", "CDD_WASI");
 
         if (command.equals("from_openapi")) {
+            if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
+                System.out.println("cdd-java from_openapi");
+                System.out.println("Usage:");
+                System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
+                System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]");
+                System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
+                System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
+                return;
+            }
+
             String subCommand = "to_sdk"; // Default for backward compatibility
             int subCmdIdx = 1;
             if (args.length > 1 && !args[1].startsWith("-")) {
@@ -114,6 +124,13 @@ public class Main {
             }
 
         } else if (command.equals("to_openapi")) {
+            if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
+                System.out.println("cdd-java to_openapi");
+                System.out.println("Usage:");
+                System.out.println("  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]");
+                return;
+            }
+
             String filePath = getArg(args, "-i", "CDD_INPUT_FILE");
             String outputFile = getArg(args, "-o", "CDD_OUTPUT_FILE");
             if (filePath == null) {
@@ -129,6 +146,13 @@ public class Main {
             System.out.println("Emitted OpenAPI to " + outputFile);
 
         } else if (command.equals("to_docs_json")) {
+            if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
+                System.out.println("cdd-java to_docs_json");
+                System.out.println("Usage:");
+                System.out.println("  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]");
+                return;
+            }
+
             String inputFile = getArg(args, "-i", "CDD_INPUT_FILE");
             String outputFile = getArg(args, "-o", "CDD_OUTPUT_FILE");
             boolean noImports = hasFlag(args, "--no-imports", "CDD_NO_IMPORTS");
@@ -148,8 +172,20 @@ public class Main {
             System.out.println("Emitted docs JSON to " + outputFile);
             
         } else if (command.equals("serve_json_rpc")) {
+            if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
+                System.out.println("cdd-java serve_json_rpc");
+                System.out.println("Usage:");
+                System.out.println("  cdd-java serve_json_rpc [--wasi]");
+                return;
+            }
             startStdioJsonRpcServer();
         } else if (command.equals("sync")) {
+            if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
+                System.out.println("cdd-java sync");
+                System.out.println("Usage:");
+                System.out.println("  cdd-java sync -d <dir>");
+                return;
+            }
             String dirPath = getArg(args, "-d", "CDD_DIR");
             if (dirPath == null) {
                 System.err.println("Missing -d <dir>");
@@ -348,6 +384,7 @@ public class Main {
                 return args[i+1];
             }
         }
+        if (envVar == null || envVar.isEmpty()) return null;
         String env = System.getenv(envVar);
         if (env != null && !env.trim().isEmpty()) {
             return env;
@@ -359,6 +396,7 @@ public class Main {
         for (String arg : args) {
             if (arg.equals(flag)) return true;
         }
+        if (envVar == null || envVar.isEmpty()) return false;
         String env = System.getenv(envVar);
         return env != null && (env.equalsIgnoreCase("true") || env.equals("1"));
     }
@@ -383,7 +421,9 @@ public class Main {
         System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
         System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]");
         System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
-        System.out.println("  cdd-java to_openapi -f <path/to/code> [-o <spec.json>]");
+        System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
+        System.out.println("  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]");
         System.out.println("  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]");
+        System.out.println("  cdd-java sync -d <dir>");
     }
 }
