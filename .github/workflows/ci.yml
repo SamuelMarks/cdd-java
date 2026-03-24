@@ -31,9 +31,13 @@ jobs:
         else
           WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-arm64-macos.tar.gz"
         fi
-        wget -qO wasi-sdk.tar.gz $WASI_SDK_URL
+        curl -sL -o wasi-sdk.tar.gz $WASI_SDK_URL
         tar -xf wasi-sdk.tar.gz
-        echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0" >> $GITHUB_ENV
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
+        else
+          echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0-arm64-macos" >> $GITHUB_ENV
+        fi
         
     - name: Build Standard JAR
       run: mvn clean package

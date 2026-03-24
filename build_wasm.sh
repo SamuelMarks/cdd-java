@@ -21,7 +21,7 @@ mkdir -p target/wasm
   --initialize-at-build-time=com.github.javaparser \
   --initialize-at-build-time=org.json \
   -O3 \
-  -cp target/cdd-java-0.0.1-jar-with-dependencies.jar \
+  -cp target/cdd-java-*-jar-with-dependencies.jar \
   cli.Main \
   -o target/wasm/cdd-java
 
