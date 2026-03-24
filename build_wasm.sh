@@ -10,6 +10,8 @@ if [ -z "$WASI_SDK_PATH" ]; then
 fi
 
 echo "Starting GraalVM WASM compilation..."
+mkdir -p "$GRAALVM_HOME/lib/svm/clibraries/wasm32-wasi" || sudo mkdir -p "$GRAALVM_HOME/lib/svm/clibraries/wasm32-wasi"
+mkdir -p target/wasm
 
 "$GRAALVM_HOME/bin/native-image" \
   --target=wasm32-wasi \
