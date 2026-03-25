@@ -2,68 +2,32 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  build-wasm:
+  build:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     
-    - name: Cache Maven packages
-      uses: actions/cache@v3
+    - name: Set up JDK
+      uses: actions/setup-java@v3
       with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
-        
-    - name: Setup GraalVM
-      uses: graalvm/setup-graalvm@v1
-      with:
-        java-version: '22'
-        distribution: 'graalvm'
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Download WASI SDK
-      run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz"
-        else
-          WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-arm64-macos.tar.gz"
-        fi
-        curl -sL -o wasi-sdk.tar.gz $WASI_SDK_URL
-        tar -xf wasi-sdk.tar.gz
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
-        else
-          echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-24.0-arm64-macos" >> $GITHUB_ENV
-        fi
+        java-version: '11'
+        distribution: 'temurin'
+        cache: 'maven'
         
     - name: Build Standard JAR
       run: mvn clean package
       
-    - name: Compile to WASM
-      run: ./build_wasm.sh
-      
-    - name: Install Wasmtime
-      run: curl https://wasmtime.dev/install.sh -sSf | bash && echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
-      
-    - name: Test WASM Help
-      run: wasmtime --dir . target/wasm/cdd-java.wasm --help
-      
-    - name: Test WASM RPC
-      run: |
-        echo '{"jsonrpc":"2.0","method":"version","id":1}' | wasmtime target/wasm/cdd-java.wasm serve_json_rpc > rpc_out.txt
-        grep '"result":"0.0.1"' rpc_out.txt
-        
-    - name: Test WASM from_openapi to_sdk_cli
-      run: |
-        echo '{"openapi":"3.2.0"}' > mock_spec.json
-        wasmtime --dir . target/wasm/cdd-java.wasm from_openapi to_sdk_cli -i mock_spec.json -o out_ci
-        test -f out_ci/SdkCli.java
-        
-    - name: Upload WASM artifact
+    - name: Test with Maven
+      run: mvn test
+
+    - name: Test with Makefile
+      run: make test
+
+    - name: Upload JAR artifact
       uses: actions/upload-artifact@v4
       with:
-        name: cdd-java-wasm-binary-${{ matrix.os }}
-        path: target/wasm/cdd-java.wasm
+        name: cdd-java-jar-${{ matrix.os }}
+        path: target/cdd-java-*-jar-with-dependencies.jar
