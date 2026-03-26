@@ -13,6 +13,9 @@ import java.util.Map;
  * Emits OpenAPI descriptions.
  */
 public class Emit {
+    /**
+     * Default constructor.
+     */
     public Emit() {}
 
     /**

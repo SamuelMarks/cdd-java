@@ -12,6 +12,9 @@ import java.util.Map;
  * Emits JSON designed for documentation from an OpenAPI model.
  */
 public class Emit {
+    /**
+     * Default constructor.
+     */
     public Emit() {}
 
     /**

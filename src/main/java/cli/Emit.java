@@ -3,7 +3,13 @@ package cli;
 import openapi.*;
 import java.util.Map;
 
+/**
+ * Emits the CLI application from an OpenAPI spec.
+ */
 public class Emit {
+    /**
+     * Default constructor.
+     */
     public Emit() {}
 
     private static String escape(String s) {
@@ -11,6 +17,11 @@ public class Emit {
         return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
     }
 
+    /**
+     * Emits the CLI Java code.
+     * @param api The OpenAPI spec to emit.
+     * @return The generated Java source code.
+     */
     public static String emitCli(OpenAPI api) {
         StringBuilder sb = new StringBuilder();
         sb.append("package cli;\n\n");

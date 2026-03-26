@@ -14,6 +14,9 @@ import java.util.HashMap;
  * Parses OpenAPI descriptions.
  */
 public class Parse {
+    /**
+     * Default constructor.
+     */
     public Parse() {}
 
     /**

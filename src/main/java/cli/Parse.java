@@ -4,7 +4,13 @@ import openapi.*;
 import java.util.*;
 import java.util.regex.*;
 
+/**
+ * Parses a CLI application to an OpenAPI model.
+ */
 public class Parse {
+    /**
+     * Default constructor.
+     */
     public Parse() {}
 
     private static String unescape(String s) {
@@ -12,6 +18,11 @@ public class Parse {
         return s.replace("\\n", "\n").replace("\\r", "\r").replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
+    /**
+     * Parses the CLI source code into an OpenAPI object.
+     * @param existingSource The source code string.
+     * @return The parsed OpenAPI object.
+     */
     public static OpenAPI parse(String existingSource) {
         OpenAPI api = new OpenAPI();
         String helpBody = "";

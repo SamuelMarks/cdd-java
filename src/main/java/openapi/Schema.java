@@ -11,8 +11,9 @@ public class Schema {
     /** Default constructor. */
     public Schema() {}
 
-    /** The type property. */
+    /** The $ref property. */
     public String $ref;
+    /** The type property. */
     public Object type;
     /** The title property. */
     public String title;
