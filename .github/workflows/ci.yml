@@ -10,24 +10,67 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up JDK
-      uses: actions/setup-java@v3
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
       with:
-        java-version: '11'
-        distribution: 'temurin'
+        java-version: '22'
+        distribution: 'graalvm-community'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         cache: 'maven'
+        
+    - name: Download and extract WASI SDK (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz
+        tar -xzf wasi-sdk-24.0-x86_64-linux.tar.gz
+        echo "WASI_SDK_PATH=$PWD/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
+
+    - name: Download and extract WASI SDK (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-arm64-macos.tar.gz
+        tar -xzf wasi-sdk-24.0-arm64-macos.tar.gz
+        echo "WASI_SDK_PATH=$PWD/wasi-sdk-24.0-arm64-macos" >> $GITHUB_ENV
         
     - name: Build Standard JAR
       run: mvn clean package
       
-    - name: Test with Maven
-      run: mvn test
+    - name: Build WASM
+      run: ./build_wasm.sh
 
-    - name: Test with Makefile
-      run: make test
+    - name: Verify WASM Exists
+      run: |
+        if [ ! -f "target/wasm/cdd-java.wasm" ]; then
+          echo "WASM binary not found!"
+          exit 1
+        fi
 
-    - name: Upload JAR artifact
+    - name: Install Wasmtime
+      run: curl https://wasmtime.dev/install.sh -sSf | bash
+
+    - name: Test WASM Help Command
+      run: ~/.wasmtime/bin/wasmtime target/wasm/cdd-java.wasm --help
+
+    - name: Test WASM JSON RPC
+      run: |
+        echo '{"jsonrpc":"2.0","method":"version","id":1}' | ~/.wasmtime/bin/wasmtime target/wasm/cdd-java.wasm serve_json_rpc > rpc_out.txt
+        cat rpc_out.txt
+        if ! grep -q '"result":"0.0.1"' rpc_out.txt; then
+          echo "RPC response mismatch"
+          exit 1
+        fi
+
+    - name: Test WASM Generation
+      run: |
+        echo '{"openapi":"3.0.0"}' > mock_spec.json
+        ~/.wasmtime/bin/wasmtime --dir . target/wasm/cdd-java.wasm from_openapi to_sdk_cli -i mock_spec.json -o out_ci
+        if [ ! -f "out_ci/SdkCli.java" ]; then
+          echo "SdkCli.java not found!"
+          exit 1
+        fi
+
+    - name: Upload WASM artifact
       uses: actions/upload-artifact@v4
       with:
-        name: cdd-java-jar-${{ matrix.os }}
-        path: target/cdd-java-*-jar-with-dependencies.jar
+        name: cdd-java-wasm-binary-${{ matrix.os }}
+        path: target/wasm/cdd-java.wasm

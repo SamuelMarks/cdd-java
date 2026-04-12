@@ -13,22 +13,45 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up JDK
-      uses: actions/setup-java@v3
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
       with:
-        java-version: '11'
-        distribution: 'temurin'
-        cache: 'maven'
-        
+        java-version: '22'
+        distribution: 'graalvm-community'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Setup WASI-SDK
+      run: |
+        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz
+        tar xf wasi-sdk-24.0-x86_64-linux.tar.gz
+        echo "WASI_SDK_PATH=$PWD/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
+
     - name: Build Standard JAR
       run: mvn clean package -DskipTests
       
-    - name: Generate Fallback WASM Stub
+    - name: Generate WASM Binary
       run: |
-        python3 -c "with open('cdd-java.wasm', 'wb') as f: f.write(b'\x00asm\x01\x00\x00\x00')"
+        chmod +x build_wasm.sh
+        ./build_wasm.sh
+        
+    - name: Verify WASM File Exists
+      run: |
+        if [ ! -f target/wasm/cdd-java.wasm ]; then
+          echo "WASM file not found!"
+          exit 1
+        fi
         
     - name: Rename and Checksum
       run: |
+        cp target/wasm/cdd-java.wasm ./cdd-java.wasm
         sha256sum cdd-java.wasm > cdd-java.wasm.sha256
         
     - name: Release
@@ -37,6 +60,6 @@ jobs:
         files: |
           cdd-java.wasm
           cdd-java.wasm.sha256
-        body: "Fallback WASM stub. Native WASM is unsupported. Please run the provided Docker image or the .jar directly."
+        body: "Standalone WASI binary for cdd-java compiled via GraalVM Native Image."
         draft: false
         prerelease: false
