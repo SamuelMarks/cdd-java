@@ -75,3 +75,18 @@ docs_traced.json
 out_docs.json
 out_spec.json
 traced_out.json
+package/node_modules
+package/dist
+package/node_modules/
+package/dist/
+package/test.js
+
+# --- Aggressively Ignored Untracked Files ---
+HelloWorld.java
+mock_spec.json
+out_ci/
+patch_pom.py
+pom_teavm_test.xml
+update_readme.py
+wasi-sdk*.tar.gz
+node_modules/
