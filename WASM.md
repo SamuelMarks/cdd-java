@@ -3,12 +3,48 @@
 | Feature | Supported | Implemented |
 |---------|-----------|-------------|
 | WASM Build | ✅ Possible | ✅ Yes |
+| Browser/Node.js SDK | ✅ Possible | ✅ Yes |
 
 WASM support for Java is currently implemented natively in this repository using GraalVM `native-image` targeting `wasm32-wasi`.
 
-## Running the WASM
+## Usage in JavaScript (Browser & Node.js)
 
-To run the WASM binary locally, you need a WASI-compliant runtime like `wasmtime` or `wasmer`.
+To support broader tooling like `cdd-ctl` and `cdd-web-ui`, the WASI binary is published as a universal NPM package using a virtual filesystem shim.
+
+### Installation
+
+```bash
+npm install @cdd/java-wasm
+```
+
+### Usage
+
+```javascript
+import { CddJavaWasm } from '@cdd/java-wasm';
+
+// Depending on your environment, you load the .wasm file into an ArrayBuffer:
+// Browser:  const buffer = await (await fetch('path/to/cdd-java.wasm')).arrayBuffer();
+// Node.js:  const buffer = await require('fs/promises').readFile('path/to/cdd-java.wasm');
+
+const engine = new CddJavaWasm(buffer);
+
+const specJson = JSON.stringify({
+    openapi: "3.2.0",
+    info: { title: "Example", version: "1.0" },
+    paths: {}
+});
+
+// Run generation in-memory
+const result = await engine.generateSdk(specJson);
+
+// Output
+console.log(result.stdout);
+console.log(result.generatedFiles["Sdk.java"]); 
+```
+
+## Running the WASM locally via CLI
+
+To run the standalone WASM binary locally, you need a WASI-compliant runtime like `wasmtime` or `wasmer`.
 You must explicitly grant directory access using the `--dir .` flag.
 
 **Using Wasmtime:**

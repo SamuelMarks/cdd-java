@@ -1,0 +1,24 @@
+{
+  "name": "@cdd/java-wasm",
+  "version": "0.0.1",
+  "description": "WASM execution engine for cdd-java",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./wasm": "./dist/cdd-java.wasm"
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "^0.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.1"
+  },
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --format=esm --platform=neutral --outfile=dist/index.js"
+  }
+}

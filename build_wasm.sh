@@ -17,13 +17,13 @@ mkdir -p target/wasm
 
 $GRAALVM_HOME/bin/native-image \
   --target=wasm32-wasi \
-  -H:WasiSdkPath=$WASI_SDK_PATH \
+  -H:+UnlockExperimentalVMOptions -H:WasiSdkPath=$WASI_SDK_PATH \
   --no-fallback \
   -cp target/cdd-java-0.0.1-jar-with-dependencies.jar \
   --initialize-at-build-time=com.github.javaparser \
   --initialize-at-build-time=org.json \
   -O3 \
-  -g0 \
+   \
   cli.Main \
   -o target/wasm/cdd-java
 

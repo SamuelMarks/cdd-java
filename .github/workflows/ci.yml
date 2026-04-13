@@ -74,3 +74,15 @@ jobs:
       with:
         name: cdd-java-wasm-binary-${{ matrix.os }}
         path: target/wasm/cdd-java.wasm
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Build JS Wrapper
+      run: |
+        cd package
+        npm install
+        npm run build
+        cp ../target/wasm/cdd-java.wasm ./dist/cdd-java.wasm
