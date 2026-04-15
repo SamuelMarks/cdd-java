@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.ArrayList;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
+import java.util.Map;
+import java.util.HashMap;
 
 import openapi.OpenAPI;
 
@@ -39,6 +42,16 @@ public class Main {
 
         String command = args[0];
         boolean wasi = hasFlag(args, "--wasi", "CDD_WASI");
+
+        
+        if (command.equals("process_in_memory")) {
+            if (args.length < 2) {
+                System.err.println("Missing JSON payload argument");
+                throw new Exception("Exit 1");
+            }
+            processInMemory(args[1]);
+            return;
+        }
 
         if (command.equals("from_openapi")) {
             if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
@@ -227,6 +240,88 @@ public class Main {
         }
     }
 
+    
+    /**
+     * Processes payload in memory.
+     * @param payload json payload
+     */
+    public static void processInMemory(String payload) {
+        try {
+            JSONObject req = new JSONObject(payload);
+            JSONArray cmdArr = req.getJSONArray("command");
+            String[] cmdArgs = new String[cmdArr.length()];
+            for (int i=0; i<cmdArr.length(); i++) {
+                cmdArgs[i] = cmdArr.getString(i);
+            }
+            
+            JSONObject inFiles = req.has("files") ? req.getJSONObject("files") : new JSONObject();
+            JSONObject outFiles = new JSONObject();
+
+            String command = cmdArgs[0];
+            
+            if (command.equals("from_openapi")) {
+                String subCommand = "to_sdk";
+                if (cmdArgs.length > 1 && !cmdArgs[1].startsWith("-")) {
+                    subCommand = cmdArgs[1];
+                }
+                
+                boolean noGithubActions = hasFlag(cmdArgs, "--no-github-actions", null);
+                boolean noInstallablePackage = hasFlag(cmdArgs, "--no-installable-package", null);
+                
+                String specContent = inFiles.optString("spec.json", null);
+                if (specContent == null || specContent.isEmpty()) {
+                    throw new Exception("Missing spec.json in files");
+                }
+                
+                OpenAPI api = openapi.Parse.fromString(specContent);
+                
+                if (!noInstallablePackage) {
+                    outFiles.put("pom.xml", getScaffoldingPom());
+                }
+                if (!noGithubActions) {
+                    outFiles.put(".github/workflows/ci.yml", getGithubActionsCi());
+                }
+                
+                if (subCommand.equals("to_sdk_cli")) {
+                    outFiles.put("SdkCli.java", cli.Emit.emitCli(api));
+                } else if (subCommand.equals("to_sdk")) {
+                    outFiles.put("Sdk.java", classes.Emit.emit(api, null));
+                } else if (subCommand.equals("to_server")) {
+                    outFiles.put("ServerRoutes.java", routes.Emit.emit(api, null));
+                } else if (subCommand.equals("to_orm")) {
+                    outFiles.put("OrmEntities.java", orm.Emit.emit(api, null));
+                }
+                
+            } else if (command.equals("to_docs_json")) {
+                boolean noImports = hasFlag(cmdArgs, "--no-imports", null);
+                boolean noWrapping = hasFlag(cmdArgs, "--no-wrapping", null);
+                String specContent = inFiles.optString("spec.json", null);
+                if (specContent == null || specContent.isEmpty()) {
+                    throw new Exception("Missing spec.json in files");
+                }
+                OpenAPI api = openapi.Parse.fromString(specContent);
+                String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
+                outFiles.put("docs.json", docsJson);
+            } else {
+                throw new Exception("Unsupported in-memory command: " + command);
+            }
+            
+            JSONObject result = new JSONObject();
+            result.put("success", true);
+            result.put("files", outFiles);
+            System.out.println("CDD_IN_MEMORY_START");
+            System.out.println(result.toString());
+            System.out.println("CDD_IN_MEMORY_END");
+        } catch (Exception e) {
+            JSONObject err = new JSONObject();
+            err.put("success", false);
+            err.put("error", e.getMessage() != null ? e.getMessage() : e.toString());
+            System.out.println("CDD_IN_MEMORY_START");
+            System.out.println(err.toString());
+            System.out.println("CDD_IN_MEMORY_END");
+        }
+    }
+
     private static void writeFile(File file, String content) throws IOException {
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(content.getBytes("UTF-8"));
@@ -241,8 +336,8 @@ public class Main {
         }
     }
 
-    private static void generateScaffolding(File dir) throws IOException {
-        String pom = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+    private static String getScaffoldingPom() {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" " +
                 "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" " +
                 "xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 " +
@@ -273,14 +368,20 @@ public class Main {
                 "        </dependency>\n" +
                 "    </dependencies>\n" +
                 "</project>";
-        writeFile(new File(dir, "pom.xml"), pom);
+    }
+
+    private static void generateScaffolding(File dir) throws IOException {
+        writeFile(new File(dir, "pom.xml"), getScaffoldingPom());
+    }
+
+    private static String getGithubActionsCi() {
+        return "name: CI\non: [push, pull_request]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v3\n    - name: Set up JDK\n      uses: actions/setup-java@v3\n      with:\n        java-version: '11'\n        distribution: 'temurin'\n    - name: Build with Maven\n      run: mvn clean install\n";
     }
 
     private static void generateGithubActions(File dir) throws IOException {
         File ghDir = new File(dir, ".github/workflows");
         ghDir.mkdirs();
-        String ci = "name: CI\non: [push, pull_request]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v3\n    - name: Set up JDK\n      uses: actions/setup-java@v3\n      with:\n        java-version: '11'\n        distribution: 'temurin'\n    - name: Build with Maven\n      run: mvn clean install\n";
-        writeFile(new File(ghDir, "ci.yml"), ci);
+        writeFile(new File(ghDir, "ci.yml"), getGithubActionsCi());
     }
 
     private static void startStdioJsonRpcServer() throws Exception {

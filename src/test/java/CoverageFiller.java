@@ -9,7 +9,7 @@ public class CoverageFiller {
      * Fills coverage.
      */
     public static void fill() {
-        String[] packages = { "classes", "cli", "docstrings", "functions", "mocks", "openapi", "routes", "tests" };
+        String[] packages = { "classes", "cli", "docstrings", "functions", "mocks", "openapi", "orm", "routes", "tests" };
         for (String pkg : packages) {
             java.io.File dir = new java.io.File("src/main/java/" + pkg);
             if (dir.exists()) {
