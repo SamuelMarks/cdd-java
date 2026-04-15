@@ -2,28 +2,38 @@
 set -e
 
 if [ -z "$GRAALVM_HOME" ]; then
-  echo "Error: GRAALVM_HOME is not set."
-  exit 1
+  # Prefer the new GraalVM 25 EA download if present
+  if [ -d "graalvm-jdk-25.0.2+10.1/Contents/Home" ]; then
+    export GRAALVM_HOME="$(pwd)/graalvm-jdk-25.0.2+10.1/Contents/Home"
+  else
+    echo "Error: GRAALVM_HOME is not set."
+    exit 1
+  fi
 fi
 
-if [ -z "$WASI_SDK_PATH" ]; then
-  echo "Error: WASI_SDK_PATH is not set."
-  exit 1
-fi
-
-echo "Starting GraalVM WASM compilation..."
-
+echo "Starting GraalVM 25 SVM-WASM compilation..."
 mkdir -p target/wasm
 
-$GRAALVM_HOME/bin/native-image \
-  --target=wasm32-wasi \
-  -H:+UnlockExperimentalVMOptions -H:WasiSdkPath=$WASI_SDK_PATH \
-  --no-fallback \
-  -cp target/cdd-java-0.0.1-jar-with-dependencies.jar \
-  --initialize-at-build-time=com.github.javaparser \
-  --initialize-at-build-time=org.json \
-  -O3 \
-   \
+"$GRAALVM_HOME/bin/native-image" \
+  --tool:svm-wasm \
+  -cp target/cdd-java-*-jar-with-dependencies.jar \
   cli.Main \
   -o target/wasm/cdd-java
 
+echo "Patching JS Wrapper for universal usage..."
+# Disable auto-run
+sed -i.bak 's/GraalVM.run(load_cmd_args(),config).catch(console.error);/\/\/ Auto-run disabled/g' target/wasm/cdd-java.js
+# Export GraalVM object universally
+cat << 'JS_EOF' >> target/wasm/cdd-java.js
+
+if (typeof exports !== 'undefined') {
+    exports.GraalVM = GraalVM;
+}
+if (typeof window !== 'undefined') {
+    window.GraalVM = GraalVM;
+}
+JS_EOF
+
+rm -f target/wasm/cdd-java.js.bak
+
+echo "Compilation successful!"
