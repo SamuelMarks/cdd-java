@@ -32,8 +32,7 @@ jobs:
       run: mvn clean package -DskipTests
         
     - name: Install Wasm Toolchain (Binaryen)
-      run: sudo apt-get update && sudo apt-get install -y binaryen
-      shell: bash
+      run: npm install -g binaryen
 
     - name: Generate WASM
       run: |

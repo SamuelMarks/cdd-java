@@ -24,14 +24,13 @@ jobs:
     - name: Test Standard JAR
       run: mvn test
 
+    - name: Setup Node.js (for Binaryen)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
     - name: Install Wasm Toolchain (Binaryen)
-      run: |
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          sudo apt-get update && sudo apt-get install -y binaryen
-        elif [ "$RUNNER_OS" = "macOS" ]; then
-          brew install binaryen
-        fi
-      shell: bash
+      run: npm install -g binaryen
 
     - name: Compile to WASM (SVM-WASM)
       run: ./build_wasm.sh
