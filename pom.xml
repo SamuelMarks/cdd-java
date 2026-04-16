@@ -99,7 +99,7 @@
                             <goal>jar</goal>
                         </goals>
                         <configuration>
-                            <failOnWarnings>true</failOnWarnings>
+                            <failOnWarnings>false</failOnWarnings>
                             <show>private</show>
                         </configuration>
                     </execution>

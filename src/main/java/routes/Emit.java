@@ -216,7 +216,7 @@ public class Emit {
      * @param httpMethod param doc
      * @param path param doc
      * @param op param doc
-     * @param pathParams param doc
+     * @param item path param doc
      * @param model param doc
      */
     private static void emitMethodToAST(ClassOrInterfaceDeclaration classDecl, String httpMethod, String path, Operation op, openapi.PathItem item, OpenAPI model) {
