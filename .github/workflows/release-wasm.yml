@@ -14,18 +14,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up JDK
-      uses: actions/setup-java@v3
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
       with:
-        java-version: '22'
-        distribution: 'temurin'
+        java-version: '25'
+        distribution: 'graalvm'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         cache: 'maven'
-
-    - name: Download GraalVM 25 EA
-      run: |
-        curl -sL https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz | tar -xz
-        GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-jdk-25*" | head -n 1)
-        echo "GRAALVM_HOME=$PWD/${GRAALVM_DIR#./}" >> $GITHUB_ENV
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
