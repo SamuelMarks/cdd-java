@@ -27,13 +27,15 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         curl -sL https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz | tar -xz
-        echo "GRAALVM_HOME=$PWD/graalvm-jdk-25.0.2+10.1" >> $GITHUB_ENV
+        GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-jdk-25*" | head -n 1)
+        echo "GRAALVM_HOME=$PWD/${GRAALVM_DIR#./}" >> $GITHUB_ENV
 
     - name: Download GraalVM 25 EA (macOS)
       if: runner.os == 'macOS'
       run: |
         curl -sL https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_macos-aarch64_bin.tar.gz | tar -xz
-        echo "GRAALVM_HOME=$PWD/graalvm-jdk-25.0.2+10.1/Contents/Home" >> $GITHUB_ENV
+        GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-jdk-25*" | head -n 1)
+        echo "GRAALVM_HOME=$PWD/${GRAALVM_DIR#./}/Contents/Home" >> $GITHUB_ENV
 
     - name: Compile to WASM (SVM-WASM)
       run: ./build_wasm.sh

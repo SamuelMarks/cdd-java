@@ -3,8 +3,13 @@ set -e
 
 if [ -z "$GRAALVM_HOME" ]; then
   # Prefer the new GraalVM 25 EA download if present
-  if [ -d "graalvm-jdk-25.0.2+10.1/Contents/Home" ]; then
-    export GRAALVM_HOME="$(pwd)/graalvm-jdk-25.0.2+10.1/Contents/Home"
+  GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-jdk-25*" | head -n 1)
+  if [ -n "$GRAALVM_DIR" ]; then
+    if [ -d "$GRAALVM_DIR/Contents/Home" ]; then
+      export GRAALVM_HOME="$(pwd)/${GRAALVM_DIR#./}/Contents/Home"
+    else
+      export GRAALVM_HOME="$(pwd)/${GRAALVM_DIR#./}"
+    fi
   else
     echo "Error: GRAALVM_HOME is not set."
     exit 1
