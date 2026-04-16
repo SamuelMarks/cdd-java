@@ -33,8 +33,8 @@ jobs:
         
     - name: Install Wasm Toolchain (Binaryen)
       run: |
-        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-x86_64-linux.tar.gz | tar -xz
-        echo "$PWD/binaryen-version_116/bin" >> $GITHUB_PATH
+        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-x86_64-linux.tar.gz | tar -xz
+        echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
       shell: bash
 
     - name: Generate WASM

@@ -27,11 +27,11 @@ jobs:
     - name: Install Wasm Toolchain (Binaryen)
       run: |
         if [ "$RUNNER_OS" = "Linux" ]; then
-          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-x86_64-linux.tar.gz | tar -xz
-          echo "$PWD/binaryen-version_116/bin" >> $GITHUB_PATH
+          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-x86_64-linux.tar.gz | tar -xz
+          echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
         elif [ "$RUNNER_OS" = "macOS" ]; then
-          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-arm64-macos.tar.gz | tar -xz
-          echo "$PWD/binaryen-version_116/bin" >> $GITHUB_PATH
+          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-arm64-macos.tar.gz | tar -xz
+          echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
         fi
       shell: bash
 
