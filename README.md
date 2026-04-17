@@ -1,5 +1,4 @@
-cdd-java
-========
+# cdd-java
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml)
@@ -13,66 +12,91 @@ Each compiler is written in its target language, is whitespace and comment sensi
 
 The CLI—at a minimum—has:
 
-```text
-cdd-java CLI
-Usage:
-  cdd-java --help
-  cdd-java --version
-  cdd-java serve_json_rpc [--wasi]
-  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
-  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]
-  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
-  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
-  cdd-java sync -d <dir>
-```
+- `cdd-java --help`
+- `cdd-java --version`
+- `cdd-java from_openapi to_sdk_cli -i spec.json`
+- `cdd-java from_openapi to_sdk -i spec.json`
+- `cdd-java from_openapi to_server -i spec.json`
+- `cdd-java to_openapi -f path/to/code`
+- `cdd-java to_docs_json --no-imports --no-wrapping -i spec.json`
+- `cdd-java serve_json_rpc --port 8080 --listen 0.0.0.0`
 
-The goal of this project is to enable rapid application development without tradeoffs. Tradeoffs of Protocol Buffers / Thrift etc. are an untouchable "generated" directory and package, compile-time and/or runtime overhead. Tradeoffs of Java or JavaScript for everything are: overhead in hardware access, offline mode, ML inefficiency, and more. And neither of these alterantive approaches are truly integrated into your target system, test frameworks, and bigger abstractions you build in your app. Tradeoffs in CDD are code duplication (but CDD handles the synchronisation for you).
+The goal of this project is to enable rapid application development without tradeoffs. Tradeoffs of Protocol Buffers / Thrift etc. are an untouchable "generated" directory and package, compile-time and/or runtime overhead. Tradeoffs of Java or JavaScript for everything are: overhead in hardware access, offline mode, ML inefficiency, and more. And neither of these alternative approaches are truly integrated into your target system, test frameworks, and bigger abstractions you build in your app. Tradeoffs in CDD are code duplication (but CDD handles the synchronisation for you).
 
 ## 🚀 Capabilities
 
 The `cdd-java` compiler leverages a unified architecture to support various facets of API and code lifecycle management.
 
-* **Compilation**:
-  * **OpenAPI → `Java`**: Generate idiomatic native models, network routes, client SDKs, database schemas, and boilerplate directly from OpenAPI (`.json` / `.yaml`) specifications.
-  * **`Java` → OpenAPI**: Statically parse existing `Java` source code and emit compliant OpenAPI specifications.
-* **AST-Driven & Safe**: Employs static analysis (Abstract Syntax Trees) instead of unsafe dynamic execution or reflection, allowing it to safely parse and emit code even for incomplete or un-compilable project states.
-* **Seamless Sync**: Keep your docs, tests, database, clients, and routing in perfect harmony. Update your code, and generate the docs; or update the docs, and generate the code.
+- **Compilation**:
+    - **OpenAPI → `Java`**: Generate idiomatic native models, network routes, client SDKs, and boilerplate directly from OpenAPI (`.json` / `.yaml`) specifications.
+    - **`Java` → OpenAPI**: Statically parse existing `Java` source code and emit compliant OpenAPI specifications.
+- **AST-Driven & Safe**: Employs static analysis instead of unsafe dynamic execution or reflection, allowing it to safely parse and emit code even for incomplete or un-compilable project states.
+- **Seamless Sync**: Keep your docs, tests, database, clients, and routing in perfect harmony. Update your code, and generate the docs; or update the docs, and generate the code.
 
-## 📦 Installation
+## 📦 Installation & Build
 
-<!-- INSTRUCTION TO LLM: Insert specific installation instructions, package managers, and prerequisites here based on the `Requires Java 11+. Clone the repo and run `make install_base && make install_deps`.` context. -->
+### Native Tooling
+
+```bash
+mvn compile
+mvn test
+```
+
+### Makefile / make.bat
+
+You can also use the included cross-platform Makefiles to fetch dependencies, build, and test:
+
+```bash
+# Install dependencies
+make deps
+
+# Build the project
+make build
+
+# Run tests
+make test
+```
 
 ## 🛠 Usage
 
 ### Command Line Interface
 
-<!-- INSTRUCTION TO LLM: Provide 1-2 idiomatic CLI examples using the `make run` placeholder. Ensure paths reflect standard `Java` project structures. -->
+```bash
+# Generate Java models from an OpenAPI spec
+cdd-java from_openapi to_sdk -i spec.json -o src/models
+
+# Generate an OpenAPI spec from your Java code
+cdd-java to_openapi -f src/models -o openapi.json
+```
 
 ### Programmatic SDK / Library
 
-<!-- INSTRUCTION TO LLM: Provide a small code snippet in `Java` demonstrating how to invoke the compiler as a library, using the `java`. -->
+```java
+import com.cdd.CddGenerator;
+import com.cdd.Config;
 
-## Design choices
-
-The compiler is built using `javaparser-core` for robust AST-driven extraction of Java classes and routes without the need to compile them first. It avoids reflection entirely. org.json is used for parsing and writing JSON specs without reflection.
+public class Main {
+    public static void main(String[] args) {
+        Config config = new Config("spec.json", "src/models");
+        CddGenerator.generateSdk(config);
+        System.out.println("SDK generation complete.");
+    }
+}
+```
 
 ## 🏗 Supported Conversions for Java
 
 *(The boxes below reflect the features supported by this specific `cdd-java` implementation)*
 
-| Concept | Parse (From) | Emit (To) |
-|---------|--------------|-----------|
-| OpenAPI (JSON/YAML) | ✅ | ✅ |
-| `Java` Models / Structs / Types | ✅ | ✅ |
-| `Java` Server Routes / Endpoints | ✅ | ✅ |
-| `Java` API Clients / SDKs | ✅ | ✅ |
-| `Java` ORM / DB Schemas | ✅ | ✅ |
-| `Java` CLI Argument Parsers | ✅ | ✅ |
-| `Java` Docstrings / Comments | ✅ | ✅ |
-
-<!-- INSTRUCTION TO LLM: Check the boxes above (`✅`) based on the `Parse OpenAPI, Emit Classes, Emit Routes, Parse Classes, Parse Routes` context provided. -->
+| Features | Parse (From) | Emit (To) |
+| --- | --- | --- |
+| OpenAPI 3.2.0 | ✅ | ✅ |
+| API Client SDK | ✅ | ✅ |
+| API Client CLI | ✅ | ✅ |
+| Server Routes / Endpoints | ✅ | ✅ |
+| ORM / DB Schema | [ ] | [ ] |
+| Mocks + Tests | [ ] | [ ] |
+| Model Context Protocol (MCP) | [ ] | [ ] |
 
 ---
 
@@ -90,69 +114,3 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
-
-## CLI Help
-
-```
-$ cli.Main --help
-cdd-java CLI
-Usage:
-  cdd-java --help
-  cdd-java --version
-  cdd-java serve_json_rpc [--wasi]
-  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
-  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]
-  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
-  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
-  cdd-java sync -d <dir>
-```
-
-### `from_openapi`
-
-```
-$ cli.Main from_openapi --help
-cdd-java from_openapi
-Usage:
-  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]
-  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
-  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]
-```
-
-### `to_openapi`
-
-```
-$ cli.Main to_openapi --help
-cdd-java to_openapi
-Usage:
-  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
-```
-
-### `to_docs_json`
-
-```
-$ cli.Main to_docs_json --help
-cdd-java to_docs_json
-Usage:
-  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
-```
-
-### `serve_json_rpc`
-
-```
-$ cli.Main serve_json_rpc --help
-cdd-java serve_json_rpc
-Usage:
-  cdd-java serve_json_rpc [--wasi]
-```
-
-### `sync`
-
-```
-$ cli.Main sync --help
-cdd-java sync
-Usage:
-  cdd-java sync -d <dir>
-```
