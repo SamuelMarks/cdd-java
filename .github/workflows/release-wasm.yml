@@ -20,22 +20,15 @@ jobs:
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Java Package
         run: mvn clean package
       - name: Build WASM
         run: |
-          if [ -f Makefile ] && grep -q build_wasm Makefile; then
-            make build_wasm || true
-            cp bin/*.wasm . 2>/dev/null || cp build/*.wasm . 2>/dev/null || cp target/wasm32-wasip1/release/*.wasm . 2>/dev/null || true
-          fi
-          # Fallback to dummy if no wasm was found
-          if ! ls *.wasm 1> /dev/null 2>&1; then
-            echo -n -e '\x00asm\x01\x00\x00\x00' > cdd-java.wasm
-          fi
-          for f in *.wasm; do
+          bash build_wasm.sh
+          for f in target/wasm/*.wasm; do
             if [ -f "$f" ]; then
               wasm-opt -O3 "$f" -o "$f" || true
             fi
@@ -51,5 +44,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          files: "*.wasm"
+          files: |
+            target/wasm/cdd-java.js
+            target/wasm/cdd-java.js.wasm
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}

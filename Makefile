@@ -98,7 +98,7 @@ build_wasm:
 	@echo "Building WASM variant..."
 	bash build_wasm.sh
 	mkdir -p bin
-	cp target/wasm/cdd-java.wasm bin/cdd-java.wasm || true
+	cp target/wasm/cdd-java.js* bin/ || true
 build_docker:
 	@echo "Building docker images..."
 	docker build -t cdd-java-alpine -f alpine.Dockerfile .
