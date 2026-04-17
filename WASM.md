@@ -23,7 +23,7 @@ npm install @cdd/java-wasm
 import { CddJavaWasm } from '@cdd/java-wasm';
 
 // Depending on your environment, you load the .wasm file into an ArrayBuffer:
-// Browser:  const buffer = await (await fetch('path/to/cdd-java.wasm')).arrayBuffer();
+// Browser:  const buffer = await (await fetch('https://github.com/SamuelMarks/cdd-java/releases/download/latest/cdd-java.wasm')).arrayBuffer();
 // Node.js:  const buffer = await require('fs/promises').readFile('path/to/cdd-java.wasm');
 
 const engine = new CddJavaWasm(buffer);
