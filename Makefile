@@ -95,12 +95,10 @@ help:
 	@echo "  all          : show this help text"
 
 build_wasm:
-	@echo "Building WASM fallback..."
-	mkdir -p build_wasm
+	@echo "Building WASM variant..."
+	bash build_wasm.sh
 	mkdir -p bin
-	python3 -c "with open('bin/cdd-java.wasm', 'wb') as f: f.write(b'\x00asm\x01\x00\x00\x00')"
-	cp bin/cdd-java.wasm cdd-java.wasm || true
-
+	cp target/wasm/cdd-java.wasm bin/cdd-java.wasm || true
 build_docker:
 	@echo "Building docker images..."
 	docker build -t cdd-java-alpine -f alpine.Dockerfile .
