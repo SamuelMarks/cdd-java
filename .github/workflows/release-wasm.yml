@@ -17,6 +17,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install binaryen
         run: sudo apt-get update && sudo apt-get install -y binaryen
+      - name: Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '23'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Java Package
+        run: mvn clean package
       - name: Build WASM
         run: |
           if [ -f Makefile ] && grep -q build_wasm Makefile; then
