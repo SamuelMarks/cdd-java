@@ -21,6 +21,7 @@ public class TestRunner {
     public static void main(String[] args) throws Exception {
         CoverageFiller.fill();
         FullCoverageTest.run();
+        WasiEnvironmentTest.run();
         System.out.println("Running tests...");
         int testsRun = 0;
         int failures = 0;

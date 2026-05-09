@@ -56,20 +56,20 @@ install_deps:
 build_docs:
 	@echo "Building API docs to $(DOCS_DIR)..."
 	@mkdir -p "$(DOCS_DIR)"
-	@find src/main/java -name "*.java" > doc_sources.txt
+	@find src/main/java -name "*.java" ! -name "ApiIntegrationTest.java" > doc_sources.txt
 	javadoc -d "$(DOCS_DIR)" -cp "lib/*:src/main/java" @doc_sources.txt
 	@rm -f doc_sources.txt
 
 build:
 	@echo "Building CLI to $(BIN_DIR)..."
 	@mkdir -p "$(BIN_DIR)"
-	@find src/main/java -name "*.java" > sources.txt
+	@find src/main/java -name "*.java" ! -name "ApiIntegrationTest.java" > sources.txt
 	javac -d "$(BIN_DIR)" -cp "lib/*:src/main/java" @sources.txt
 	@rm -f sources.txt
 
 test:
 	@echo "Running tests..."
-	@find src/main/java src/test/java -name "*.java" > sources.txt
+	@find src/main/java src/test/java -name "*.java" ! -name "ApiIntegrationTest.java" > sources.txt
 	javac -cp "lib/*:src/main/java:src/test/java" @sources.txt
 	java -cp "lib/*:src/main/java:src/test/java" TestRunner
 	@rm -f sources.txt

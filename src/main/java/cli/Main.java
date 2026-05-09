@@ -24,6 +24,14 @@ public class Main {
     /** Default constructor. */
     public Main() {}
 
+    private static File resolveFile(String path) {
+        String vfsRoot = System.getenv("CDD_WASI_VIRTUAL_ROOT");
+        if (vfsRoot != null && path.startsWith("/")) {
+            return new File(vfsRoot, path.substring(1));
+        }
+        return new File(path);
+    }
+
     /**
      * Entrypoint.
      * @param args arguments
@@ -94,9 +102,9 @@ public class Main {
 
             List<File> specFiles = new ArrayList<>();
             if (inputFile != null) {
-                specFiles.add(new File(inputFile));
+                specFiles.add(resolveFile(inputFile));
             } else if (inputDir != null) {
-                File dir = new File(inputDir);
+                File dir = resolveFile(inputDir);
                 if (dir.exists() && dir.isDirectory()) {
                     File[] files = dir.listFiles((d, name) -> name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml"));
                     if (files != null) {
@@ -107,7 +115,7 @@ public class Main {
 
             for (File specFile : specFiles) {
                 OpenAPI api = openapi.Parse.fromFile(specFile);
-                File outDir = new File(outputDir);
+                File outDir = resolveFile(outputDir);
                 outDir.mkdirs();
 
                 if (!noInstallablePackage) {
@@ -153,9 +161,9 @@ public class Main {
             if (outputFile == null) {
                 outputFile = "spec.json";
             }
-            OpenAPI fullApi = extractOpenAPI(new File(filePath));
+            OpenAPI fullApi = extractOpenAPI(resolveFile(filePath));
             String spec = openapi.Emit.toString(fullApi);
-            writeFile(new File(outputFile), spec);
+            writeFile(resolveFile(outputFile), spec);
             System.out.println("Emitted OpenAPI to " + outputFile);
 
         } else if (command.equals("to_docs_json")) {
@@ -178,10 +186,10 @@ public class Main {
             if (outputFile == null) {
                 outputFile = "docs.json";
             }
-            OpenAPI api = openapi.Parse.fromFile(new File(inputFile));
+            OpenAPI api = openapi.Parse.fromFile(resolveFile(inputFile));
             
             String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
-            writeFile(new File(outputFile), docsJson);
+            writeFile(resolveFile(outputFile), docsJson);
             System.out.println("Emitted docs JSON to " + outputFile);
             
         } else if (command.equals("serve_json_rpc")) {
@@ -204,7 +212,7 @@ public class Main {
                 System.err.println("Missing -d <dir>");
                 throw new Exception("Exit 1");
             }
-            File dir = new File(dirPath);
+            File dir = resolveFile(dirPath);
             OpenAPI fullApi = extractOpenAPI(dir);
             List<File> javaFiles = new ArrayList<>();
             findJavaFiles(dir, javaFiles);
