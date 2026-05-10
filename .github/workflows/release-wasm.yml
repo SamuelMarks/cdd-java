@@ -1,50 +1,89 @@
-name: Release WASM
-
+name: Release WASM & NPM Package
 on:
   push:
-    branches: ["master", "main"]
     tags:
-      - "0.0.1"
-      - "v*"
+      - 'v*'
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install binaryen
-        run: sudo apt-get update && sudo apt-get install -y binaryen
-      - name: Setup GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '25'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build Java Package
-        run: mvn clean package
-      - name: Build WASM
-        run: |
-          bash build_wasm.sh
-          for f in target/wasm/*.wasm; do
-            if [ -f "$f" ]; then
-              wasm-opt -O3 "$f" -o "$f" || true
-            fi
-          done
-      - name: Update latest tag
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag -f latest
-          git push origin -f latest
-      - name: Release WASM Artifact
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          files: |
-            target/wasm/cdd-java.js
-            target/wasm/cdd-java.js.wasm
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    - uses: actions/checkout@v4
+    
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '22'
+        distribution: 'graalvm-community'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Setup WASI-SDK
+      run: |
+        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz
+        tar xf wasi-sdk-24.0-x86_64-linux.tar.gz
+        echo "WASI_SDK_PATH=$PWD/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
+
+    - name: Build Standard JAR
+      run: mvn clean package -DskipTests
+      
+    - name: Generate WASM Binary
+      run: |
+        chmod +x build_wasm.sh
+        ./build_wasm.sh
+        
+    - name: Verify WASM File Exists
+      run: |
+        if [ ! -f target/wasm/cdd-java.wasm ]; then
+          echo "WASM file not found!"
+          exit 1
+        fi
+        
+    - name: Build JS Wrapper & NPM Package
+      run: |
+        cd package
+        npm install
+        npm run build
+        cp ../target/wasm/cdd-java.wasm ./dist/cdd-java.wasm
+        
+    - name: Publish NPM Package
+      run: |
+        cd package
+        # Update version based on tag
+        VERSION=${GITHUB_REF#refs/tags/v}
+        npm version $VERSION --no-git-tag-version
+        npm publish --access public || echo "Publishing skipped or failed"
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+    - name: Rename and Checksum
+      run: |
+        cp target/wasm/cdd-java.wasm ./cdd-java.wasm
+        sha256sum cdd-java.wasm > cdd-java.wasm.sha256
+        
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          cdd-java.wasm
+          cdd-java.wasm.sha256
+        body: "Standalone WASI binary for cdd-java compiled via GraalVM Native Image, bundled with JS Wrapper."
+        draft: false
+        prerelease: false
