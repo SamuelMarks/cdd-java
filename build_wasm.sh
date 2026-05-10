@@ -54,7 +54,10 @@ mkdir -p target/wasm
 "$GRAALVM_HOME/bin/native-image" \
   --tool:svm-wasm \
   --shared \
-  -H:Method=_start \
+  --initialize-at-build-time=cli.Main \
+  --shared \
+  --initialize-at-build-time=cli.Main \
+   \
   -cp target/cdd-java-*-jar-with-dependencies.jar \
   cli.Main \
   -o target/wasm/cdd-java
@@ -79,3 +82,20 @@ rm -f target/wasm/cdd-java.js.bak
 cp target/wasm/cdd-java.js.wasm target/wasm/cdd-java.wasm
 
 echo "Compilation successful!"
+
+# Rename 'main' to '_run' in the wasm file to bypass GraalVM checks in standard WASM environments
+python3 -c "
+import sys
+try:
+    with open('target/wasm/cdd-java.wasm', 'rb') as f:
+        data = f.read()
+    data = data.replace(b'\x04main', b'\x04_run')
+    data = data.replace(b'\x04main\x00', b'\x04_run\x00') # just in case
+    with open('target/wasm/cdd-java.wasm', 'wb') as f:
+        f.write(data)
+    print('Patched wasm binary export main -> _run')
+except Exception as e:
+    print('Failed to patch wasm binary:', e)
+"
+sed -i.bak 's/getExport("main")/getExport("_run")/g' target/wasm/cdd-java.js
+rm -f target/wasm/cdd-java.js.bak
