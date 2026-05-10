@@ -53,6 +53,8 @@ mkdir -p target/wasm
 
 "$GRAALVM_HOME/bin/native-image" \
   --tool:svm-wasm \
+  --shared \
+  -H:Method=_start \
   -cp target/cdd-java-*-jar-with-dependencies.jar \
   cli.Main \
   -o target/wasm/cdd-java
