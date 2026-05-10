@@ -1,21 +1,24 @@
 {
-  "name": "cdd-java-cli",
-  "version": "1.0.0",
-  "description": "JS Wrapper for cdd-java WASM module",
+  "name": "@cdd/java-wasm",
+  "version": "0.0.1",
+  "description": "WASM execution engine for cdd-java",
+  "type": "module",
   "main": "dist/index.js",
-  "browser": "dist/browser.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "node": "./dist/index.js",
-      "default": "./dist/browser.js"
-    },
-    "./cdd-java.js": "./dist/cdd-java.js",
-    "./cdd-java.js.wasm": "./dist/cdd-java.js.wasm"
+    ".": "./dist/index.js",
+    "./wasm": "./dist/cdd-java.wasm"
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "^0.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.1"
   },
   "scripts": {
-    "build": "mkdir -p dist && cp src/index.js dist/index.js && cp src/browser.js dist/browser.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "dependencies": {},
-  "devDependencies": {}
+    "build": "esbuild src/index.js --bundle --format=esm --platform=neutral --outfile=dist/index.js"
+  }
 }
