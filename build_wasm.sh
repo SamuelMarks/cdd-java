@@ -2,13 +2,13 @@
 set -e
 
 if [ -z "$GRAALVM_HOME" ]; then
-  echo "Error: GRAALVM_HOME is not set."
-  exit 1
+  echo "  [INFO] GRAALVM_HOME is not set. Skipping local GraalVM WASM compilation."
+  exit 0
 fi
 
 if [ -z "$WASI_SDK_PATH" ]; then
-  echo "Error: WASI_SDK_PATH is not set."
-  exit 1
+  echo "  [INFO] WASI_SDK_PATH is not set. Skipping local GraalVM WASM compilation."
+  exit 0
 fi
 
 echo "Starting GraalVM WASM compilation..."
@@ -26,4 +26,8 @@ $GRAALVM_HOME/bin/native-image \
    \
   cli.Main \
   -o target/wasm/cdd-java
+
+if [ -f "target/wasm/cdd-java.js.wasm" ]; then
+  mv target/wasm/cdd-java.js.wasm target/wasm/cdd-java.wasm
+fi
 
