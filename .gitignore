@@ -109,3 +109,4 @@ node_modules/
 # --- Ad-Hoc Output Dirs ---
 /out/
 /public/
+.tools/

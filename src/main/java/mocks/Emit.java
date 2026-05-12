@@ -38,7 +38,7 @@ public class Emit {
             sb.append("import java.io.IOException;\n");
             sb.append("import java.io.OutputStream;\n\n");
             sb.append("/**\n * Auto-generated mock server for ").append(title).append(".\n */\n");
-            sb.append("class ").append(title).append("MockServer {\n");
+            sb.append("public class ").append(title).append("MockServer {\n");
             sb.append("    private HttpServer server;\n\n");
             sb.append("    public void stop() {\n");
             sb.append("        if (server != null) {\n");

@@ -185,7 +185,7 @@ public class Emit {
         boolean hasBody = (op.requestBody != null);
         
         StringBuilder sb = new StringBuilder();
-        sb.append("private static int ").append(testMethodName).append("(Object rawClient) {\n");
+        sb.append("public static int ").append(testMethodName).append("(Object rawClient) {\n");
         sb.append("    int fails = 0;\n");
         sb.append("    try {\n");
         sb.append("        Class<?> clientClass = rawClient.getClass();\n");
