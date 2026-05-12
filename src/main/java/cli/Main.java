@@ -9,8 +9,6 @@ import java.io.InputStreamReader;
 
 import java.util.List;
 import java.util.ArrayList;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.IsolateThread;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -25,7 +23,7 @@ import openapi.OpenAPI;
 public class Main {
     static {
         if (System.getProperty("fake") != null) {
-            from_openapi(null);
+            from_openapi();
         }
     }
 
@@ -54,14 +52,14 @@ public class Main {
 
     public static void _start() throws Exception { main(new String[0]); }
 
-    @CEntryPoint(name = "from_openapi")
+    
     /**
      * from_openapi CEntryPoint.
      * @param thread The isolate thread.
      * @return 0 on success, non-zero on failure.
      */
 
-    public static int from_openapi(IsolateThread thread) {
+    public static int from_openapi() {
         try {
             String argsStr = System.getenv("CDD_ARGS");
             String cmdStr = System.getenv("CDD_COMMAND");
@@ -89,7 +87,7 @@ public class Main {
      */
 
     public static void main(String[] args) throws Exception {
-        if (args.length == 999) from_openapi(null);
+        if (args.length == 999) from_openapi();
 
         if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
             printHelp();
@@ -119,7 +117,7 @@ public class Main {
                 System.out.println("cdd-java from_openapi");
                 System.out.println("Usage:");
                 System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
-                System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]");
+                System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
                 System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
                 System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
                 return;
@@ -581,7 +579,7 @@ public class Main {
         System.out.println("  cdd-java --version");
         System.out.println("  cdd-java serve_json_rpc [--wasi]");
         System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
-        System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>]");
+        System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
         System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
         System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
         System.out.println("  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]");
