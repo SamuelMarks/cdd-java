@@ -77,9 +77,9 @@ export class CddJavaWasm {
     /**
      * Generates a standard SDK for cdd-java
      */
-    async generateSdk(specJsonStr) {
+    async generateSdk(specJsonStr, noGithubActions = false, noInstallablePackage = false) {
         return this.run(
-            ["cdd-java", "from_openapi", "to_sdk", "-i", "spec.json", "-o", "out"],
+            ["cdd-java", "from_openapi", "to_sdk", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : [])],
             { "spec.json": specJsonStr }
         );
     }
@@ -87,9 +87,9 @@ export class CddJavaWasm {
     /**
      * Generates a CLI-enabled SDK for cdd-java
      */
-    async generateSdkCli(specJsonStr) {
+    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false) {
         return this.run(
-            ["cdd-java", "from_openapi", "to_sdk_cli", "-i", "spec.json", "-o", "out", "--no-installable-package", "--no-github-actions"],
+            ["cdd-java", "from_openapi", "to_sdk_cli", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : [])],
             { "spec.json": specJsonStr }
         );
     }

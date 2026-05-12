@@ -29,9 +29,7 @@ public class WasiEnvironmentTest {
             String classpath = System.getProperty("java.class.path");
 
             ProcessBuilder pb = new ProcessBuilder(
-                javaBin, "-cp", classpath, 
-                "-cp",
-                classpath,
+                javaBin, "-cp", "target/classes:lib/*",
                 "cli.Main",
                 "from_openapi",
                 "to_sdk",

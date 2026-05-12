@@ -17,8 +17,8 @@ jobs:
     - name: Set up GraalVM
       uses: graalvm/setup-graalvm@v1
       with:
-        java-version: '22'
-        distribution: 'graalvm-community'
+        java-version: '25'
+        distribution: 'graalvm'
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Setup Node.js
@@ -35,11 +35,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Setup WASI-SDK
+    - name: Install Wasm Toolchain (Binaryen)
       run: |
-        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz
-        tar xf wasi-sdk-24.0-x86_64-linux.tar.gz
-        echo "WASI_SDK_PATH=$PWD/wasi-sdk-24.0-x86_64-linux" >> $GITHUB_ENV
+        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-x86_64-linux.tar.gz | tar -xz
+        echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
+      shell: bash
 
     - name: Build Standard JAR
       run: mvn clean package -DskipTests
