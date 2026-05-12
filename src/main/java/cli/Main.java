@@ -21,11 +21,6 @@ import openapi.OpenAPI;
  * CLI Entrypoint.
  */
 public class Main {
-    static {
-        if (System.getProperty("fake") != null) {
-            from_openapi();
-        }
-    }
 
     /** Default constructor. */
     public Main() {}
@@ -52,34 +47,6 @@ public class Main {
 
     public static void _start() throws Exception { main(new String[0]); }
 
-    
-    /**
-     * from_openapi CEntryPoint.
-     * @param thread The isolate thread.
-     * @return 0 on success, non-zero on failure.
-     */
-
-    public static int from_openapi() {
-        try {
-            String argsStr = System.getenv("CDD_ARGS");
-            String cmdStr = System.getenv("CDD_COMMAND");
-            if (argsStr == null || cmdStr == null) {
-                main(new String[0]);
-                return 0;
-            }
-            List<String> argList = new ArrayList<>();
-            argList.add(cmdStr);
-            for (String arg : argsStr.split(" ")) {
-                if (!arg.trim().isEmpty()) argList.add(arg.trim());
-            }
-            main(argList.toArray(new String[0]));
-            return 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return 1;
-        }
-    }
-
     /**
      * Main method.
      * @param args The command line arguments.
@@ -87,8 +54,6 @@ public class Main {
      */
 
     public static void main(String[] args) throws Exception {
-        if (args.length == 999) from_openapi();
-
         if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
             printHelp();
             return;
@@ -116,8 +81,8 @@ public class Main {
             if (hasFlag(args, "--help", null) || hasFlag(args, "-h", null)) {
                 System.out.println("cdd-java from_openapi");
                 System.out.println("Usage:");
-                System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
-                System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
+                System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
+                System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
                 System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
                 System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
                 return;
@@ -150,6 +115,7 @@ public class Main {
 
             boolean noGithubActions = hasFlag(args, "--no-github-actions", "CDD_NO_GITHUB_ACTIONS");
             boolean noInstallablePackage = hasFlag(args, "--no-installable-package", "CDD_NO_INSTALLABLE_PACKAGE");
+            boolean tests = hasFlag(args, "--tests", "CDD_TESTS");
 
             List<File> specFiles = new ArrayList<>();
             if (inputFile != null) {
@@ -180,10 +146,24 @@ public class Main {
                     String code = cli.Emit.emitCli(api);
                     writeFile(new File(outDir, "SdkCli.java"), code);
                     System.out.println("Generated SDK CLI in " + outDir.getAbsolutePath());
+                    if (tests) {
+                        String testCode = tests.Emit.emit(api, null);
+                        writeFile(new File(outDir, "SdkCliIntegrationTest.java"), testCode);
+                        String mockCode = mocks.Emit.emit(api, null);
+                        writeFile(new File(outDir, "SdkCliMockServer.java"), mockCode);
+                        System.out.println("Generated Composable Tests & Mocks in " + outDir.getAbsolutePath());
+                    }
                 } else if (subCommand.equals("to_sdk")) {
                     String code = classes.Emit.emit(api, null);
                     writeFile(new File(outDir, "Sdk.java"), code);
                     System.out.println("Generated SDK in " + outDir.getAbsolutePath());
+                    if (tests) {
+                        String testCode = tests.Emit.emit(api, null);
+                        writeFile(new File(outDir, "SdkIntegrationTest.java"), testCode);
+                        String mockCode = mocks.Emit.emit(api, null);
+                        writeFile(new File(outDir, "SdkMockServer.java"), mockCode);
+                        System.out.println("Generated Composable Tests & Mocks in " + outDir.getAbsolutePath());
+                    }
                 } else if (subCommand.equals("to_server")) {
                     String code = routes.Emit.emit(api, null);
                     writeFile(new File(outDir, "ServerRoutes.java"), code);
@@ -326,6 +306,7 @@ public class Main {
                 
                 boolean noGithubActions = hasFlag(cmdArgs, "--no-github-actions", null);
                 boolean noInstallablePackage = hasFlag(cmdArgs, "--no-installable-package", null);
+                boolean tests = hasFlag(cmdArgs, "--tests", null);
                 
                 String specContent = inFiles.optString("spec.json", null);
                 if (specContent == null || specContent.isEmpty()) {
@@ -343,8 +324,16 @@ public class Main {
                 
                 if (subCommand.equals("to_sdk_cli")) {
                     outFiles.put("SdkCli.java", cli.Emit.emitCli(api));
+                    if (tests) {
+                        outFiles.put("SdkCliIntegrationTest.java", tests.Emit.emit(api, null));
+                        outFiles.put("SdkCliMockServer.java", mocks.Emit.emit(api, null));
+                    }
                 } else if (subCommand.equals("to_sdk")) {
                     outFiles.put("Sdk.java", classes.Emit.emit(api, null));
+                    if (tests) {
+                        outFiles.put("SdkIntegrationTest.java", tests.Emit.emit(api, null));
+                        outFiles.put("SdkMockServer.java", mocks.Emit.emit(api, null));
+                    }
                 } else if (subCommand.equals("to_server")) {
                     outFiles.put("ServerRoutes.java", routes.Emit.emit(api, null));
                 } else if (subCommand.equals("to_orm")) {
@@ -578,8 +567,8 @@ public class Main {
         System.out.println("  cdd-java --help");
         System.out.println("  cdd-java --version");
         System.out.println("  cdd-java serve_json_rpc [--wasi]");
-        System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
-        System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package]");
+        System.out.println("  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
+        System.out.println("  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
         System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
         System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
         System.out.println("  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]");
