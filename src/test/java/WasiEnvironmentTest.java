@@ -29,7 +29,7 @@ public class WasiEnvironmentTest {
             String classpath = System.getProperty("java.class.path");
 
             ProcessBuilder pb = new ProcessBuilder(
-                javaBin,
+                javaBin, "-cp", classpath, 
                 "-cp",
                 classpath,
                 "cli.Main",
