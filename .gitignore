@@ -90,3 +90,22 @@ pom_teavm_test.xml
 update_readme.py
 wasi-sdk*.tar.gz
 node_modules/
+
+# --- Ad-Hoc Scripts & Tests at Root ---
+/*.py
+/*.js
+/*.mjs
+/*.ts
+/*.txt
+/Test*.java
+
+# --- Temp JSON/YAML at Root ---
+/*.json
+!/package.json
+!/package-lock.json
+/*.yaml
+/*.yml
+
+# --- Ad-Hoc Output Dirs ---
+/out/
+/public/

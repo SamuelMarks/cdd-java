@@ -28,6 +28,13 @@
             <artifactId>javaparser-core</artifactId>
             <version>3.25.8</version>
         </dependency>
+        <dependency>
+            <groupId>org.graalvm.sdk</groupId>
+            <artifactId>graal-sdk</artifactId>
+            <version>24.0.2</version>
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
@@ -62,7 +69,7 @@
                 <version>3.5.0</version>
                 <executions>
                     <execution>
-                        <id>run-tests</id>
+                        <id>run-tests-exec</id>
                         <phase>test</phase>
                         <goals>
                             <goal>java</goal>
@@ -71,6 +78,26 @@
                             <mainClass>TestRunner</mainClass>
                             <classpathScope>test</classpathScope>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

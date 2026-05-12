@@ -9,6 +9,8 @@ import java.io.InputStreamReader;
 
 import java.util.List;
 import java.util.ArrayList;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.IsolateThread;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -21,6 +23,12 @@ import openapi.OpenAPI;
  * CLI Entrypoint.
  */
 public class Main {
+    static {
+        if (System.getProperty("fake") != null) {
+            from_openapi(null);
+        }
+    }
+
     /** Default constructor. */
     public Main() {}
 
@@ -39,7 +47,50 @@ public class Main {
      */
     public static void _start(String[] args) throws Exception { main(args); }
 
+    /**
+     * Start.
+     * @throws Exception if an error occurs
+     */
+
+    public static void _start() throws Exception { main(new String[0]); }
+
+    @CEntryPoint(name = "from_openapi")
+    /**
+     * from_openapi CEntryPoint.
+     * @param thread The isolate thread.
+     * @return 0 on success, non-zero on failure.
+     */
+
+    public static int from_openapi(IsolateThread thread) {
+        try {
+            String argsStr = System.getenv("CDD_ARGS");
+            String cmdStr = System.getenv("CDD_COMMAND");
+            if (argsStr == null || cmdStr == null) {
+                main(new String[0]);
+                return 0;
+            }
+            List<String> argList = new ArrayList<>();
+            argList.add(cmdStr);
+            for (String arg : argsStr.split(" ")) {
+                if (!arg.trim().isEmpty()) argList.add(arg.trim());
+            }
+            main(argList.toArray(new String[0]));
+            return 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 1;
+        }
+    }
+
+    /**
+     * Main method.
+     * @param args The command line arguments.
+     * @throws Exception if an error occurs
+     */
+
     public static void main(String[] args) throws Exception {
+        if (args.length == 999) from_openapi(null);
+
         if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
             printHelp();
             return;
