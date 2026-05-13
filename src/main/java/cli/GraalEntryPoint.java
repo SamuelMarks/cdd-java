@@ -5,8 +5,19 @@ import org.graalvm.nativeimage.IsolateThread;
 import java.util.List;
 import java.util.ArrayList;
 
+/**
+ * Entry point for GraalVM WASI.
+ */
 public class GraalEntryPoint {
 
+    /** Default constructor. */
+    public GraalEntryPoint() {}
+
+    /**
+     * Executes the `from_openapi` command.
+     * @param thread The isolate thread.
+     * @return The exit code.
+     */
     @CEntryPoint(name = "from_openapi")
     public static int from_openapi(IsolateThread thread) {
         try {
