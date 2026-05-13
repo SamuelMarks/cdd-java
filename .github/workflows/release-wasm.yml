@@ -14,32 +14,31 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up GraalVM
-      uses: graalvm/setup-graalvm@v1
+    - name: Set up JDK
+      uses: actions/setup-java@v3
       with:
-        java-version: '25'
-        distribution: 'graalvm'
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+        
+    - name: Download GraalVM 22.3 (Linux)
+      run: |
+        curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz
+        GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-ce-java17*" | head -n 1)
+        echo "GRAALVM_HOME=$PWD/${GRAALVM_DIR#./}" >> $GITHUB_ENV
+        $PWD/${GRAALVM_DIR#./}/bin/gu install native-image
+
+    - name: Download WASI SDK (Linux)
+      run: |
+        curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz
+        tar -xzf wasi-sdk.tar.gz
+        echo "WASI_SDK_PATH=$PWD/wasi-sdk-20.0" >> $GITHUB_ENV
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         registry-url: 'https://registry.npmjs.org'
-
-    - name: Cache Maven packages
-      uses: actions/cache@v3
-      with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-maven-
-
-    - name: Install Wasm Toolchain (Binaryen)
-      run: |
-        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-x86_64-linux.tar.gz | tar -xz
-        echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
-      shell: bash
 
     - name: Build Standard JAR
       run: mvn clean package -DskipTests

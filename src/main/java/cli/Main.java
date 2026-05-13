@@ -115,7 +115,7 @@ public class Main {
 
             boolean noGithubActions = hasFlag(args, "--no-github-actions", "CDD_NO_GITHUB_ACTIONS");
             boolean noInstallablePackage = hasFlag(args, "--no-installable-package", "CDD_NO_INSTALLABLE_PACKAGE");
-            boolean tests = hasFlag(args, "--tests", "CDD_TESTS");
+            boolean generateTests = hasFlag(args, "--tests", "CDD_TESTS");
 
             List<File> specFiles = new ArrayList<>();
             if (inputFile != null) {
@@ -146,7 +146,7 @@ public class Main {
                     String code = cli.Emit.emitCli(api);
                     writeFile(new File(outDir, "SdkCli.java"), code);
                     System.out.println("Generated SDK CLI in " + outDir.getAbsolutePath());
-                    if (tests) {
+                    if (generateTests) {
                         String testCode = tests.Emit.emit(api, null);
                         writeFile(new File(outDir, "SdkCliIntegrationTest.java"), testCode);
                         String mockCode = mocks.Emit.emit(api, null);
@@ -157,7 +157,7 @@ public class Main {
                     String code = classes.Emit.emit(api, null);
                     writeFile(new File(outDir, "Sdk.java"), code);
                     System.out.println("Generated SDK in " + outDir.getAbsolutePath());
-                    if (tests) {
+                    if (generateTests) {
                         String testCode = tests.Emit.emit(api, null);
                         writeFile(new File(outDir, "SdkIntegrationTest.java"), testCode);
                         String mockCode = mocks.Emit.emit(api, null);
@@ -306,7 +306,7 @@ public class Main {
                 
                 boolean noGithubActions = hasFlag(cmdArgs, "--no-github-actions", null);
                 boolean noInstallablePackage = hasFlag(cmdArgs, "--no-installable-package", null);
-                boolean tests = hasFlag(cmdArgs, "--tests", null);
+                boolean generateTests = hasFlag(cmdArgs, "--tests", null);
                 
                 String specContent = inFiles.optString("spec.json", null);
                 if (specContent == null || specContent.isEmpty()) {
@@ -324,13 +324,13 @@ public class Main {
                 
                 if (subCommand.equals("to_sdk_cli")) {
                     outFiles.put("SdkCli.java", cli.Emit.emitCli(api));
-                    if (tests) {
+                    if (generateTests) {
                         outFiles.put("SdkCliIntegrationTest.java", tests.Emit.emit(api, null));
                         outFiles.put("SdkCliMockServer.java", mocks.Emit.emit(api, null));
                     }
                 } else if (subCommand.equals("to_sdk")) {
                     outFiles.put("Sdk.java", classes.Emit.emit(api, null));
-                    if (tests) {
+                    if (generateTests) {
                         outFiles.put("SdkIntegrationTest.java", tests.Emit.emit(api, null));
                         outFiles.put("SdkMockServer.java", mocks.Emit.emit(api, null));
                     }

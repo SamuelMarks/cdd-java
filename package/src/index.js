@@ -79,7 +79,7 @@ export class CddJavaWasm {
      */
     async generateSdk(specJsonStr, noGithubActions = false, noInstallablePackage = false, composableTestsMocks = false) {
         return this.run(
-            ["cdd-java", "from_openapi", "to_sdk", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : []), ...(composableTestsMocks ? ["--composable-tests-mocks"] : [])],
+            ["cdd-java", "from_openapi", "to_sdk", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : []), ...(composableTestsMocks ? ["--tests"] : [])],
             { "spec.json": specJsonStr }
         );
     }
@@ -89,7 +89,7 @@ export class CddJavaWasm {
      */
     async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false, composableTestsMocks = false) {
         return this.run(
-            ["cdd-java", "from_openapi", "to_sdk_cli", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : []), ...(composableTestsMocks ? ["--composable-tests-mocks"] : [])],
+            ["cdd-java", "from_openapi", "to_sdk_cli", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : []), ...(composableTestsMocks ? ["--tests"] : [])],
             { "spec.json": specJsonStr }
         );
     }

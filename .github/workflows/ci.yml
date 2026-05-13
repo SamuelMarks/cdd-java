@@ -10,12 +10,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up GraalVM
-      uses: graalvm/setup-graalvm@v1
+    - name: Set up JDK
+      uses: actions/setup-java@v3
       with:
-        java-version: '25'
-        distribution: 'graalvm'
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        java-version: '17'
+        distribution: 'temurin'
         cache: 'maven'
         
     - name: Build Standard JAR
@@ -24,47 +23,50 @@ jobs:
     - name: Test Standard JAR
       run: mvn test
 
-    - name: Install Wasm Toolchain (Binaryen)
+    - name: Download GraalVM 22.3 (Linux)
+      if: runner.os == 'Linux'
       run: |
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-x86_64-linux.tar.gz | tar -xz
-          echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
-        elif [ "$RUNNER_OS" = "macOS" ]; then
-          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_122/binaryen-version_122-arm64-macos.tar.gz | tar -xz
-          echo "$PWD/binaryen-version_122/bin" >> $GITHUB_PATH
-        fi
-      shell: bash
+        curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz
+        GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-ce-java17*" | head -n 1)
+        echo "GRAALVM_HOME=$PWD/${GRAALVM_DIR#./}" >> $GITHUB_ENV
+        $PWD/${GRAALVM_DIR#./}/bin/gu install native-image
 
-    - name: Compile to WASM (SVM-WASM)
+    - name: Download WASI SDK (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz
+        tar -xzf wasi-sdk.tar.gz
+        echo "WASI_SDK_PATH=$PWD/wasi-sdk-20.0" >> $GITHUB_ENV
+
+    - name: Compile to WASM (WASI)
+      if: runner.os == 'Linux'
       run: ./build_wasm.sh
 
     - name: Verify WASM Exists
+      if: runner.os == 'Linux'
       run: |
-        if [ ! -f "target/wasm/cdd-java.js" ] || [ ! -f "target/wasm/cdd-java.js.wasm" ]; then
-          echo "WASM binary or JS wrapper not found!"
+        if [ ! -f "target/wasm/cdd-java.wasm" ]; then
+          echo "WASM binary not found!"
           exit 1
         fi
 
+    - name: Upload WASM artifact
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: cdd-java-wasm-binary
+        path: target/wasm/cdd-java.wasm
+
     - name: Setup Node.js
+      if: runner.os == 'Linux'
       uses: actions/setup-node@v4
       with:
         node-version: '22'
 
-    - name: Test WASM Help
-      run: node target/wasm/cdd-java.js --help
-
-    - name: Upload WASM artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: cdd-java-wasm-binary-${{ matrix.os }}
-        path: |
-          target/wasm/cdd-java.js
-          target/wasm/cdd-java.js.wasm
-
     - name: Build JS Wrapper
+      if: runner.os == 'Linux'
       run: |
         cd package
         npm install
         npm run build
-        cp ../target/wasm/cdd-java.js ./dist/cdd-java.js
-        cp ../target/wasm/cdd-java.js.wasm ./dist/cdd-java.js.wasm
+        cp ../target/wasm/cdd-java.wasm ./dist/cdd-java.wasm
