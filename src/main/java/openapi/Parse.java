@@ -32,6 +32,26 @@ public class Parse {
 
             if (root.has("openapi")) api.openapi = root.getString("openapi");
 
+            if (root.has("swagger")) api.swagger = root.getString("swagger");
+            if (root.has("host")) api.host = root.getString("host");
+            if (root.has("basePath")) api.basePath = root.getString("basePath");
+            if (root.has("schemes")) {
+                api.schemes = new ArrayList<>();
+                JSONArray arr = root.getJSONArray("schemes");
+                for (int i=0; i<arr.length(); i++) api.schemes.add(arr.getString(i));
+            }
+            if (root.has("consumes")) {
+                api.consumes = new ArrayList<>();
+                JSONArray arr = root.getJSONArray("consumes");
+                for (int i=0; i<arr.length(); i++) api.consumes.add(arr.getString(i));
+            }
+            if (root.has("produces")) {
+                api.produces = new ArrayList<>();
+                JSONArray arr = root.getJSONArray("produces");
+                for (int i=0; i<arr.length(); i++) api.produces.add(arr.getString(i));
+            }
+
+
             if (root.has("info")) {
                 JSONObject infoObj = root.getJSONObject("info");
                 api.info = new Info();
@@ -65,6 +85,16 @@ public class Parse {
                 }
             }
 
+            
+            if (root.has("definitions")) {
+                api.definitions = new HashMap<>();
+                JSONObject schemasObj = root.getJSONObject("definitions");
+                for (String sKey : schemasObj.keySet()) {
+                    Schema s = parseSchema(schemasObj.getJSONObject(sKey));
+                    api.definitions.put(sKey, s);
+                }
+            }
+
             if (root.has("components")) {
                 api.components = new Components();
                 JSONObject compObj = root.getJSONObject("components");
@@ -72,39 +102,7 @@ public class Parse {
                     api.components.schemas = new HashMap<>();
                     JSONObject schemasObj = compObj.getJSONObject("schemas");
                     for (String sKey : schemasObj.keySet()) {
-                        Schema s = new Schema();
-                        JSONObject sObj = schemasObj.getJSONObject(sKey);
-                        if (sObj.has("type")) s.type = sObj.getString("type");
-                        if (sObj.has("format")) s.format = sObj.getString("format");
-                        if (sObj.has("description")) s.description = sObj.getString("description");
-                        if (sObj.has("$ref")) s.$ref = sObj.getString("$ref");
-                        if (sObj.has("items")) {
-                            Schema itemsSchema = new Schema();
-                            JSONObject iObj = sObj.getJSONObject("items");
-                            if (iObj.has("type")) itemsSchema.type = iObj.getString("type");
-                            if (iObj.has("$ref")) itemsSchema.$ref = iObj.getString("$ref");
-                            s.items = itemsSchema;
-                        }
-                        if (sObj.has("properties")) {
-                            s.properties = new HashMap<>();
-                            JSONObject propsObj = sObj.getJSONObject("properties");
-                            for (String pKey : propsObj.keySet()) {
-                                Schema ps = new Schema();
-                                JSONObject pObj = propsObj.getJSONObject(pKey);
-                                if (pObj.has("type")) ps.type = pObj.getString("type");
-                                if (pObj.has("format")) ps.format = pObj.getString("format");
-                                if (pObj.has("description")) ps.description = pObj.getString("description");
-                                if (pObj.has("$ref")) ps.$ref = pObj.getString("$ref");
-                                if (pObj.has("items")) {
-                                    Schema itemsSchema2 = new Schema();
-                                    JSONObject iObj = pObj.getJSONObject("items");
-                                    if (iObj.has("type")) itemsSchema2.type = iObj.getString("type");
-                                    if (iObj.has("$ref")) itemsSchema2.$ref = iObj.getString("$ref");
-                                    ps.items = itemsSchema2;
-                                }
-                                s.properties.put(pKey, ps);
-                            }
-                        }
+                        Schema s = parseSchema(schemasObj.getJSONObject(sKey));
                         api.components.schemas.put(sKey, s);
                     }
                 }
@@ -114,6 +112,26 @@ public class Parse {
         } catch (Exception e) {
             throw new IOException("Failed to parse OpenAPI: " + e.getMessage(), e);
         }
+    }
+
+    
+    private static Schema parseSchema(JSONObject sObj) {
+        Schema s = new Schema();
+        if (sObj.has("type")) s.type = sObj.getString("type");
+        if (sObj.has("format")) s.format = sObj.getString("format");
+        if (sObj.has("description")) s.description = sObj.getString("description");
+        if (sObj.has("$ref")) s.$ref = sObj.getString("$ref");
+        if (sObj.has("items")) {
+            s.items = parseSchema(sObj.getJSONObject("items"));
+        }
+        if (sObj.has("properties")) {
+            s.properties = new HashMap<>();
+            JSONObject propsObj = sObj.getJSONObject("properties");
+            for (String pKey : propsObj.keySet()) {
+                s.properties.put(pKey, parseSchema(propsObj.getJSONObject(pKey)));
+            }
+        }
+        return s;
     }
 
     private static Operation parseOperation(JSONObject obj) {
@@ -138,16 +156,7 @@ public class Parse {
                     MediaType mt = new MediaType();
                     JSONObject mtObj = contentObj.getJSONObject(cKey);
                     if (mtObj.has("schema")) {
-                        Schema schema = new Schema();
-                        JSONObject sObj = mtObj.getJSONObject("schema");
-                        if (sObj.has("$ref")) schema.$ref = sObj.getString("$ref");
-                        if (sObj.has("type")) schema.type = sObj.getString("type");
-                        if (sObj.has("items")) {
-                             Schema itemsSchema = new Schema();
-                             JSONObject iObj = sObj.getJSONObject("items");
-                             if (iObj.has("$ref")) itemsSchema.$ref = iObj.getString("$ref");
-                             schema.items = itemsSchema;
-                        }
+                        Schema schema = parseSchema(mtObj.getJSONObject("schema"));
                         mt.schema = schema;
                     }
                     reqBody.content.put(cKey, mt);
@@ -171,16 +180,7 @@ public class Parse {
                         MediaType mt = new MediaType();
                         JSONObject mtObj = contentObj.getJSONObject(cKey);
                         if (mtObj.has("schema")) {
-                            Schema schema = new Schema();
-                            JSONObject sObj = mtObj.getJSONObject("schema");
-                            if (sObj.has("$ref")) schema.$ref = sObj.getString("$ref");
-                            if (sObj.has("type")) schema.type = sObj.getString("type");
-                            if (sObj.has("items")) {
-                                Schema itemsSchema = new Schema();
-                                JSONObject iObj = sObj.getJSONObject("items");
-                                if (iObj.has("$ref")) itemsSchema.$ref = iObj.getString("$ref");
-                                schema.items = itemsSchema;
-                            }
+                            Schema schema = parseSchema(mtObj.getJSONObject("schema"));
                             mt.schema = schema;
                         }
                         r.content.put(cKey, mt);

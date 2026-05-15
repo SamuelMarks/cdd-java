@@ -63,10 +63,10 @@ public class WasiEnvironmentTest {
             }
 
             // Validate outputs
-            File generatedSdk = new File(outDir, "Sdk.java");
+            File generatedSdk = new File(new File(new File(outDir, "src"), "main"), new File("java", "Sdk.java").getPath());
             if (!generatedSdk.exists() || generatedSdk.length() == 0) {
                 System.err.println("Output:\n" + output);
-                throw new RuntimeException("Expected generated file /out/Sdk.java not found or is empty");
+                throw new RuntimeException("Expected generated file /out/src/main/java/Sdk.java not found or is empty");
             }
 
             System.out.println("WASI Environment Simulation Test passed.");

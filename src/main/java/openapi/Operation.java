@@ -17,6 +17,12 @@ public class Operation {
     public String summary;
     /** The description property. */
     public String description;
+    /** The consumes property. */
+    public List<String> consumes;
+    /** The produces property. */
+    public List<String> produces;
+    /** The schemes property. */
+    public List<String> schemes;
     /** The externalDocs property. */
     public ExternalDocumentation externalDocs;
     /** The operationId property. */
