@@ -107,11 +107,7 @@ public class Emit {
         md.setType("HttpResponse<String>");
         md.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
         
-        StringBuilder body = new StringBuilder();
-        body.append("{\n");
-        body.append("  HttpRequest.Builder builder = HttpRequest.newBuilder()\n");
-        body.append("      .uri(URI.create(this.baseUrl + \"").append(path).append("\"));\n");
-
+        String resolvedPath = path;
         if (op.parameters != null) {
             int pIdx = 0;
             for (Object po : op.parameters) {
@@ -120,12 +116,25 @@ public class Emit {
                     String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
                     if (!pName.isEmpty()) {
                         md.addParameter("String", pName);
-                        body.append("  // TODO: use parameter ").append(pName).append("\n");
+                        if ("path".equals(p.in)) {
+                            resolvedPath = resolvedPath.replace("{" + p.name + "}", "\" + " + pName + " + \"");
+                        } else if ("query".equals(p.in)) {
+                            if (!resolvedPath.contains("?")) {
+                                resolvedPath += "?" + p.name + "=\" + " + pName + " + \"";
+                            } else {
+                                resolvedPath += "&" + p.name + "=\" + " + pName + " + \"";
+                            }
+                        }
                         pIdx++;
                     }
                 }
             }
         }
+
+        StringBuilder body = new StringBuilder();
+        body.append("{\n");
+        body.append("  HttpRequest.Builder builder = HttpRequest.newBuilder()\n");
+        body.append("      .uri(URI.create(this.baseUrl + \"").append(resolvedPath).append("\"));\n");
 
         boolean hasBody = (op.requestBody != null);
         if (hasBody) {
