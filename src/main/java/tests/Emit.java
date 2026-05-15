@@ -38,74 +38,38 @@ public class Emit {
         StringBuilder sb = new StringBuilder();
         sb.append("import org.junit.Test;\n");
         sb.append("import static org.junit.Assert.*;\n");
-        sb.append("import java.net.http.HttpResponse;\n\n");
+        sb.append("import java.net.http.HttpResponse;\n");
+        sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
+        sb.append("import com.fasterxml.jackson.databind.JsonNode;\n\n");
         sb.append("public class ").append(testClass).append(" {\n");
         
-        sb.append("    @Test\n");
-        sb.append("    public void testFindByStatus() throws Exception {\n");
-        sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"http://localhost:8080/v2\");\n");
-        sb.append("        HttpResponse<String> res = client.findPetsByStatus(\"available\");\n");
-        sb.append("        assertEquals(200, res.statusCode());\n");
-        sb.append("        assertTrue(res.body().startsWith(\"[\"));\n");
-        sb.append("    }\n\n");
-        
-        sb.append("    @Test\n");
-        sb.append("    public void testGetInventory() throws Exception {\n");
-        sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"http://localhost:8080/v2\");\n");
-        sb.append("        HttpResponse<String> res = client.getInventory();\n");
-        sb.append("        assertEquals(200, res.statusCode());\n");
-        sb.append("        assertTrue(res.body().startsWith(\"{\"));\n");
-        sb.append("    }\n\n");
+        if (model.paths != null && model.paths.pathItems != null) {
+            for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
+                String path = entry.getKey();
+                PathItem pi = entry.getValue();
+                
+                if (pi.get != null) appendJUnitTest(sb, clientClass, "GET", path, pi.get, pi.parameters);
+                if (pi.post != null) appendJUnitTest(sb, clientClass, "POST", path, pi.post, pi.parameters);
+                if (pi.put != null) appendJUnitTest(sb, clientClass, "PUT", path, pi.put, pi.parameters);
+                if (pi.delete != null) appendJUnitTest(sb, clientClass, "DELETE", path, pi.delete, pi.parameters);
+            }
+        }
         
         sb.append("}\n");
         
         return sb.toString();
     }
     
-    /**
-     * Generated JavaDoc.
-     */
-    /**
-     * Generated JavaDoc.
-     * @param sb param doc
-     * @param httpMethod param doc
-     * @param path param doc
-     * @param op param doc
-     */
-    private static void emitTestCall(StringBuilder sb, String httpMethod, String path, Operation op) {
+    private static void appendJUnitTest(StringBuilder sb, String clientClass, String method, String path, Operation op, List<Object> pathParams) {
         String methodName = op.operationId;
         if (methodName == null || methodName.isEmpty()) {
-            /**
-             * Generated JavaDoc.
-             */
-            methodName = httpMethod.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
-        } else {
-            methodName = methodName.replaceAll("[^a-zA-Z0-9_]", "");
-        }
-        sb.append("    failures += test_").append(methodName).append("(client);\n");
-    }
-
-    /**
-     * Generated JavaDoc.
-     * @param classDecl param doc
-     * @param httpMethod param doc
-     * @param path param doc
-     * @param op param doc
-     * @param pathParams param doc
-     */
-    private static void emitTestMethodToAST(ClassOrInterfaceDeclaration classDecl, String httpMethod, String path, Operation op, List<Object> pathParams) {
-        String methodName = op.operationId;
-        if (methodName == null || methodName.isEmpty()) {
-            methodName = httpMethod.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
+            methodName = method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
         } else {
             methodName = methodName.replaceAll("[^a-zA-Z0-9_]", "");
         }
         
-        String testMethodName = "test_" + methodName;
-        if (hasMember(classDecl, testMethodName)) {
-            return;
-        }
-
+        String testMethodName = "test" + methodName.substring(0, 1).toUpperCase() + methodName.substring(1);
+        
         List<Parameter> allParams = new ArrayList<>();
         if (pathParams != null) {
             for (Object po : pathParams) {
@@ -134,51 +98,38 @@ public class Emit {
         
         boolean hasBody = (op.requestBody != null);
         
-        StringBuilder sb = new StringBuilder();
-        sb.append("public static int ").append(testMethodName).append("(Object rawClient) {\n");
-        sb.append("    int fails = 0;\n");
-        sb.append("    try {\n");
-        sb.append("        Class<?> clientClass = rawClient.getClass();\n");
-        sb.append("        java.lang.reflect.Method method = null;\n");
-        sb.append("        for (java.lang.reflect.Method m : clientClass.getMethods()) {\n");
-        sb.append("            if (m.getName().equals(\"").append(methodName).append("\")) {\n");
-        sb.append("                method = m;\n");
-        sb.append("                break;\n");
-        sb.append("            }\n");
-        sb.append("        }\n");
+        sb.append("    @Test\n");
+        sb.append("    public void ").append(testMethodName).append("() throws Exception {\n");
+        sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"http://localhost:8080/v2\");\n");
+        sb.append("        HttpResponse<String> res = client.").append(methodName).append("(");
         
-        int totalArgs = paramCount + (hasBody ? 1 : 0);
-        
-        if (totalArgs > 0) {
-            sb.append("        java.net.http.HttpResponse<String> res = (java.net.http.HttpResponse<String>) method.invoke(rawClient");
-            for(int i = 0; i < paramCount; i++) {
-                sb.append(", \"test_param_").append(i).append("\"");
-            }
-            if (hasBody) {
-                sb.append(", \"{\\\"mock\\\": \\\"true\\\"}\"");
-            }
-            sb.append(");\n");
-        } else {
-            sb.append("        java.net.http.HttpResponse<String> res = (java.net.http.HttpResponse<String>) method.invoke(rawClient);\n");
+        for (int i = 0; i < paramCount; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append("\"0\"");
         }
         
-        sb.append("        if (res.statusCode() != 200) {\n");
-        /**
-         * Generated JavaDoc.
-         */
-        sb.append("            System.err.println(\"Failed ").append(methodName).append(": Expected 200, got \" + res.statusCode());\n");
-        sb.append("            fails++;\n");
-        sb.append("        } else {\n");
-        sb.append("            System.out.println(\"Passed ").append(methodName).append("\");\n");
+        if (hasBody) {
+            if (paramCount > 0) sb.append(", ");
+            if (method.equals("POST") && path.endsWith("/createWithArray")) {
+                 sb.append("\"[{}]\"");
+            } else if (method.equals("POST") && path.endsWith("/createWithList")) {
+                 sb.append("\"[{}]\"");
+            } else {
+                 sb.append("\"{}\"");
+            }
+        }
+        
+        sb.append(");\n");
+        sb.append("        assertEquals(200, res.statusCode());\n");
+        sb.append("        if (res.body() != null && !res.body().isEmpty()) {\n");
+        sb.append("            ObjectMapper mapper = new ObjectMapper();\n");
+        sb.append("            try {\n");
+        sb.append("                mapper.readTree(res.body());\n");
+        sb.append("            } catch (Exception e) {\n");
+        sb.append("                fail(\"Failed to deserialize payload: \" + res.body());\n");
+        sb.append("            }\n");
         sb.append("        }\n");
-        sb.append("    } catch (Exception e) {\n");
-        sb.append("        System.err.println(\"Exception in ").append(methodName).append(": \" + e.getMessage());\n");
-        sb.append("        fails++;\n");
-        sb.append("    }\n");
-        sb.append("    return fails;\n");
-        sb.append("}\n");
-
-        classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
+        sb.append("    }\n\n");
     }
 
     /**
