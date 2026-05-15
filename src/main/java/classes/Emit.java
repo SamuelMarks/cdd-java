@@ -30,10 +30,6 @@ public class Emit {
      * @return Generated Java source.
      */
     public static String emit(OpenAPI model, String existingSource) {
-        if (model.components == null || model.components.schemas == null) {
-            return existingSource != null ? existingSource : "";
-        }
-
         CompilationUnit cu;
         boolean isNew = false;
         if (existingSource != null && !existingSource.trim().isEmpty()) {
@@ -49,16 +45,47 @@ public class Emit {
             cu.addImport("com.fasterxml.jackson.annotation.JsonValue");
             cu.addImport("java.util.List");
             cu.addImport("java.util.Map");
+            cu.addImport("java.net.http.HttpClient");
+            cu.addImport("java.net.http.HttpRequest");
+            cu.addImport("java.net.http.HttpResponse");
+            cu.addImport("java.net.URI");
         }
 
-        for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
-            String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
-            
-            if (className.equals("Emit") || className.equals("Parse")) {
-                continue;
-            }
+        String title = (model.info != null && model.info.title != null) ? model.info.title.replaceAll("[^a-zA-Z0-9]", "") : "Api";
+        if (title.isEmpty()) title = "Api";
+        String clientClass = title + "Client";
 
-            emitClass(cu, className, entry.getValue(), model);
+        ClassOrInterfaceDeclaration clientDecl = cu.getClassByName(clientClass).orElse(null);
+        if (clientDecl == null) {
+            clientDecl = cu.addClass(clientClass);
+            clientDecl.setModifier(Modifier.Keyword.PUBLIC, false);
+            clientDecl.addField("String", "baseUrl", Modifier.Keyword.PRIVATE);
+            clientDecl.addField("HttpClient", "httpClient", Modifier.Keyword.PRIVATE);
+
+            clientDecl.addConstructor(Modifier.Keyword.PUBLIC)
+                      .addParameter("String", "baseUrl")
+                      .setBody(StaticJavaParser.parseBlock("{ this.baseUrl = baseUrl; this.httpClient = HttpClient.newHttpClient(); }"));
+
+            if (model.paths != null && model.paths.pathItems != null) {
+                for (Map.Entry<String, openapi.PathItem> entry : model.paths.pathItems.entrySet()) {
+                    String path = entry.getKey();
+                    openapi.PathItem pi = entry.getValue();
+                    if (pi.get != null) emitClientMethod(clientDecl, "GET", path, pi.get);
+                    if (pi.post != null) emitClientMethod(clientDecl, "POST", path, pi.post);
+                    if (pi.put != null) emitClientMethod(clientDecl, "PUT", path, pi.put);
+                    if (pi.delete != null) emitClientMethod(clientDecl, "DELETE", path, pi.delete);
+                }
+            }
+        }
+
+        if (model.components != null && model.components.schemas != null) {
+            for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+                String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
+                if (className.equals("Emit") || className.equals("Parse")) {
+                    continue;
+                }
+                emitClass(cu, className, entry.getValue(), model);
+            }
         }
 
         if (isNew) {
@@ -66,6 +93,51 @@ public class Emit {
         } else {
             return LexicalPreservingPrinter.print(cu);
         }
+    }
+
+    private static void emitClientMethod(ClassOrInterfaceDeclaration classDecl, String method, String path, openapi.Operation op) {
+        String methodName = op.operationId;
+        if (methodName == null || methodName.isEmpty()) {
+            methodName = method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
+        } else {
+            methodName = methodName.replaceAll("[^a-zA-Z0-9_]", "");
+        }
+        
+        com.github.javaparser.ast.body.MethodDeclaration md = classDecl.addMethod(methodName, Modifier.Keyword.PUBLIC);
+        md.setType("HttpResponse<String>");
+        md.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
+        
+        StringBuilder body = new StringBuilder();
+        body.append("{\n");
+        body.append("  HttpRequest.Builder builder = HttpRequest.newBuilder()\n");
+        body.append("      .uri(URI.create(this.baseUrl + \"").append(path).append("\"));\n");
+
+        if (op.parameters != null) {
+            int pIdx = 0;
+            for (Object po : op.parameters) {
+                if (po instanceof openapi.Parameter) {
+                    openapi.Parameter p = (openapi.Parameter) po;
+                    String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
+                    if (!pName.isEmpty()) {
+                        md.addParameter("String", pName);
+                        body.append("  // TODO: use parameter ").append(pName).append("\n");
+                        pIdx++;
+                    }
+                }
+            }
+        }
+
+        boolean hasBody = (op.requestBody != null);
+        if (hasBody) {
+            md.addParameter("String", "requestBody");
+            body.append("  builder.method(\"").append(method).append("\", HttpRequest.BodyPublishers.ofString(requestBody));\n");
+        } else {
+            body.append("  builder.method(\"").append(method).append("\", HttpRequest.BodyPublishers.noBody());\n");
+        }
+        body.append("  return this.httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());\n");
+        body.append("}\n");
+        
+        md.setBody(StaticJavaParser.parseBlock(body.toString()));
     }
 
     /**
@@ -80,6 +152,7 @@ public class Emit {
             EnumDeclaration enumDecl = cu.getEnumByName(className).orElse(null);
             if (enumDecl == null) {
                 enumDecl = cu.addEnum(className);
+                enumDecl.setModifier(Modifier.Keyword.PUBLIC, false);
             } else {
                 enumDecl.getEntries().clear();
             }
@@ -96,6 +169,7 @@ public class Emit {
         ClassOrInterfaceDeclaration classDecl = cu.getClassByName(className).orElse(null);
         if (classDecl == null) {
             classDecl = cu.addClass(className);
+            classDecl.setModifier(Modifier.Keyword.PUBLIC, false);
         }
 
         StringBuilder classDoc = new StringBuilder();

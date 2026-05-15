@@ -155,13 +155,21 @@ public class Main {
                     }
                 } else if (subCommand.equals("to_sdk")) {
                     String code = classes.Emit.emit(api, null);
-                    writeFile(new File(outDir, "Sdk.java"), code);
+                    File srcMainJava = new File(outDir, "src/main/java");
+                    srcMainJava.mkdirs();
+                    File srcTestJava = new File(outDir, "src/test/java");
+                    srcTestJava.mkdirs();
+                    writeFile(new File(srcMainJava, "Sdk.java"), code);
                     System.out.println("Generated SDK in " + outDir.getAbsolutePath());
                     if (generateTests) {
                         String testCode = tests.Emit.emit(api, null);
-                        writeFile(new File(outDir, "SdkIntegrationTest.java"), testCode);
+                        String title1 = (api.info != null && api.info.title != null) ? api.info.title.replaceAll("[^a-zA-Z0-9]", "") : "Api";
+                        if (title1.isEmpty()) title1 = "Api";
+                        writeFile(new File(srcTestJava, title1 + "IntegrationTest.java"), testCode);
                         String mockCode = mocks.Emit.emit(api, null);
-                        writeFile(new File(outDir, "SdkMockServer.java"), mockCode);
+                        String title2 = (api.info != null && api.info.title != null) ? api.info.title.replaceAll("[^a-zA-Z0-9]", "") : "Api";
+                        if (title2.isEmpty()) title2 = "Api";
+                        writeFile(new File(srcTestJava, title2 + "MockServer.java"), mockCode);
                         System.out.println("Generated Composable Tests & Mocks in " + outDir.getAbsolutePath());
                     }
                 } else if (subCommand.equals("to_server")) {
@@ -329,10 +337,14 @@ public class Main {
                         outFiles.put("SdkCliMockServer.java", mocks.Emit.emit(api, null));
                     }
                 } else if (subCommand.equals("to_sdk")) {
-                    outFiles.put("Sdk.java", classes.Emit.emit(api, null));
+                    outFiles.put("src/main/java/Sdk.java", classes.Emit.emit(api, null));
                     if (generateTests) {
-                        outFiles.put("SdkIntegrationTest.java", tests.Emit.emit(api, null));
-                        outFiles.put("SdkMockServer.java", mocks.Emit.emit(api, null));
+                        String title3 = (api.info != null && api.info.title != null) ? api.info.title.replaceAll("[^a-zA-Z0-9]", "") : "Api";
+                        if (title3.isEmpty()) title3 = "Api";
+                        outFiles.put("src/test/java/" + title3 + "IntegrationTest.java", tests.Emit.emit(api, null));
+                        String title4 = (api.info != null && api.info.title != null) ? api.info.title.replaceAll("[^a-zA-Z0-9]", "") : "Api";
+                        if (title4.isEmpty()) title4 = "Api";
+                        outFiles.put("src/test/java/" + title4 + "MockServer.java", mocks.Emit.emit(api, null));
                     }
                 } else if (subCommand.equals("to_server")) {
                     outFiles.put("ServerRoutes.java", routes.Emit.emit(api, null));
@@ -413,6 +425,17 @@ public class Main {
                 "            <groupId>org.postgresql</groupId>\n" +
                 "            <artifactId>postgresql</artifactId>\n" +
                 "            <version>42.7.2</version>\n" +
+                "        </dependency>\n" +
+                "        <dependency>\n" +
+                "            <groupId>com.fasterxml.jackson.core</groupId>\n" +
+                "            <artifactId>jackson-databind</artifactId>\n" +
+                "            <version>2.15.2</version>\n" +
+                "        </dependency>\n" +
+                "        <dependency>\n" +
+                "            <groupId>junit</groupId>\n" +
+                "            <artifactId>junit</artifactId>\n" +
+                "            <version>4.13.2</version>\n" +
+                "            <scope>test</scope>\n" +
                 "        </dependency>\n" +
                 "    </dependencies>\n" +
                 "</project>";
