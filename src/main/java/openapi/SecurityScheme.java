@@ -44,6 +44,26 @@ public class SecurityScheme {
     public String bearerFormat;
 
     /**
+     * The flow property.
+     */
+    public String flow;
+
+    /**
+     * The authorizationUrl property.
+     */
+    public String authorizationUrl;
+
+    /**
+     * The tokenUrl property.
+     */
+    public String tokenUrl;
+
+    /**
+     * The scopes property.
+     */
+    public Map<String, String> scopes;
+
+    /**
      * The flows property.
      */
     public OAuthFlows flows;

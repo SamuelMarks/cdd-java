@@ -19,9 +19,19 @@ public class Response {
     public String description;
 
     /**
+     * The schema property.
+     */
+    public Schema schema;
+
+    /**
      * The headers property.
      */
     public Map<String, Object> headers;
+
+    /**
+     * The examples property.
+     */
+    public Map<String, Object> examples;
 
     /**
      * The content property.

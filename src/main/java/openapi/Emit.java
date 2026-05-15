@@ -27,6 +27,26 @@ public class Emit {
         JSONObject root = new JSONObject();
         if (api.openapi != null) root.put("openapi", api.openapi);
 
+        if (api.swagger != null) root.put("swagger", api.swagger);
+        if (api.host != null) root.put("host", api.host);
+        if (api.basePath != null) root.put("basePath", api.basePath);
+        if (api.schemes != null && !api.schemes.isEmpty()) {
+            JSONArray arr = new JSONArray();
+            for (String s : api.schemes) arr.put(s);
+            root.put("schemes", arr);
+        }
+        if (api.consumes != null && !api.consumes.isEmpty()) {
+            JSONArray arr = new JSONArray();
+            for (String s : api.consumes) arr.put(s);
+            root.put("consumes", arr);
+        }
+        if (api.produces != null && !api.produces.isEmpty()) {
+            JSONArray arr = new JSONArray();
+            for (String s : api.produces) arr.put(s);
+            root.put("produces", arr);
+        }
+
+
         if (api.info != null) {
             JSONObject infoObj = new JSONObject();
             if (api.info.title != null) infoObj.put("title", api.info.title);
@@ -53,6 +73,17 @@ public class Emit {
                 pathsObj.put(e.getKey(), piObj);
             }
             root.put("paths", pathsObj);
+        }
+
+        
+        if (api.definitions != null) {
+            JSONObject defsObj = new JSONObject();
+            for (Map.Entry<String, Schema> e : api.definitions.entrySet()) {
+                if (e.getValue() != null) {
+                    defsObj.put(e.getKey(), serializeSchema(e.getValue()));
+                }
+            }
+            root.put("definitions", defsObj);
         }
 
         if (api.components != null && api.components.schemas != null) {

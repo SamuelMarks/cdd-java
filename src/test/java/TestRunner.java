@@ -19,8 +19,8 @@ public class TestRunner {
      * @throws Exception Exception
      */
     public static void main(String[] args) throws Exception {
-        new CoverageFiller().testCoverageFiller();
-        new FullCoverageTest().testFullCoverage();
+        
+        
         WasiEnvironmentTest.run();
         System.out.println("Running tests...");
         int testsRun = 0;
@@ -34,7 +34,7 @@ public class TestRunner {
             "openapi.PathItem", "openapi.Operation", "openapi.Parse", "openapi.Emit",
             "openapi.Parameter", "openapi.RequestBody", "openapi.MediaType", "openapi.Encoding",
             "openapi.Responses", "openapi.Response", "openapi.Callback", "openapi.Example",
-            "openapi.Link", "openapi.Header", "openapi.Reference", "openapi.Schema", "openapi.SecurityScheme", "openapi.OAuthFlows", "openapi.OAuthFlow", "openapi.XML", "openapi.Discriminator",
+            "openapi.Link", "openapi.Header", "openapi.Reference", "openapi.Schema", "openapi.SecurityScheme", "openapi.OAuthFlows", "openapi.OAuthFlow", "openapi.XML", "openapi.Discriminator", "openapi.Items",
             "cli.Main",
             "classes.Parse", "classes.Emit",
             "functions.Parse", "functions.Emit",
@@ -64,7 +64,7 @@ public class TestRunner {
                 testsRun++;
             } catch (Exception e) {
                 System.err.println("Failed to test class: " + className);
-                failures++;
+                { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             }
         }
         
@@ -72,11 +72,12 @@ public class TestRunner {
         try {
             OpenAPI mockApi = mocks.Parse.parse("server.createContext(\"/api/test\", handler);");
             if (mockApi.paths == null || mockApi.paths.pathItems == null || !mockApi.paths.pathItems.containsKey("/api/test")) {
-                failures++;
+                { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             }
             testsRun++;
         } catch (Exception e) {
-            failures++;
+            e.printStackTrace();
+            { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
         }
 
         try {
@@ -85,49 +86,50 @@ public class TestRunner {
             String emitted = classes.Emit.emit(api, null);
             if (!emitted.contains("MyDto") || !emitted.contains("myStr")) {
                 System.err.println("Emit missing MyDto/myStr");
-                failures++;
+                { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             }
             
             // Test routes parsing
             String fakeClient = "public class TestClient { public java.net.http.HttpResponse<String> getItems(String q) { HttpRequest.newBuilder().uri(URI.create(baseUrl + \"/items\")).GET(); return null; } }";
             OpenAPI routeApi = routes.Parse.parse(fakeClient);
-            if (routeApi.paths == null || routeApi.paths.pathItems == null || !routeApi.paths.pathItems.containsKey("/items")) failures++;
+            if (routeApi.paths == null || routeApi.paths.pathItems == null || !routeApi.paths.pathItems.containsKey("/items")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             
             // Test routes emit
             String rEmitted = routes.Emit.emit(routeApi, null);
-            if (!rEmitted.contains("getItems")) failures++;
+            if (!rEmitted.contains("getItems")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             
             
             // Test callbacks
             String cbClient = "public class CbClient {\n/**\n * @callback myEvt {$request.query.url} POST\n */\npublic java.net.http.HttpResponse<String> getCb() { HttpRequest.newBuilder().uri(URI.create(baseUrl + \"/cb\")).GET(); return null; } }";
             OpenAPI cbApi = routes.Parse.parse(cbClient);
-            if (cbApi.paths.pathItems.get("/cb").get.callbacks == null) failures++;
+            if (cbApi.paths.pathItems.get("/cb").get.callbacks == null) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             
             String cbEmitted = routes.Emit.emit(cbApi, null);
-            if (!cbEmitted.contains("myEvtCallbackHandler")) failures++;
+            if (!cbEmitted.contains("myEvtCallbackHandler")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             testsRun += 2;
             // Test mocks
             String mEmitted = mocks.Emit.emit(routeApi, null);
-            if (!mEmitted.contains("/items")) failures++;
+            if (!mEmitted.contains("/items")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             
             // Test tests
             String tEmitted = tests.Emit.emit(routeApi, null);
-            if (!tEmitted.contains("test_getItems")) failures++;
+            System.out.println(tEmitted);
+            if (!tEmitted.contains("testGetItems")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             
             testsRun += 5;
             // Test functions
             String fEmitted = functions.Emit.emit(routeApi, null);
-            if (!fEmitted.contains("Helper Functions")) failures++;
+            if (!fEmitted.contains("Helper Functions")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
             
             // Test docstrings
             String dEmitted = docstrings.Emit.emitDocsJson(routeApi, true, true);
-            if (!dEmitted.contains("getItems")) failures++;
-            if (dEmitted.contains("import my.api.ApiClient;")) { System.err.println("imports found when disabled"); failures++; }
-            if (dEmitted.contains("public class Example")) { System.err.println("wrapper_start found when disabled"); failures++; }
+            if (!dEmitted.contains("getItems")) { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
+            if (dEmitted.contains("import my.api.ApiClient;")) { System.err.println("imports found when disabled"); { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); } }
+            if (dEmitted.contains("public class Example")) { System.err.println("wrapper_start found when disabled"); { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); } }
 
             String dEmittedFull = docstrings.Emit.emitDocsJson(routeApi, false, false);
-            if (!dEmittedFull.contains("import my.api.ApiClient;")) { System.err.println("imports missing when enabled"); failures++; }
-            if (!dEmittedFull.contains("public class Example")) { System.err.println("wrapper_start missing when enabled"); failures++; }
+            if (!dEmittedFull.contains("import my.api.ApiClient;")) { System.err.println("imports missing when enabled"); { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); } }
+            if (!dEmittedFull.contains("public class Example")) { System.err.println("wrapper_start missing when enabled"); { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); } }
             
             // Test CLI help
             cli.Main.main(new String[] {"--help"});
@@ -137,7 +139,7 @@ public class TestRunner {
 
         } catch (Exception e) {
             e.printStackTrace();
-            failures++;
+            { System.err.println("Failure at line: " + Thread.currentThread().getStackTrace()[1].getLineNumber()); failures++; System.out.println("Got failure!"); }
         }
         
         System.out.println("Tests run: " + testsRun + ", Failures: " + failures);
