@@ -8,64 +8,71 @@ import java.util.Map;
  * Info object.
  */
 public class Info {
-    /**
-     * Default constructor.
-     */
-    public Info() {}
+	/**
+	 * Default constructor.
+	 */
+	public Info() {
+	}
 
-    /**
-     * The title property.
-     */
-    public String title;
+	/**
+	 * The title property.
+	 */
+	public String title;
 
-    /**
-     * The summary property.
-     */
-    public String summary;
+	/**
+	 * The summary property.
+	 */
+	public String summary;
 
-    /**
-     * The description property.
-     */
-    public String description;
+	/**
+	 * The description property.
+	 */
+	public String description;
 
-    /**
-     * The termsOfService property.
-     */
-    public String termsOfService;
+	/**
+	 * The termsOfService property.
+	 */
+	public String termsOfService;
 
-    /**
-     * The contact property.
-     */
-    public Contact contact;
+	/**
+	 * The contact property.
+	 */
+	public Contact contact;
 
-    /**
-     * The license property.
-     */
-    public License license;
+	/**
+	 * The license property.
+	 */
+	public License license;
 
-    /**
-     * The version property.
-     */
-    public String version;
+	/**
+	 * The version property.
+	 */
+	public String version;
 
+	/**
+	 * Extensions.
+	 */
+	public Map<String, Object> extensions = new HashMap<>();
 
-    /**
-     * Extensions.
-     */
-    public Map<String, Object> extensions = new HashMap<>();
+	/**
+	 * Get extensions.
+	 * 
+	 * @return extensions
+	 */
+	public Map<String, Object> getExtensions() {
+		return extensions;
+	}
 
-    /**
-     * Get extensions.
-     * @return extensions
-     */
-    public Map<String, Object> getExtensions() { return extensions; }
-
-    /**
-     * Add extension.
-     * @param name extension name
-     * @param value extension value
-     */
-    public void addExtension(String name, Object value) {
-        if (name.startsWith("x-")) extensions.put(name, value);
-    }
+	/**
+	 * Add extension.
+	 * 
+	 * @param name
+	 *            extension name
+	 * @param value
+	 *            extension value
+	 */
+	public void addExtension(String name, Object value) {
+		if (name.startsWith("x-"))
+			extensions.put(name, value);
+	}
 }
