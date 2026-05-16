@@ -113,3 +113,25 @@ node_modules/
 
 # --- Code Formatting Settings ---
 .spotless/
+
+# Javadoc
+allclasses-index.html
+allpackages-index.html
+element-list
+help-doc.html
+index-all.html
+index.html
+overview-tree.html
+search.html
+legal/
+resource-files/
+script-files/
+cli/
+
+# Python venv
+venv/
+
+# Build
+target/
+bin/
+docs/
