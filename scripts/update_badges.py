@@ -20,12 +20,12 @@ def main():
         jacoco_csv = os.path.join("target", "site", "jacoco", "jacoco.csv")
         test_cov = 0
         if os.path.exists(jacoco_csv):
-        with open(jacoco_csv, "r") as f:
-        lines = f.readlines()[1:]
-        missed = sum(int(l.split(',')[3]) for l in lines)
-        covered = sum(int(l.split(',')[4]) for l in lines)
-        if missed + covered > 0:
-        test_cov = int((covered / (missed + covered)) * 100)
+            with open(jacoco_csv, "r") as f:
+                lines = f.readlines()[1:]
+                missed = sum(int(l.split(',')[3]) for l in lines)
+                covered = sum(int(l.split(',')[4]) for l in lines)
+                if missed + covered > 0:
+                    test_cov = int((covered / (missed + covered)) * 100)
     except Exception as e:
         print(f'Coverage calculation failed: {e}')
         test_cov = 0

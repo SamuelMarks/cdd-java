@@ -8,59 +8,66 @@ import java.util.Map;
  * Link object.
  */
 public class Link {
-    /**
-     * Default constructor.
-     */
-    public Link() {}
+	/**
+	 * Default constructor.
+	 */
+	public Link() {
+	}
 
-    /**
-     * The operationRef property.
-     */
-    public String operationRef;
+	/**
+	 * The operationRef property.
+	 */
+	public String operationRef;
 
-    /**
-     * The operationId property.
-     */
-    public String operationId;
+	/**
+	 * The operationId property.
+	 */
+	public String operationId;
 
-    /**
-     * The parameters property.
-     */
-    public Map<String, Object> parameters;
+	/**
+	 * The parameters property.
+	 */
+	public Map<String, Object> parameters;
 
-    /**
-     * The requestBody property.
-     */
-    public Object requestBody;
+	/**
+	 * The requestBody property.
+	 */
+	public Object requestBody;
 
-    /**
-     * The description property.
-     */
-    public String description;
+	/**
+	 * The description property.
+	 */
+	public String description;
 
-    /**
-     * The server property.
-     */
-    public Server server;
+	/**
+	 * The server property.
+	 */
+	public Server server;
 
+	/**
+	 * Extensions.
+	 */
+	public Map<String, Object> extensions = new HashMap<>();
 
-    /**
-     * Extensions.
-     */
-    public Map<String, Object> extensions = new HashMap<>();
+	/**
+	 * Get extensions.
+	 * 
+	 * @return extensions
+	 */
+	public Map<String, Object> getExtensions() {
+		return extensions;
+	}
 
-    /**
-     * Get extensions.
-     * @return extensions
-     */
-    public Map<String, Object> getExtensions() { return extensions; }
-
-    /**
-     * Add extension.
-     * @param name extension name
-     * @param value extension value
-     */
-    public void addExtension(String name, Object value) {
-        if (name.startsWith("x-")) extensions.put(name, value);
-    }
+	/**
+	 * Add extension.
+	 * 
+	 * @param name
+	 *            extension name
+	 * @param value
+	 *            extension value
+	 */
+	public void addExtension(String name, Object value) {
+		if (name.startsWith("x-"))
+			extensions.put(name, value);
+	}
 }

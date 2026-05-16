@@ -1,20 +1,32 @@
 #!/bin/sh
 
+set -e
+
 echo "Running pre-commit hooks..."
 
-# 1. Run tests
+# 1. Format
+echo "Running code formatting..."
+mvn spotless:apply
+mvn spotless:check
+
+# 2. Build
+echo "Building..."
+make build
+
+# 3. Test
+echo "Running tests..."
 make test
-if [ $? -ne 0 ]; then
-  echo "Tests failed! Aborting commit."
-  exit 1
-fi
 
-# 2. Update README.md with 100% coverage badges (mocking calculation for now since TestRunner outputs 100%)
-sed -i -E 's/\[\!\[Test Coverage\]\(.*\)\]\(.*\)/[![Test Coverage](https:\/\/img.shields.io\/badge\/Coverage-100%25-success.svg)](#)/g' README.md
-sed -i -E 's/\[\!\[Doc Coverage\]\(.*\)\]\(.*\)/[![Doc Coverage](https:\/\/img.shields.io\/badge\/Doc%20Coverage-100%25-success.svg)](#)/g' README.md
+# 4. Lint
+echo "Running linters..."
+mvn checkstyle:check
 
-# Add README.md back to the commit if it was modified
-git add README.md
+# 5. Update Badges
+echo "Updating badges..."
+python3 scripts/update_badges.py
+
+# Add README.md and formatting changes back to the commit
+git add README.md src/ pom.xml scripts/update_badges.py
 
 echo "Pre-commit hooks passed!"
 exit 0
