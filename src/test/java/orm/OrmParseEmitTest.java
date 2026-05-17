@@ -37,9 +37,10 @@ public class OrmParseEmitTest {
 				+ "    public ZonedDateTime zdt;\n" + "    public List<String> stringList;\n"
 				+ "    public ArrayList<Integer> intList;\n" + "    public Set noGenSet;\n"
 				+ "    public Map<String, Integer> mapVal;\n" + "    public HashMap singleGenMap;\n"
-				+ "    public Map myMap;\n" + "    public List myList;\n"
-				+ "    public Map<String> badMap;\n"
-				+ "    public SomeCustomType custom;\n" + "    public byte[] bytes;\n"				+ "    public String[] stringArray;\n" + "    public int pInt;\n" + "    public long pLong;\n"
+				+ "    public Map myMap;\n" + "    public List myList;\n" + "    public Map<String> badMap;\n"
+				+ "    public List<> emptyDiamondList;\n" + "    public Map<> emptyDiamondMap;\n"
+				+ "    public SomeCustomType custom;\n" + "    public byte[] bytes;\n"
+				+ "    public String[] stringArray;\n" + "    public int pInt;\n" + "    public long pLong;\n"
 				+ "    public double pDouble;\n" + "    public float pFloat;\n" + "    public boolean pBoolean;\n"
 				+ "    public short pShort;\n" + "    public Map<String, ?> wildcardMap;\n" + "}\n" + "@Entity\n"
 				+ "@Table\n" + "public class MissingNameTable {\n" + "    @Column\n"
@@ -338,7 +339,32 @@ public class OrmParseEmitTest {
 		// empty existing source
 		String emittedEmpty = Emit.emit(api, "   ");
 		assertTrue(emittedEmpty.contains("@Entity"));
-		}
+	}
+	@Test
+	public void testEmitNotObjectWithAdditionalProps() {
+		OpenAPI api = new OpenAPI();
+		api.components = new openapi.Components();
+		api.components.schemas = new HashMap<>();
+
+		Schema parent = new Schema();
+		parent.type = "object";
+		parent.properties = new HashMap<>();
+
+		Schema prop1 = new Schema();
+		// null type, not object, but has additionalProperties
+		prop1.type = null;
+		prop1.additionalProperties = new Schema();
+		parent.properties.put("prop1", prop1);
+
+		Schema prop2 = new Schema();
+		// null type, no additionalProperties
+		prop2.type = null;
+		parent.properties.put("prop2", prop2);
+
+		api.components.schemas.put("ParentModel", parent);
+		String emitted = Emit.emit(api, null);
+		assertNotNull(emitted);
+	}
 	@Test
 	public void testResolveTypeNotSchema() {
 		OpenAPI api = new OpenAPI();
