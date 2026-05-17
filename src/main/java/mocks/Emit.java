@@ -63,11 +63,10 @@ public class Emit {
 
 		ClassOrInterfaceDeclaration classDecl = cu.getClassByName(title + "MockServer").orElse(null);
 		if (classDecl == null) {
-			if (!isNew && false) {
-				classDecl = cu.findAll(ClassOrInterfaceDeclaration.class).get(0);
-			}
+		        if (!isNew) {
+		                classDecl = cu.findAll(ClassOrInterfaceDeclaration.class).get(0);
+		        }
 		}
-
 		if (classDecl != null) {
 			if (!hasMember(classDecl, "start")) {
 				StringBuilder sb = new StringBuilder();
