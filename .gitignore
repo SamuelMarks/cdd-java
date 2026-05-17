@@ -98,6 +98,8 @@ node_modules/
 /*.ts
 /*.txt
 /Test*.java
+doc_output.txt
+test_output.txt
 
 # --- Temp JSON/YAML at Root ---
 /*.json
@@ -126,7 +128,7 @@ search.html
 legal/
 resource-files/
 script-files/
-cli/
+/cli/
 
 # Python venv
 venv/

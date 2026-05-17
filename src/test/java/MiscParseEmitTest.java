@@ -221,7 +221,8 @@ public class MiscParseEmitTest {
 		Operation emptyOpId = new Operation();
 		emptyOpId.operationId = "";
 		noGet.post = emptyOpId;
-		docstrings.Emit.emitDocsJson(emptyApi, false, false);	}
+		docstrings.Emit.emitDocsJson(emptyApi, false, false);
+	}
 
 	@Test
 	public void testMocksParse() {
@@ -242,11 +243,13 @@ public class MiscParseEmitTest {
 		mocks.Parse.parse("class Mock { void test() { server.createContext(); } }");
 
 		// multiple for same path
-		mocks.Parse.parse("class Mock { void test() { server.createContext(\"/test3\"); server.createContext(\"/test3\"); } }");
+		mocks.Parse.parse(
+				"class Mock { void test() { server.createContext(\"/test3\"); server.createContext(\"/test3\"); } }");
 
 		// Different method scope or no scope
-		mocks.Parse.parse("class Mock { void test() { createContext(\"/test\"); something.createContext(\"/test\"); } }");
-		}
+		mocks.Parse
+				.parse("class Mock { void test() { createContext(\"/test\"); something.createContext(\"/test\"); } }");
+	}
 
 	@Test
 	public void testMocksEmit() {
@@ -290,7 +293,8 @@ public class MiscParseEmitTest {
 		OpenAPI api3 = new OpenAPI();
 		api3.paths = new Paths();
 		api3.paths.pathItems.put("/", new PathItem()); // test handlerPath.length() <= 1
-		mocks.Emit.emit(api3, null);	}
+		mocks.Emit.emit(api3, null);
+	}
 
 	@Test
 	public void testFunctionsParse() {
@@ -310,5 +314,84 @@ public class MiscParseEmitTest {
 
 		String out3 = functions.Emit.emit(null, "   ");
 		assertTrue(out3.contains("Helper Functions Generated"));
+	}
+
+	@Test
+	public void testMissingParamFields() throws Exception {
+		openapi.OpenAPI api = new openapi.OpenAPI();
+		api.paths = new openapi.Paths();
+		openapi.PathItem pi = new openapi.PathItem();
+		api.paths.pathItems.put("/test", pi);
+
+		openapi.Operation op = new openapi.Operation();
+		pi.get = op;
+
+		op.parameters = new java.util.ArrayList<>();
+		openapi.Parameter p1 = new openapi.Parameter();
+		op.parameters.add(p1);
+
+		openapi.Parameter p2 = new openapi.Parameter();
+		p2.name = "id";
+		op.parameters.add(p2);
+
+		openapi.Parameter p3 = new openapi.Parameter();
+		p3.in = "query";
+		op.parameters.add(p3);
+
+		pi.parameters = new java.util.ArrayList<>();
+		openapi.Parameter pp1 = new openapi.Parameter();
+		pi.parameters.add(pp1);
+
+		openapi.Parameter pp2 = new openapi.Parameter();
+		pp2.name = "id";
+		pi.parameters.add(pp2);
+
+		openapi.Parameter pp3 = new openapi.Parameter();
+		pp3.in = "query";
+		pi.parameters.add(pp3);
+
+		openapi.Parameter p4 = new openapi.Parameter();
+		p4.name = "match";
+		p4.in = "query";
+		op.parameters.add(p4);
+
+		openapi.Parameter pp4 = new openapi.Parameter();
+		pp4.name = "match";
+		pp4.in = "query";
+		pi.parameters.add(pp4);
+
+		openapi.Parameter p5 = new openapi.Parameter();
+		p5.name = "diffIn";
+		p5.in = "query";
+		op.parameters.add(p5);
+
+		openapi.Parameter pp5 = new openapi.Parameter();
+		pp5.name = "diffIn";
+		pp5.in = "path";
+		pi.parameters.add(pp5);
+
+		tests.Emit.emit(api, null);
+	}
+
+	@Test
+	public void testMocksEmitBranches() throws Exception {
+		openapi.OpenAPI api = new openapi.OpenAPI();
+		// Test missing info or title
+		mocks.Emit.emit(api, null);
+
+		api.info = new openapi.Info();
+		mocks.Emit.emit(api, null);
+
+		api.info.title = "MyApi";
+		mocks.Emit.emit(api, null);
+
+		// classDecl != null requires existing code with a class
+		mocks.Emit.emit(api, "class Mocks {\n}");
+
+		// test where classDecl is null
+		mocks.Emit.emit(api, "interface Something {}");
+
+		// test where classDecl remains null (no class or interface)
+		mocks.Emit.emit(api, "enum SomeEnum {}");
 	}
 }

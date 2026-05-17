@@ -63,9 +63,10 @@ public class Emit {
 
 		ClassOrInterfaceDeclaration classDecl = cu.getClassByName(title + "MockServer").orElse(null);
 		if (classDecl == null) {
-		        if (!isNew) {
-		                classDecl = cu.findAll(ClassOrInterfaceDeclaration.class).get(0);
-		        }
+			java.util.List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
+			if (!classes.isEmpty()) {
+				classDecl = classes.get(0);
+			}
 		}
 		if (classDecl != null) {
 			if (!hasMember(classDecl, "start")) {
