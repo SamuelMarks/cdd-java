@@ -33,6 +33,8 @@ public class OpenapiPojoTest {
 		Paths paths = new Paths();
 		paths.addProperty("x-ext", "extVal");
 		paths.addProperty("/path", new PathItem());
+		paths.addProperty("invalid", "val");
+		paths.addProperty("/invalid_type", "val");
 		assertEquals(2, paths.getProperties().size());
 
 		// Responses
@@ -40,15 +42,16 @@ public class OpenapiPojoTest {
 		responses.addProperty("default", new Response());
 		responses.addProperty("x-ext", "extVal");
 		responses.addProperty("200", new Response());
-		assertEquals(2, responses.getProperties().size());
+		responses.addProperty("invalid", "val");
+		responses.addProperty("201", "val"); // not a Response
+		assertEquals(4, responses.getProperties().size());
 		assertNotNull(responses.defaultResponse);
-
 		// Callback
 		Callback cb = new Callback();
 		cb.addProperty("x-ext", "extVal");
 		cb.addProperty("http://expr", new PathItem());
+		cb.addProperty("invalid", "val");
 		assertEquals(2, cb.getProperties().size());
-
 		// SecurityRequirement
 		SecurityRequirement sr = new SecurityRequirement();
 		sr.addRequirement("req", Collections.singletonList("scope"));

@@ -7,6 +7,14 @@
 
 WASM support for Java is currently implemented natively in this repository using GraalVM `native-image` targeting `wasm32-wasi`.
 
+## Local Compilation Requirements
+
+To produce a "pure WASI" binary (rather than the JS-wrapper backend produced by GraalVM 25's `--tool:svm-wasm`), the `build_wasm.sh` script explicitly utilizes **GraalVM CE 22.3**. 
+
+GraalVM 22.3's `wasm32-wasi` cross-compilation target officially strictly requires a **Linux x86_64 host environment**. 
+
+If you are developing locally on macOS (especially Apple Silicon / ARM64), the `build_wasm.sh` script is designed to transparently fall back to Docker. It will utilize an `ubuntu:22.04` AMD64 container to natively cross-compile the WASI binary. Therefore, **you must have a Docker daemon running** (e.g. Docker Desktop, OrbStack, Colima) to build the WASM target locally on macOS.
+
 ## Usage in JavaScript (Browser & Node.js)
 
 To support broader tooling like `cdd-ctl` and `cdd-web-ui`, the WASI binary is published as a universal NPM package using a virtual filesystem shim.

@@ -121,18 +121,33 @@ public class MiscParseEmitTest {
 		// null info title
 		OpenAPI api3 = new OpenAPI();
 		api3.info = new Info();
+		api3.paths = new Paths();
+		api3.paths.pathItems = null;
 		tests.Emit.emit(api3, null);
-
 		// empty opId, non-alphanumeric
 		OpenAPI api4 = new OpenAPI();
 		api4.paths = new Paths();
 		PathItem pi4_1 = new PathItem();
 		Operation op4 = new Operation();
-		op4.operationId = "!@#$a";
+		op4.operationId = "";
 		pi4_1.get = op4;
 		api4.paths.pathItems.put("/abc", pi4_1);
 		tests.Emit.emit(api4, null);
 
+		// parameter with empty safeName
+		OpenAPI api5 = new OpenAPI();
+		api5.paths = new Paths();
+		PathItem pi5 = new PathItem();
+		Operation op5 = new Operation();
+		op5.operationId = "testSafeName";
+		op5.parameters = new java.util.ArrayList<>();
+		Parameter p_invalid = new Parameter();
+		p_invalid.name = "$"; // non-alphanumeric will become empty
+		p_invalid.in = "query";
+		op5.parameters.add(p_invalid);
+		pi5.get = op5;
+		api5.paths.pathItems.put("/testSafeNamePath", pi5);
+		tests.Emit.emit(api5, null);
 		// Cover private hasMember method
 		java.lang.reflect.Method method = tests.Emit.class.getDeclaredMethod("hasMember",
 				com.github.javaparser.ast.body.ClassOrInterfaceDeclaration.class, String.class);
@@ -189,7 +204,24 @@ public class MiscParseEmitTest {
 		// Test nulls
 		docstrings.Emit.emitDocsJson(null, false, false);
 		docstrings.Emit.emitDocsJson(new OpenAPI(), false, false);
-	}
+		OpenAPI apiNullPaths = new OpenAPI();
+		apiNullPaths.paths = new Paths();
+		apiNullPaths.paths.pathItems = null;
+		docstrings.Emit.emitDocsJson(apiNullPaths, false, false);
+		// Test missing get and empty path map
+		OpenAPI emptyApi = new OpenAPI();
+		emptyApi.paths = new Paths();
+		emptyApi.paths.pathItems.put("/empty", new PathItem());
+		PathItem noGet = new PathItem();
+		noGet.post = new Operation();
+		emptyApi.paths.pathItems.put("/noget", noGet);
+		docstrings.Emit.emitDocsJson(emptyApi, false, false);
+
+		// Empty operationId
+		Operation emptyOpId = new Operation();
+		emptyOpId.operationId = "";
+		noGet.post = emptyOpId;
+		docstrings.Emit.emitDocsJson(emptyApi, false, false);	}
 
 	@Test
 	public void testMocksParse() {
@@ -206,10 +238,15 @@ public class MiscParseEmitTest {
 		// error
 		mocks.Parse.parse("invalid");
 
+		// empty args
+		mocks.Parse.parse("class Mock { void test() { server.createContext(); } }");
+
+		// multiple for same path
+		mocks.Parse.parse("class Mock { void test() { server.createContext(\"/test3\"); server.createContext(\"/test3\"); } }");
+
 		// Different method scope or no scope
-		mocks.Parse
-				.parse("class Mock { void test() { createContext(\"/test\"); something.createContext(\"/test\"); } }");
-	}
+		mocks.Parse.parse("class Mock { void test() { createContext(\"/test\"); something.createContext(\"/test\"); } }");
+		}
 
 	@Test
 	public void testMocksEmit() {
@@ -228,15 +265,32 @@ public class MiscParseEmitTest {
 		String resrc = mocks.Emit.emit(api, newSrc);
 		assertTrue(resrc.contains("MockServer"));
 
+		// Re-emit to existing source with different class name to trigger fallback
+		String otherSrc = "class OtherClass {}";
+		String otherResrc = mocks.Emit.emit(api, otherSrc);
+		assertTrue(otherResrc.contains("start"));
+
+		// existing source is empty
+		String emptyResrc = mocks.Emit.emit(api, "   ");
+		assertTrue(emptyResrc.contains("MockServer"));
+
 		// Try with missing model paths
 		mocks.Emit.emit(new OpenAPI(), null);
-
+		OpenAPI mockNullItems = new OpenAPI();
+		mockNullItems.paths = new Paths();
+		mockNullItems.paths.pathItems = null;
+		mocks.Emit.emit(mockNullItems, null);
 		// Empty title
 		OpenAPI api2 = new OpenAPI();
 		api2.info = new Info();
 		api2.info.title = "";
 		mocks.Emit.emit(api2, null);
-	}
+
+		// null info
+		OpenAPI api3 = new OpenAPI();
+		api3.paths = new Paths();
+		api3.paths.pathItems.put("/", new PathItem()); // test handlerPath.length() <= 1
+		mocks.Emit.emit(api3, null);	}
 
 	@Test
 	public void testFunctionsParse() {

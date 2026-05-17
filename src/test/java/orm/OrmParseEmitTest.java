@@ -37,8 +37,9 @@ public class OrmParseEmitTest {
 				+ "    public ZonedDateTime zdt;\n" + "    public List<String> stringList;\n"
 				+ "    public ArrayList<Integer> intList;\n" + "    public Set noGenSet;\n"
 				+ "    public Map<String, Integer> mapVal;\n" + "    public HashMap singleGenMap;\n"
-				+ "    public SomeCustomType custom;\n" + "    public byte[] bytes;\n"
-				+ "    public String[] stringArray;\n" + "    public int pInt;\n" + "    public long pLong;\n"
+				+ "    public Map myMap;\n" + "    public List myList;\n"
+				+ "    public Map<String> badMap;\n"
+				+ "    public SomeCustomType custom;\n" + "    public byte[] bytes;\n"				+ "    public String[] stringArray;\n" + "    public int pInt;\n" + "    public long pLong;\n"
 				+ "    public double pDouble;\n" + "    public float pFloat;\n" + "    public boolean pBoolean;\n"
 				+ "    public short pShort;\n" + "    public Map<String, ?> wildcardMap;\n" + "}\n" + "@Entity\n"
 				+ "@Table\n" + "public class MissingNameTable {\n" + "    @Column\n"
@@ -333,8 +334,11 @@ public class OrmParseEmitTest {
 		String emitted = Emit.emit(api, existing);
 		assertTrue(emitted.contains("@Entity"));
 		assertTrue(emitted.contains("@Table(name = \"users\")"));
-	}
 
+		// empty existing source
+		String emittedEmpty = Emit.emit(api, "   ");
+		assertTrue(emittedEmpty.contains("@Entity"));
+		}
 	@Test
 	public void testResolveTypeNotSchema() {
 		OpenAPI api = new OpenAPI();
