@@ -136,3 +136,4 @@ target/
 bin/
 docs/
 *.csv
+../cdd-java-client*/
