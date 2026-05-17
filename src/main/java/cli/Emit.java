@@ -30,8 +30,17 @@ public class Emit {
 		StringBuilder sb = new StringBuilder();
 		sb.append("package cli;\n\n");
 		sb.append("import java.util.Arrays;\n\n");
+		/**
+		 * Documented.
+		 */
 		sb.append("public class SdkCli {\n");
+		/**
+		 * Method.
+		 */
 		sb.append("    public SdkCli() {}\n\n");
+		/**
+		 * Method.
+		 */
 		sb.append("    public static void main(String[] args) {\n");
 		sb.append("        if (args.length == 0 || args[0].equals(\"--help\") || args[0].equals(\"-h\")) {\n");
 		sb.append("            printHelp();\n");

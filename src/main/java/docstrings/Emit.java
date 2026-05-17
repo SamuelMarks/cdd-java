@@ -77,6 +77,9 @@ public class Emit {
 		}
 
 		if (!noWrapping) {
+			/**
+			 * Documented.
+			 */
 			sb.append("public class Example {\n    public static void main(String[] args) {\n");
 		}
 
