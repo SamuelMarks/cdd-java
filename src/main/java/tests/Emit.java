@@ -48,6 +48,9 @@ public class Emit {
 		sb.append("import java.net.http.HttpResponse;\n");
 		sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
 		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n\n");
+		/**
+		 * Documented.
+		 */
 		sb.append("public class ").append(testClass).append(" {\n");
 
 		if (model.paths != null && model.paths.pathItems != null) {

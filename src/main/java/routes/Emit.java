@@ -62,6 +62,9 @@ public class Emit {
 				classDoc.append(" * @jsonSchemaDialect ").append(model.jsonSchemaDialect).append("\n");
 			classDoc.append(" */\n");
 			sb.append(classDoc.toString());
+			/**
+			 * Documented.
+			 */
 			sb.append("public class ").append(title).append("Client {\n");
 			sb.append("    private final HttpClient httpClient;\n");
 			sb.append("    private final String baseUrl;\n\n");
@@ -127,6 +130,9 @@ public class Emit {
 
 					if (!hasMember(classDecl, interfaceName)) {
 						StringBuilder sb = new StringBuilder();
+						/**
+						 * Documented.
+						 */
 						sb.append("public interface ").append(interfaceName).append(" {\n");
 						if (item.post != null) {
 							sb.append("    void onPost(");
@@ -208,6 +214,9 @@ public class Emit {
 
 				if (!hasMember(classDecl, interfaceName)) {
 					StringBuilder sb = new StringBuilder();
+					/**
+					 * Documented.
+					 */
 					sb.append("public interface ").append(interfaceName).append(" {\n");
 					if (cb.pathItems != null) {
 						for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {

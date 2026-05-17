@@ -18,11 +18,15 @@ import java.util.HashMap;
 import openapi.OpenAPI;
 
 /**
+ * @param args args
+ * @throws Exception e
  * CLI Entrypoint.
  */
 public class Main {
 
-	/** Default constructor. */
+	/**
+ * @param args args
+ * @throws Exception e Default constructor. */
 	public Main() {
 	}
 
@@ -35,6 +39,8 @@ public class Main {
 	}
 
 	/**
+ * @param args args
+ * @throws Exception e
 	 * Entrypoint.
 	 * 
 	 * @param args
@@ -47,17 +53,27 @@ public class Main {
 	}
 
 	/**
+ * @param args args
+ * @throws Exception e
 	 * Start.
 	 * 
 	 * @throws Exception
 	 *             if an error occurs
 	 */
 
+	/**
+ * @param args args
+ * @throws Exception e
+	 * Method.
+ * @throws Exception e
+	 */
 	public static void _start() throws Exception {
 		main(new String[0]);
 	}
 
 	/**
+ * @param args args
+ * @throws Exception e
 	 * Main method.
 	 * 
 	 * @param args
@@ -66,6 +82,13 @@ public class Main {
 	 *             if an error occurs
 	 */
 
+	/**
+ * @param args args
+ * @throws Exception e
+	 * Method.
+ * @param args args
+ * @throws Exception e
+	 */
 	public static void main(String[] args) throws Exception {
 		if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
 			printHelp();
@@ -312,6 +335,8 @@ public class Main {
 	}
 
 	/**
+ * @param args args
+ * @throws Exception e
 	 * Processes payload in memory.
 	 * 
 	 * @param payload
@@ -502,6 +527,8 @@ public class Main {
 	}
 
 	/**
+ * @param args args
+ * @throws Exception e
 	 * Generated JavaDoc.
 	 * 
 	 * @param dir
