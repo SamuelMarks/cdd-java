@@ -69,10 +69,7 @@ build:
 
 test:
 	@echo "Running tests..."
-	@find src/main/java src/test/java -name "*.java" ! -name "ApiIntegrationTest.java" > sources.txt
-	javac -cp "lib/*:src/main/java:src/test/java" @sources.txt
-	java -cp "lib/*:src/main/java:src/test/java" TestRunner
-	@rm -f sources.txt
+	mvn test
 
 run:
 	@if [ ! -f "$(BIN_DIR)/cli/Main.class" ]; then \
