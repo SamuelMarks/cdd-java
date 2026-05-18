@@ -9,11 +9,16 @@ jobs:
       uses: actions/checkout@v3
       with:
         repository: SamuelMarks/cdd-openapi-test-harness
-        path: ../
+        path: test-harness
         sparse-checkout: |
           petstore.json
           petstore_oas3.json
         sparse-checkout-cone-mode: false
+    - name: Move Specs
+      run: |
+        mv test-harness/petstore.json ../
+        mv test-harness/petstore_oas3.json ../
+        rm -rf test-harness
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
