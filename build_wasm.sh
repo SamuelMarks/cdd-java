@@ -28,7 +28,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y wget tar gzip ca-certificates curl build-essential maven
 RUN cd /opt && \
     curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz && \
-    ./graalvm-ce-java17-22.3.1/bin/gu install native-image && ./graalvm-ce-java17-22.3.1/bin/gu install wasm && \
+    ./graalvm-ce-java17-22.3.1/bin/gu install native-image && ./graalvm-ce-java17-22.3.1/bin/gu install wasm && mkdir -p /opt/graalvm-ce-java17-22.3.1/lib/svm/clibraries/wasm32-wasi && \
     curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz && \
     tar -xzf wasi-sdk.tar.gz && mv wasi-sdk-20.0* wasi-sdk-20.0 || true
 ENV GRAALVM_HOME=/opt/graalvm-ce-java17-22.3.1
