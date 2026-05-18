@@ -30,7 +30,7 @@ RUN cd /opt && \
     curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz && \
     ./graalvm-ce-java17-22.3.1/bin/gu install native-image && ./graalvm-ce-java17-22.3.1/bin/gu install wasm && \
     curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz && \
-    tar -xzf wasi-sdk.tar.gz && mv wasi-sdk-20.0+m wasi-sdk-20.0 || true
+    tar -xzf wasi-sdk.tar.gz && mv wasi-sdk-20.0* wasi-sdk-20.0 || true
 ENV GRAALVM_HOME=/opt/graalvm-ce-java17-22.3.1
 ENV WASI_SDK_PATH=/opt/wasi-sdk-20.0
 ENV JAVA_HOME=/opt/graalvm-ce-java17-22.3.1
