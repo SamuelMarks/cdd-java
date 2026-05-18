@@ -139,3 +139,12 @@ bin/
 docs/
 *.csv
 ../cdd-java-client*/
+
+# Javadoc Wildcards
+*.html
+*.js
+package-search-index.js
+type-search-index.js
+member-search-index.js
+tag-search-index.js
+module-search-index.js
