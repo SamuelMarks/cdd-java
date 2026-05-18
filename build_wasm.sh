@@ -38,7 +38,7 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 WORKDIR /app
 COPY . /app
 RUN mvn clean package -DskipTests
-RUN native-image --target=wasm32-wasi -H:WasiSdkPath=$WASI_SDK_PATH --no-fallback -cp target/cdd-java-*-jar-with-dependencies.jar --initialize-at-build-time=com.github.javaparser --initialize-at-build-time=org.json -O3 cli.Main -o target/wasm/cdd-java
+RUN native-image --target=wasm32-wasi  --no-fallback -cp target/cdd-java-*-jar-with-dependencies.jar --initialize-at-build-time=com.github.javaparser --initialize-at-build-time=org.json -O3 cli.Main -o target/wasm/cdd-java
 EOF
   $DOCKER_CMD build --platform linux/amd64 -t cdd-java-wasi -f Dockerfile.wasi .
   $DOCKER_CMD run --platform linux/amd64 --rm -v "$(pwd)/target/wasm:/output" cdd-java-wasi cp /app/target/wasm/cdd-java /output/cdd-java.wasm
