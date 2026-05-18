@@ -27,13 +27,13 @@ if docker ps &> /dev/null || ( [ -S "$HOME/.rd/docker.sock" ] && DOCKER_HOST="un
 FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y wget tar gzip ca-certificates curl build-essential maven
 RUN cd /opt && \
-    curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz && \
-    ./graalvm-ce-java17-22.3.1/bin/gu install native-image && ./graalvm-ce-java17-22.3.1/bin/gu install wasm && curl -sL -o wasm32-wasi-libs.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sysroot-20.0.tar.gz && tar -xzf wasm32-wasi-libs.tar.gz -C /opt && mv /opt/wasi-sysroot* /opt/graalvm-ce-java17-22.3.1/lib/svm/clibraries/wasm32-wasi  && \
+    curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-22.0.1/graalvm-community-jdk-22.0.1_linux-x64_bin.tar.gz | tar -xz && \
+    ./graalvm-jdk-22.0.1/bin/gu install native-image && ./graalvm-jdk-22.0.1/bin/gu install wasm && curl -sL -o wasm32-wasi-libs.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sysroot-20.0.tar.gz && tar -xzf wasm32-wasi-libs.tar.gz -C /opt && mv /opt/wasi-sysroot* /opt/graalvm-jdk-22.0.1/lib/svm/clibraries/wasm32-wasi  && \
     curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz && \
     tar -xzf wasi-sdk.tar.gz && mv wasi-sdk-20.0* wasi-sdk-20.0 || true
-ENV GRAALVM_HOME=/opt/graalvm-ce-java17-22.3.1
+ENV GRAALVM_HOME=/opt/graalvm-jdk-22.0.1
 ENV WASI_SDK_PATH=/opt/wasi-sdk-20.0
-ENV JAVA_HOME=/opt/graalvm-ce-java17-22.3.1
+ENV JAVA_HOME=/opt/graalvm-jdk-22.0.1
 ENV PATH=$JAVA_HOME/bin:$PATH
 WORKDIR /app
 COPY . /app
