@@ -20,19 +20,6 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: 'maven'
-        
-    - name: Download GraalVM 22.3 (Linux)
-      run: |
-        curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz
-        GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-ce-java17*" | head -n 1)
-        echo "GRAALVM_HOME=$PWD/${GRAALVM_DIR#./}" >> $GITHUB_ENV
-        $PWD/${GRAALVM_DIR#./}/bin/gu install native-image
-
-    - name: Download WASI SDK (Linux)
-      run: |
-        curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz
-        tar -xzf wasi-sdk.tar.gz
-        echo "WASI_SDK_PATH=$PWD/wasi-sdk-20.0" >> $GITHUB_ENV
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -60,7 +47,8 @@ jobs:
         cd package
         npm install
         npm run build
-        cp ../target/wasm/cdd-java.wasm ./dist/cdd-java.wasm
+        cp ../target/wasm/cdd-java.js ./dist/cdd-java.js
+        cp ../target/wasm/cdd-java.js.wasm ./dist/cdd-java.js.wasm
         
     - name: Publish NPM Package
       run: |
@@ -75,6 +63,7 @@ jobs:
     - name: Rename and Checksum
       run: |
         cp target/wasm/cdd-java.wasm ./cdd-java.wasm
+        cp target/wasm/cdd-java.js ./cdd-java.js
         sha256sum cdd-java.wasm > cdd-java.wasm.sha256
         
     - name: Release
@@ -82,7 +71,8 @@ jobs:
       with:
         files: |
           cdd-java.wasm
+          cdd-java.js
           cdd-java.wasm.sha256
-        body: "Standalone WASI binary for cdd-java compiled via GraalVM Native Image, bundled with JS Wrapper."
+        body: "WasmGC binary for cdd-java compiled via GraalVM Native Image 25 EA, bundled with JS Wrapper."
         draft: false
         prerelease: false
