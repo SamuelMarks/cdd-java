@@ -97,10 +97,12 @@ build_wasm:
 	mkdir -p bin
 	cp target/wasm/cdd-java.wasm bin/ || true
 	cp target/wasm/cdd-java.js* bin/ || true
+DOCKER_CMD ?= $(shell if command -v docker >/dev/null 2>&1 && docker ps >/dev/null 2>&1; then echo docker; elif command -v nerdctl >/dev/null 2>&1 && nerdctl ps >/dev/null 2>&1; then echo nerdctl; elif command -v lima >/dev/null 2>&1 && lima nerdctl ps >/dev/null 2>&1; then echo "lima nerdctl"; else echo docker; fi)
+
 build_docker:
-	@echo "Building docker images..."
-	docker build -t cdd-java-alpine -f alpine.Dockerfile .
-	docker build -t cdd-java-debian -f debian.Dockerfile .
+	@echo "Building docker images using $(DOCKER_CMD)..."
+	$(DOCKER_CMD) build -t cdd-java-alpine -f alpine.Dockerfile .
+	$(DOCKER_CMD) build -t cdd-java-debian -f debian.Dockerfile .
 
 run_docker:
 	@echo "Testing docker images..."
