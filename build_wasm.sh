@@ -29,14 +29,21 @@ fi
 if [ -n "$DOCKER_CMD" ]; then
   echo "Using container runtime ($DOCKER_CMD) for WASI compilation to match release script exactly..."
   cat << 'DOCKEREOF' > Dockerfile.wasi
-FROM ghcr.io/graalvm/native-image-community:22.3.1
-RUN microdnf install -y wget tar gzip
-RUN wget -q https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz && \
-    tar -xzf wasi-sdk-20.0-linux.tar.gz && \
-    mv wasi-sdk-20.0 /opt/wasi-sdk
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y wget tar gzip ca-certificates curl build-essential maven
+RUN cd /opt && \
+    curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-linux-amd64-22.3.1.tar.gz | tar -xz && \
+    ./graalvm-ce-java17-22.3.1/bin/gu install native-image && curl -sL -o wasm32-wasi-libs.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sysroot-20.0.tar.gz && mkdir -p /opt/graalvm-ce-java17-22.3.1/lib/svm/clibraries/wasm32-wasi && tar -xzf wasm32-wasi-libs.tar.gz -C /opt && mv /opt/wasi-sysroot*/* /opt/graalvm-ce-java17-22.3.1/lib/svm/clibraries/wasm32-wasi/ && \
+    curl -sL -o wasi-sdk.tar.gz https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz && \
+    tar -xzf wasi-sdk.tar.gz && mv wasi-sdk-20.0* wasi-sdk-20.0 || true
+ENV GRAALVM_HOME=/opt/graalvm-ce-java17-22.3.1
+ENV WASI_SDK_PATH=/opt/wasi-sdk-20.0
+ENV JAVA_HOME=/opt/graalvm-ce-java17-22.3.1
+ENV PATH=$JAVA_HOME/bin:$PATH
 WORKDIR /app
 COPY . /app
-RUN native-image --target=wasm32-wasi -H:WasiSdkPath=/opt/wasi-sdk --no-fallback -cp target/cdd-java-*-jar-with-dependencies.jar --initialize-at-build-time=com.github.javaparser --initialize-at-build-time=org.json -O3 cli.Main -o target/wasm/cdd-java
+RUN mvn clean package -DskipTests
+RUN native-image --target=wasm32-wasi -H:WasiSdkPath=$WASI_SDK_PATH --no-fallback -cp target/cdd-java-*-jar-with-dependencies.jar --initialize-at-build-time=com.github.javaparser --initialize-at-build-time=org.json -O3 cli.Main -o target/wasm/cdd-java
 DOCKEREOF
   $DOCKER_CMD build --platform linux/amd64 -t cdd-java-wasi -f Dockerfile.wasi .
   $DOCKER_CMD run --platform linux/amd64 --rm -v "$(pwd)/target/wasm:/output" cdd-java-wasi cp /app/target/wasm/cdd-java /output/cdd-java.wasm
