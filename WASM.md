@@ -7,13 +7,17 @@
 
 WASM support for Java is currently implemented natively in this repository using GraalVM `native-image` targeting `wasm32-wasi`.
 
-## Local Compilation Requirements
+## Local Compilation Requirements & Technical Limitations
 
-To produce a "pure WASI" binary (rather than the JS-wrapper backend produced by GraalVM 25's `--tool:svm-wasm`), the `build_wasm.sh` script explicitly utilizes **GraalVM CE 22.3**. 
+To produce a "pure WASI" binary, the `build_wasm.sh` script explicitly utilizes **GraalVM CE 22.3**. 
 
-GraalVM 22.3's `wasm32-wasi` cross-compilation target officially strictly requires a **Linux x86_64 host environment**. 
+### Why GraalVM 22.3 and not newer versions?
+While newer versions (GraalVM 24+ / 25 EA) do support WASM compilation natively on macOS via the `--tool:svm-wasm` flag, **Oracle completely removed WASI standard support** in these versions. The newer backend targets the WasmGC proposal and relies entirely on a generated JavaScript wrapper. Crucially, this wrapper does not emulate a virtual filesystem in the browser. Since `cdd-java` fundamentally requires file I/O (reading `spec.json` and writing to `out/`), using the newer GraalVM versions would cause the WebAssembly module to crash in browser environments like `cdd-web-ui`.
 
-If you are developing locally on macOS (especially Apple Silicon / ARM64), the `build_wasm.sh` script is designed to transparently fall back to Docker. It will utilize an `ubuntu:22.04` AMD64 container to natively cross-compile the WASI binary. Therefore, **you must have a Docker daemon running** (e.g. Docker Desktop, OrbStack, Colima) to build the WASM target locally on macOS.
+### Why Docker on macOS?
+Because `cdd-java` requires a pure WASI binary to interface with virtual filesystems (via `@bjorn3/browser_wasi_shim`), GraalVM 22.3 is mandatory. However, **Oracle never compiled the WASI/LLVM backend into the macOS versions of GraalVM 22.3**. The `-H:WasiSdkPath` flag required for WASI compilation was an experimental feature shipped exclusively in the Linux binaries.
+
+Therefore, if you are developing locally on macOS (especially Apple Silicon / ARM64), the `build_wasm.sh` script is designed to transparently fall back to Docker. It will utilize an `ubuntu:22.04` AMD64 container to natively cross-compile the WASI binary. **You must have a Docker daemon running** (e.g. Docker Desktop, OrbStack, Colima) to build the WASM target locally on a Mac.
 
 ## Usage in JavaScript (Browser & Node.js)
 
