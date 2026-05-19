@@ -9,20 +9,25 @@ fi
 echo "Starting GraalVM WASI compilation..."
 mkdir -p target/wasm
 
-# Check if Docker is available to use the official GraalVM CE 22.3 image for reliable WASI compilation
-if command -v docker &> /dev/null || ( [ -S "$HOME/.rd/docker.sock" ] && DOCKER_HOST="unix://$HOME/.rd/docker.sock" "$HOME/.rd/bin/docker" ps &> /dev/null ) || ( [ -S "$HOME/.orbstack/run/docker.sock" ] && DOCKER_HOST="unix://$HOME/.orbstack/run/docker.sock" docker ps &> /dev/null ); then
-  if docker ps &> /dev/null; then
-    DOCKER_CMD="docker"
-  elif [ -S "$HOME/.rd/docker.sock" ]; then
-    export DOCKER_HOST="unix://$HOME/.rd/docker.sock"
-    DOCKER_CMD="$HOME/.rd/bin/docker"
-  elif [ -S "$HOME/.orbstack/run/docker.sock" ]; then
-    export DOCKER_HOST="unix://$HOME/.orbstack/run/docker.sock"
-    DOCKER_CMD="docker"
-  else
-    DOCKER_CMD="docker"
-  fi
-  echo "Using Docker (ubuntu) for WASI compilation to match release script exactly..."
+# Check if Docker or a Docker-compatible alternative (like nerdctl) is available to use the official GraalVM CE 22.3 image for reliable WASI compilation
+DOCKER_CMD=""
+
+if command -v docker &> /dev/null && docker ps &> /dev/null; then
+  DOCKER_CMD="docker"
+elif [ -S "$HOME/.rd/docker.sock" ] && DOCKER_HOST="unix://$HOME/.rd/docker.sock" "$HOME/.rd/bin/docker" ps &> /dev/null; then
+  export DOCKER_HOST="unix://$HOME/.rd/docker.sock"
+  DOCKER_CMD="$HOME/.rd/bin/docker"
+elif [ -S "$HOME/.orbstack/run/docker.sock" ] && DOCKER_HOST="unix://$HOME/.orbstack/run/docker.sock" docker ps &> /dev/null; then
+  export DOCKER_HOST="unix://$HOME/.orbstack/run/docker.sock"
+  DOCKER_CMD="docker"
+elif command -v nerdctl &> /dev/null && nerdctl ps &> /dev/null; then
+  DOCKER_CMD="nerdctl"
+elif command -v lima &> /dev/null && lima nerdctl ps &> /dev/null; then
+  DOCKER_CMD="lima nerdctl"
+fi
+
+if [ -n "$DOCKER_CMD" ]; then
+  echo "Using container runtime ($DOCKER_CMD) for WASI compilation to match release script exactly..."
   cat << 'DOCKEREOF' > Dockerfile.wasi
 FROM ghcr.io/graalvm/native-image-community:22.3.1
 RUN microdnf install -y wget tar gzip
