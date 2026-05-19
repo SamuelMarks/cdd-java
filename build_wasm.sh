@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if ! ls target/cdd-java-*-jar-with-dependencies.jar 1> /dev/null 2>&1; then
+  echo "Jar not found. Running mvn package..."
+  mvn clean package -DskipTests
+fi
+
 if [ -z "$GRAALVM_HOME" ]; then
   # Prefer the new GraalVM 25 EA download if present
   GRAALVM_DIR=$(find . -maxdepth 1 -type d -name "graalvm-jdk-25*" | head -n 1)
