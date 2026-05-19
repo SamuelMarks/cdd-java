@@ -32,6 +32,8 @@ jobs:
       run: make test
     - name: Checkstyle Linting
       run: mvn checkstyle:check
+    - name: Install Binaryen
+      run: sudo apt-get update && sudo apt-get install -y binaryen
     - name: Build WASM
       run: make build_wasm
     - name: Verify Swagger 2.0 Petstore SDK

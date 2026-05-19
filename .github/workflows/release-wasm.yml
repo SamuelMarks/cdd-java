@@ -30,6 +30,9 @@ jobs:
     - name: Build Standard JAR
       run: mvn clean package -DskipTests
       
+    - name: Install Binaryen
+      run: sudo apt-get update && sudo apt-get install -y binaryen
+      
     - name: Generate WASM Binary
       run: |
         chmod +x build_wasm.sh
