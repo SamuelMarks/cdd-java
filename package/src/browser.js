@@ -4,10 +4,13 @@ export class CddJavaBrowser {
     }
 
     async run(args, files = {}) {
-        const GraalVM = globalThis.GraalVM || (typeof window !== 'undefined' ? window.GraalVM : null);
-        
+        let GraalVM = null;
+        if (typeof globalThis !== 'undefined' && globalThis.GraalVM) GraalVM = globalThis.GraalVM;
+        else if (typeof self !== 'undefined' && self.GraalVM) GraalVM = self.GraalVM;
+        else if (typeof window !== 'undefined' && window.GraalVM) GraalVM = window.GraalVM;
+
         if (!GraalVM) {
-            throw new Error("GraalVM is not defined. Please include cdd-java.js via a <script> tag before using CddJavaBrowser.");
+            throw new Error("GraalVM is completely missing from the browser context.");
         }
 
         const payload = {
@@ -16,22 +19,47 @@ export class CddJavaBrowser {
         };
 
         const outputLogs = [];
-        const originalLog = console.log;
         
-        // Temporarily intercept console.log to capture WASM stdout
-        console.log = (...args) => {
-            outputLogs.push(args.join(' '));
-        };
-
         try {
             const config = new GraalVM.Config();
+            config.env = config.env || {};
             config.wasm_path = this.wasmPath;
-            await GraalVM.run(["process_in_memory", JSON.stringify(payload)], config);
-        } finally {
-            console.log = originalLog;
+            
+            let tempLog = function() {
+                outputLogs.push(Array.prototype.slice.call(arguments).join(' '));
+            };
+            
+            config.print = tempLog;
+            config.printErr = tempLog;
+
+            let originalPostMessage = null;
+            if (typeof self !== 'undefined' && self.postMessage) {
+                originalPostMessage = self.postMessage;
+                self.postMessage = function(data) {
+                    if (data && data.status === 'log' && data.message) {
+                        outputLogs.push(data.message);
+                    }
+                    if (originalPostMessage) {
+                        originalPostMessage.apply(self, arguments);
+                    }
+                };
+            }
+
+            let resultPromise = GraalVM.run(["process_in_memory", JSON.stringify(payload)], config);
+            await Promise.race([
+                resultPromise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error("GraalVM execution timed out after 30 seconds")), 30000))
+            ]);
+            
+            if (typeof self !== 'undefined' && originalPostMessage) {
+                self.postMessage = originalPostMessage;
+            }
+        } catch(e) {
+            outputLogs.push("FATAL EXCEPTION: " + String(e));
         }
 
         const fullOut = outputLogs.join('\n');
+        
         const startIdx = fullOut.indexOf('CDD_IN_MEMORY_START');
         const endIdx = fullOut.indexOf('CDD_IN_MEMORY_END');
 
@@ -46,7 +74,7 @@ export class CddJavaBrowser {
                 files: result.files || {}
             };
         } else {
-            throw new Error("Failed to parse WASM output. Raw logs: " + fullOut);
+            throw new Error("Failed to parse WASM output. Expected CDD_IN_MEMORY_START, got:\n" + fullOut);
         }
     }
 
