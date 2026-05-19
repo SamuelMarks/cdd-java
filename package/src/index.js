@@ -1,116 +1,103 @@
-import { WASI, File, Directory, OpenFile, PreopenDirectory } from "@bjorn3/browser_wasi_shim";
+const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
-export class CddJavaWasm {
-    /**
-     * Create the Java WASM Engine
-     * @param {ArrayBuffer | WebAssembly.Module} wasmBuffer The loaded WASM binary
-     */
-    constructor(wasmBuffer) {
-        if (!wasmBuffer) {
-            throw new Error("WASM buffer or module is required.");
-        }
-        if (wasmBuffer instanceof WebAssembly.Module) {
-            this.wasmModule = wasmBuffer;
-        } else {
-            this.wasmBuffer = wasmBuffer;
-        }
+class CddJava {
+    constructor() {
+        this.wasmDir = path.join(__dirname, '..', 'dist');
+        this.wasmPath = path.join(this.wasmDir, 'cdd-java.js.wasm');
     }
 
-    _extractFiles(dirObj, basePath = "", result = {}) {
-        if (!dirObj || !dirObj.contents) return result;
-        for (const [name, obj] of dirObj.contents.entries()) {
-            const currentPath = basePath ? `${basePath}/${name}` : name;
-            if (obj instanceof File) {
-                result[currentPath] = new TextDecoder().decode(obj.data);
-            } else if (obj instanceof Directory) {
-                this._extractFiles(obj, currentPath, result);
-            }
-        }
-        return result;
-    }
+    run(args, files = {}) {
+        const payload = {
+            command: args,
+            files: files
+        };
 
-    async run(args, files = {}) {
-        const rootContents = [];
-        for (const [name, content] of Object.entries(files)) {
-            rootContents.push([name, new File(new TextEncoder().encode(content))]);
-        }
-        const outDirName = "out";
-        rootContents.push([outDirName, new Directory(new Map())]);
+        const tempDir = os.tmpdir() + '/cdd_java_' + Date.now() + Math.random().toString(36).substring(7);
+        fs.mkdirSync(tempDir, { recursive: true });
 
-        const fds = [
-            new OpenFile(new File([])), // fd 0 (stdin)
-            new OpenFile(new File([])), // fd 1 (stdout)
-            new OpenFile(new File([])), // fd 2 (stderr)
-            new PreopenDirectory(".", new Map(rootContents)) // fd 3
-        ];
+        const runnerScript = path.join(tempDir, 'runner.js');
+        const cddJsPath = path.join(this.wasmDir, 'cdd-java.js').replace(/\\/g, '/');
+        const wasmFilePath = this.wasmPath.replace(/\\/g, '/');
 
-        const wasi = new WASI(args, [], fds);
+        const scriptContent = `
+const { GraalVM } = require('${cddJsPath}');
 
-        let instance;
-        if (this.wasmModule) {
-            instance = await WebAssembly.instantiate(this.wasmModule, {
-                "wasi_snapshot_preview1": wasi.wasiImport
-            });
-        } else {
-            const result = await WebAssembly.instantiate(this.wasmBuffer, {
-                "wasi_snapshot_preview1": wasi.wasiImport
-            });
-            instance = result.instance;
-        }
-
-        try {
-            wasi.start(instance);
-        } catch (e) {
-            // WASI typically throws an exception on normal exit, which we can safely ignore
-        }
-
-        const stdout = new TextDecoder().decode(fds[1].file.data);
-        const stderr = new TextDecoder().decode(fds[2].file.data);
-
-        // Extract generated files
-        const outDir = fds[3].dir.contents.get(outDirName);
-        const generatedFiles = this._extractFiles(outDir);
-
-        return { stdout, stderr, generatedFiles };
-    }
-
-    /**
-     * Generates a standard SDK for cdd-java
-     */
-    async generateSdk(specJsonStr, noGithubActions = false, noInstallablePackage = false, composableTestsMocks = false) {
-        return this.run(
-            ["cdd-java", "from_openapi", "to_sdk", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : []), ...(composableTestsMocks ? ["--tests"] : [])],
-            { "spec.json": specJsonStr }
-        );
-    }
-    
-    /**
-     * Generates a CLI-enabled SDK for cdd-java
-     */
-    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false, composableTestsMocks = false) {
-        return this.run(
-            ["cdd-java", "from_openapi", "to_sdk_cli", "-i", "spec.json", "-o", "out", ...(noGithubActions ? ["--no-github-actions"] : []), ...(noInstallablePackage ? ["--no-installable-package"] : []), ...(composableTestsMocks ? ["--tests"] : [])],
-            { "spec.json": specJsonStr }
-        );
-    }
-
-    /**
-     * Generates a Server Implementation
-     */
-    async generateServer(specJsonStr) {
-        return this.run(
-            ["cdd-java", "from_openapi", "to_server", "-i", "spec.json", "-o", "out"],
-            { "spec.json": specJsonStr }
-        );
-    }
-
-    /**
-     * Generates ORM Entities
-     */
-    async generateOrm(specJsonStr) {
-        return this.run(
-            ["cdd-java", "from_openapi", "to_orm", "-i", "spec.json", "-o", "out"],
-            { "spec.json": specJsonStr }
-        );
+async function main() {
+    try {
+        const config = new GraalVM.Config();
+        config.wasm_path = '${wasmFilePath}';
+        await GraalVM.run(["process_in_memory", ${JSON.stringify(JSON.stringify(payload))}], config);
+    } catch (e) {
+        console.error(e);
+        process.exit(1);
     }
 }
+main();
+`;
+        fs.writeFileSync(runnerScript, scriptContent);
+
+        try {
+            const output = execSync(`node ${runnerScript}`, {
+                stdio: 'pipe',
+                maxBuffer: 50 * 1024 * 1024
+            });
+            
+            const fullOut = output.toString();
+            const startIdx = fullOut.indexOf('CDD_IN_MEMORY_START');
+            const endIdx = fullOut.indexOf('CDD_IN_MEMORY_END');
+
+            if (startIdx !== -1 && endIdx !== -1) {
+                const jsonStr = fullOut.substring(startIdx + 19, endIdx).trim();
+                const result = JSON.parse(jsonStr);
+                if (!result.success) {
+                    throw new Error("WASM execution failed: " + result.error);
+                }
+                return {
+                    output: "Success",
+                    files: result.files || {}
+                };
+            } else {
+                throw new Error("Failed to parse WASM output. Raw logs: " + fullOut);
+            }
+        } finally {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+    }
+
+    async extractOpenAPI(codePath) {
+        throw new Error("extractOpenAPI not yet implemented for SVM Wasm in this wrapper. Requires local file paths.");
+    }
+
+    async generateDocsJson(specJsonStr, noImports = false, noWrapping = false) {
+        const args = ["to_docs_json", "-i", "spec.json"];
+        if (noImports) args.push("--no-imports");
+        if (noWrapping) args.push("--no-wrapping");
+        
+        const res = this.run(args, { "spec.json": specJsonStr });
+        return res.files["docs.json"];
+    }
+
+    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false) {
+        const args = ["from_openapi", "to_sdk_cli", "-i", "spec.json"];
+        if (noGithubActions) args.push("--no-github-actions");
+        if (noInstallablePackage) args.push("--no-installable-package");
+        return this.run(args, { "spec.json": specJsonStr });
+    }
+
+    async generateSdk(specJsonStr) {
+        return this.run(["from_openapi", "to_sdk", "-i", "spec.json"], { "spec.json": specJsonStr });
+    }
+
+    async generateServer(specJsonStr) {
+        return this.run(["from_openapi", "to_server", "-i", "spec.json"], { "spec.json": specJsonStr });
+    }
+
+    async generateOrm(specJsonStr) {
+        return this.run(["from_openapi", "to_orm", "-i", "spec.json"], { "spec.json": specJsonStr });
+    }
+}
+
+module.exports = { CddJava };
