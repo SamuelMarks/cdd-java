@@ -33,7 +33,10 @@ jobs:
     - name: Checkstyle Linting
       run: mvn checkstyle:check
     - name: Install Binaryen
-      run: sudo apt-get update && sudo apt-get install -y binaryen
+      run: |
+        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz -o binaryen.tar.gz
+        tar -xzf binaryen.tar.gz
+        echo "$PWD/binaryen-version_129/bin" >> $GITHUB_PATH
     - name: Build WASM
       run: make build_wasm
     - name: Verify Swagger 2.0 Petstore SDK
