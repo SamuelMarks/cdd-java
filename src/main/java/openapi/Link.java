@@ -51,7 +51,7 @@ public class Link {
 
 	/**
 	 * Get extensions.
-	 * 
+	 *
 	 * @return extensions
 	 */
 	public Map<String, Object> getExtensions() {
@@ -60,7 +60,7 @@ public class Link {
 
 	/**
 	 * Add extension.
-	 * 
+	 *
 	 * @param name
 	 *            extension name
 	 * @param value

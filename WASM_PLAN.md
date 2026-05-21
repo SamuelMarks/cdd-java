@@ -1,6 +1,6 @@
 # Comprehensive WASM Migration Plan for cdd-java
 
-This document outlines the exhaustive, step-by-step strategy for refactoring `cdd-java` to compile into a self-contained WebAssembly (WASI) binary using GraalVM. 
+This document outlines the exhaustive, step-by-step strategy for refactoring `cdd-java` to compile into a self-contained WebAssembly (WASI) binary using GraalVM.
 
 ## Phase 1: Environment Diagnostics & GraalVM Toolchain Setup
 

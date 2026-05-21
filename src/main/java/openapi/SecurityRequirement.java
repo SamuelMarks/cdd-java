@@ -21,7 +21,7 @@ public class SecurityRequirement {
 
 	/**
 	 * Add requirement.
-	 * 
+	 *
 	 * @param name
 	 *            Name
 	 * @param value
@@ -33,7 +33,7 @@ public class SecurityRequirement {
 
 	/**
 	 * Get requirements.
-	 * 
+	 *
 	 * @return requirements
 	 */
 	public Map<String, List<String>> getRequirements() {

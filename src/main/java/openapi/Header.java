@@ -109,7 +109,7 @@ public class Header {
 
 	/**
 	 * Get extensions.
-	 * 
+	 *
 	 * @return extensions
 	 */
 	public Map<String, Object> getExtensions() {
@@ -118,7 +118,7 @@ public class Header {
 
 	/**
 	 * Add extension.
-	 * 
+	 *
 	 * @param name
 	 *            extension name
 	 * @param value

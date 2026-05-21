@@ -16,7 +16,7 @@ public class TestRunner {
 
 	/**
 	 * Main method.
-	 * 
+	 *
 	 * @param args
 	 *            Arguments
 	 * @throws Exception

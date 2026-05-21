@@ -36,7 +36,7 @@ public class ServerVariable {
 
 	/**
 	 * Get extensions.
-	 * 
+	 *
 	 * @return extensions
 	 */
 	public Map<String, Object> getExtensions() {
@@ -45,7 +45,7 @@ public class ServerVariable {
 
 	/**
 	 * Add extension.
-	 * 
+	 *
 	 * @param name
 	 *            extension name
 	 * @param value

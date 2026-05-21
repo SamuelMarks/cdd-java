@@ -50,7 +50,7 @@ public class XML {
 
 	/**
 	 * Get extensions.
-	 * 
+	 *
 	 * @return extensions
 	 */
 	public Map<String, Object> getExtensions() {
@@ -59,7 +59,7 @@ public class XML {
 
 	/**
 	 * Add extension.
-	 * 
+	 *
 	 * @param name
 	 *            extension name
 	 * @param value

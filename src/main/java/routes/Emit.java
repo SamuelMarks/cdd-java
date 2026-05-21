@@ -24,7 +24,7 @@ public class Emit {
 
 	/**
 	 * Emits Java code using java.net.http.HttpClient.
-	 * 
+	 *
 	 * @param model
 	 *            The OpenAPI model.
 	 * @param existingSource
@@ -172,7 +172,7 @@ public class Emit {
 	 */
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param classDecl
 	 *            param doc
 	 * @param name
@@ -197,7 +197,7 @@ public class Emit {
 
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param classDecl
 	 *            param doc
 	 * @param callbacks
@@ -255,7 +255,7 @@ public class Emit {
 
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param classDecl
 	 *            param doc
 	 * @param httpMethod

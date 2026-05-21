@@ -41,7 +41,7 @@ public class Server {
 
 	/**
 	 * Get extensions.
-	 * 
+	 *
 	 * @return extensions
 	 */
 	public Map<String, Object> getExtensions() {
@@ -50,7 +50,7 @@ public class Server {
 
 	/**
 	 * Add extension.
-	 * 
+	 *
 	 * @param name
 	 *            extension name
 	 * @param value

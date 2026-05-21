@@ -15,7 +15,7 @@ public class Parse {
 
 	/**
 	 * Parses docstrings into an OpenAPI model.
-	 * 
+	 *
 	 * @param input
 	 *            The input.
 	 * @return The parsed object.

@@ -19,16 +19,16 @@ export class CddJavaBrowser {
         };
 
         const outputLogs = [];
-        
+
         try {
             const config = new GraalVM.Config();
             config.env = config.env || {};
             config.wasm_path = this.wasmPath;
-            
+
             let tempLog = function() {
                 outputLogs.push(Array.prototype.slice.call(arguments).join(' '));
             };
-            
+
             config.print = tempLog;
             config.printErr = tempLog;
 
@@ -50,7 +50,7 @@ export class CddJavaBrowser {
                 resultPromise,
                 new Promise((_, reject) => setTimeout(() => reject(new Error("GraalVM execution timed out after 30 seconds")), 30000))
             ]);
-            
+
             if (typeof self !== 'undefined' && originalPostMessage) {
                 self.postMessage = originalPostMessage;
             }
@@ -59,7 +59,7 @@ export class CddJavaBrowser {
         }
 
         const fullOut = outputLogs.join('\n');
-        
+
         const startIdx = fullOut.indexOf('CDD_IN_MEMORY_START');
         const endIdx = fullOut.indexOf('CDD_IN_MEMORY_END');
 
@@ -82,7 +82,7 @@ export class CddJavaBrowser {
         const args = ["to_docs_json", "-i", "spec.json"];
         if (noImports) args.push("--no-imports");
         if (noWrapping) args.push("--no-wrapping");
-        
+
         const res = await this.run(args, { "spec.json": specJsonStr });
         return res.files["docs.json"];
     }

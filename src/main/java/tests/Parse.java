@@ -22,7 +22,7 @@ public class Parse {
 
 	/**
 	 * Parses tests into OpenAPI.
-	 * 
+	 *
 	 * @param sourceCode
 	 *            The input.
 	 * @return The parsed object.

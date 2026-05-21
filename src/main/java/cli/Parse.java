@@ -22,7 +22,7 @@ public class Parse {
 
 	/**
 	 * Parses the CLI source code into an OpenAPI object.
-	 * 
+	 *
 	 * @param existingSource
 	 *            The source code string.
 	 * @return The parsed OpenAPI object.

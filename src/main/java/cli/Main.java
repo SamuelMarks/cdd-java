@@ -18,14 +18,14 @@ import java.util.HashMap;
 import openapi.OpenAPI;
 
 /**
- * 
- * 
+ *
+ *
  * CLI Entrypoint.
  */
 public class Main {
 
 	/**
-	 * 
+	 *
 	 * Default constructor.
 	 */
 	public Main() {
@@ -40,10 +40,10 @@ public class Main {
 	}
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * Entrypoint.
-	 * 
+	 *
 	 * @param args
 	 *            arguments
 	 * @throws Exception
@@ -54,19 +54,19 @@ public class Main {
 	}
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * Start.
-	 * 
+	 *
 	 * @throws Exception
 	 *             if an error occurs
 	 */
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * Method.
-	 * 
+	 *
 	 * @throws Exception
 	 *             if an error occurs
 	 */
@@ -75,10 +75,10 @@ public class Main {
 	}
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * Main method.
-	 * 
+	 *
 	 * @param args
 	 *            The command line arguments.
 	 * @throws Exception
@@ -330,10 +330,10 @@ public class Main {
 	}
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * Processes payload in memory.
-	 * 
+	 *
 	 * @param payload
 	 *            json payload
 	 */
@@ -522,10 +522,10 @@ public class Main {
 	}
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param dir
 	 *            param doc
 	 * @throws java.lang.Exception

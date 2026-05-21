@@ -25,7 +25,7 @@ public class Emit {
 
 	/**
 	 * Emits Java code for JUnit-style (but dependency-free) integration tests.
-	 * 
+	 *
 	 * @param model
 	 *            The OpenAPI model.
 	 * @param existingSource
@@ -159,7 +159,7 @@ public class Emit {
 
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param classDecl
 	 *            param doc
 	 * @param name

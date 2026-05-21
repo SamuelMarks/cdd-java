@@ -30,11 +30,11 @@ async function main() {
     });
 
     const result = await engine.generateSdk(specJson);
-    
+
     // 3. Access output
     console.log("Output Logs:", result.output);
     console.log("Files:", Object.keys(result.files));
-    
+
     // Example: result.files["Sdk.java"] contains the generated code
 }
 

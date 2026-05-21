@@ -15,7 +15,7 @@ public class Emit {
 
 	/**
 	 * Emits Java code for standalone functions.
-	 * 
+	 *
 	 * @param model
 	 *            The OpenAPI model.
 	 * @param existingSource

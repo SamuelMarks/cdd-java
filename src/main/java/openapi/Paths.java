@@ -24,7 +24,7 @@ public class Paths {
 
 	/**
 	 * Add property.
-	 * 
+	 *
 	 * @param name
 	 *            Name
 	 * @param value
@@ -42,7 +42,7 @@ public class Paths {
 
 	/**
 	 * Get properties.
-	 * 
+	 *
 	 * @return properties
 	 */
 	public Map<String, Object> getProperties() {

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
@@ -29,25 +29,25 @@ jobs:
 
     - name: Build Standard JAR
       run: mvn clean package -DskipTests
-      
+
     - name: Install Binaryen
       run: |
         curl -L https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz -o binaryen.tar.gz
         tar -xzf binaryen.tar.gz
         echo "$PWD/binaryen-version_129/bin" >> $GITHUB_PATH
-      
+
     - name: Generate WASM Binary
       run: |
         chmod +x build_wasm.sh
         ./build_wasm.sh
-        
+
     - name: Verify WASM File Exists
       run: |
         if [ ! -f target/wasm/cdd-java.wasm ]; then
           echo "WASM file not found!"
           exit 1
         fi
-        
+
     - name: Build JS Wrapper & NPM Package
       run: |
         cd package
@@ -55,7 +55,7 @@ jobs:
         npm run build
         cp ../target/wasm/cdd-java.js ./dist/cdd-java.js
         cp ../target/wasm/cdd-java.js.wasm ./dist/cdd-java.js.wasm
-        
+
     - name: Publish NPM Package
       run: |
         cd package
@@ -65,13 +65,13 @@ jobs:
         npm publish --access public || echo "Publishing skipped or failed"
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        
+
     - name: Rename and Checksum
       run: |
         cp target/wasm/cdd-java.wasm ./cdd-java.wasm
         cp target/wasm/cdd-java.js ./cdd-java.js
         sha256sum cdd-java.wasm > cdd-java.wasm.sha256
-        
+
     - name: Release
       uses: softprops/action-gh-release@v2
       with:

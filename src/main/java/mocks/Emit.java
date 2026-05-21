@@ -18,7 +18,7 @@ public class Emit {
 
 	/**
 	 * Emits Java code for mock servers using com.sun.net.httpserver.HttpServer.
-	 * 
+	 *
 	 * @param model
 	 *            The OpenAPI model.
 	 * @param existingSource
@@ -116,7 +116,7 @@ public class Emit {
 	 */
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param classDecl
 	 *            param doc
 	 * @param name
