@@ -21,7 +21,7 @@ public class Emit {
 
 	/**
 	 * Emits the CLI Java code.
-	 * 
+	 *
 	 * @param api
 	 *            The OpenAPI spec to emit.
 	 * @return The generated Java source code.

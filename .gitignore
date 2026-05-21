@@ -105,8 +105,8 @@ test_output.txt
 /*.json
 !/package.json
 !/package-lock.json
-/*.yaml
-/*.yml
+
+
 
 # --- Ad-Hoc Output Dirs ---
 /out/

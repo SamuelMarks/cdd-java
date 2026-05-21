@@ -21,7 +21,7 @@ public class Emit {
 
 	/**
 	 * Emits OpenAPI description to string.
-	 * 
+	 *
 	 * @param api
 	 *            The OpenAPI object.
 	 * @return JSON string.
@@ -230,7 +230,7 @@ public class Emit {
 
 	/**
 	 * Emits OpenAPI description to file.
-	 * 
+	 *
 	 * @param api
 	 *            The OpenAPI object.
 	 * @param file

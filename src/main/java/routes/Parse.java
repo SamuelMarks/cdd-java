@@ -33,7 +33,7 @@ public class Parse {
 
 	/**
 	 * Parses Java source files into an OpenAPI model.
-	 * 
+	 *
 	 * @param sourceCode
 	 *            The Java source.
 	 * @return The parsed OpenAPI object.

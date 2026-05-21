@@ -24,7 +24,7 @@ public class Callback {
 
 	/**
 	 * Add property.
-	 * 
+	 *
 	 * @param name
 	 *            Name
 	 * @param value
@@ -40,7 +40,7 @@ public class Callback {
 
 	/**
 	 * Get properties.
-	 * 
+	 *
 	 * @return properties
 	 */
 	public Map<String, Object> getProperties() {

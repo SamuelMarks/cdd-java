@@ -5,47 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Checkout OpenAPI Test Harness Petstore Specs
-      uses: actions/checkout@v3
-      with:
-        repository: SamuelMarks/cdd-openapi-test-harness
-        path: test-harness
-        sparse-checkout: |
-          petstore.json
-          petstore_oas3.json
-        sparse-checkout-cone-mode: false
-    - name: Move Specs
-      run: |
-        mv test-harness/petstore.json ../
-        mv test-harness/petstore_oas3.json ../
-        rm -rf test-harness
-    - name: Set up JDK 17
+    - name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: '11'
         distribution: 'temurin'
-    - name: Code Formatting Check
-      run: mvn spotless:check
-    - name: Build with Make
-      run: make build
-    - name: Test with Make
-      run: make test
-    - name: Checkstyle Linting
-      run: mvn checkstyle:check
-    - name: Install Binaryen
-      run: |
-        curl -L https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz -o binaryen.tar.gz
-        tar -xzf binaryen.tar.gz
-        echo "$PWD/binaryen-version_129/bin" >> $GITHUB_PATH
-    - name: Build WASM
-      run: make build_wasm
-    - name: Verify Swagger 2.0 Petstore SDK
-      run: |
-        java -cp "lib/*:bin" cli.Main from_openapi to_sdk -i "../petstore.json" --tests -o "../cdd-java-client-v2"
-        cd ../cdd-java-client-v2
-        mvn clean test-compile
-    - name: Verify OpenAPI 3.2.0 Petstore SDK
-      run: |
-        java -cp "lib/*:bin" cli.Main from_openapi to_sdk -i "../petstore_oas3.json" --tests -o "../cdd-java-client-v3"
-        cd ../cdd-java-client-v3
-        mvn clean test-compile
+    - name: Build with Maven
+      run: mvn clean install

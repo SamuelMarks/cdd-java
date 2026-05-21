@@ -20,7 +20,7 @@ public class Emit {
 
 	/**
 	 * Emits JSON for doc generators.
-	 * 
+	 *
 	 * @param api
 	 *            The OpenAPI model.
 	 * @param noImports

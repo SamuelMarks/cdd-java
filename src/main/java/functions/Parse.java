@@ -15,7 +15,7 @@ public class Parse {
 
 	/**
 	 * Parses functions to OpenAPI.
-	 * 
+	 *
 	 * @param input
 	 *            The input.
 	 * @return The parsed object.

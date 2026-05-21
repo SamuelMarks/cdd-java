@@ -19,7 +19,7 @@ public class Parse {
 
 	/**
 	 * Parses mock server code to an OpenAPI object.
-	 * 
+	 *
 	 * @param sourceCode
 	 *            The Java source.
 	 * @return The parsed OpenAPI object.

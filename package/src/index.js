@@ -44,7 +44,7 @@ main();
                 stdio: 'pipe',
                 maxBuffer: 50 * 1024 * 1024
             });
-            
+
             const fullOut = output.toString();
             const startIdx = fullOut.indexOf('CDD_IN_MEMORY_START');
             const endIdx = fullOut.indexOf('CDD_IN_MEMORY_END');
@@ -75,20 +75,25 @@ main();
         const args = ["to_docs_json", "-i", "spec.json"];
         if (noImports) args.push("--no-imports");
         if (noWrapping) args.push("--no-wrapping");
-        
+
         const res = this.run(args, { "spec.json": specJsonStr });
         return res.files["docs.json"];
     }
 
-    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false) {
+    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false, generateTests = false) {
         const args = ["from_openapi", "to_sdk_cli", "-i", "spec.json"];
         if (noGithubActions) args.push("--no-github-actions");
         if (noInstallablePackage) args.push("--no-installable-package");
+        if (generateTests) args.push("--tests");
         return this.run(args, { "spec.json": specJsonStr });
     }
 
-    async generateSdk(specJsonStr) {
-        return this.run(["from_openapi", "to_sdk", "-i", "spec.json"], { "spec.json": specJsonStr });
+    async generateSdk(specJsonStr, noGithubActions = false, noInstallablePackage = false, generateTests = false) {
+        const args = ["from_openapi", "to_sdk", "-i", "spec.json"];
+        if (noGithubActions) args.push("--no-github-actions");
+        if (noInstallablePackage) args.push("--no-installable-package");
+        if (generateTests) args.push("--tests");
+        return this.run(args, { "spec.json": specJsonStr });
     }
 
     async generateServer(specJsonStr) {

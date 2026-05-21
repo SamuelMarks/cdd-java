@@ -28,7 +28,7 @@ public class Responses {
 
 	/**
 	 * Add property.
-	 * 
+	 *
 	 * @param name
 	 *            Name
 	 * @param value
@@ -46,7 +46,7 @@ public class Responses {
 
 	/**
 	 * Get properties.
-	 * 
+	 *
 	 * @return properties
 	 */
 	public Map<String, Object> getProperties() {

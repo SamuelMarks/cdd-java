@@ -22,7 +22,7 @@ public class Parse {
 
 	/**
 	 * Parse OpenAPI description from string.
-	 * 
+	 *
 	 * @param content
 	 *            The JSON string.
 	 * @return OpenAPI object.
@@ -248,7 +248,7 @@ public class Parse {
 
 	/**
 	 * Parse OpenAPI description from file.
-	 * 
+	 *
 	 * @param file
 	 *            The file.
 	 * @return OpenAPI object.

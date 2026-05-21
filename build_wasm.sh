@@ -27,7 +27,7 @@ if [ -z "$GRAALVM_HOME" ]; then
     else
       ARCH="$ARCH_RAW"
     fi
-    
+
     URL="https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_${OS}-${ARCH}_bin.tar.gz"
     echo "Fetching $URL..."
     curl -L "$URL" -o graalvm.tar.gz

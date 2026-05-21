@@ -23,7 +23,7 @@ public class Emit {
 
 	/**
 	 * Emits Java code for JPA entities.
-	 * 
+	 *
 	 * @param model
 	 *            The OpenAPI model.
 	 * @param existingSource
@@ -76,7 +76,7 @@ public class Emit {
 
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param cu
 	 *            param doc
 	 * @param className
@@ -140,7 +140,7 @@ public class Emit {
 
 	/**
 	 * Generated JavaDoc.
-	 * 
+	 *
 	 * @param schemaObj
 	 *            param doc
 	 * @param model
