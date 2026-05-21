@@ -148,3 +148,4 @@ type-search-index.js
 member-search-index.js
 tag-search-index.js
 module-search-index.js
+\n# --- Custom CLI Ignored Dirs ---\noutput/\n/cdd-java-client*/\n
