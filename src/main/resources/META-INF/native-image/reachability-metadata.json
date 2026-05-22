@@ -1,0 +1,313 @@
+{
+  "reflection": [
+    {
+      "type": "cli.Main",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.fasterxml.jackson.databind.ext.Java7SupportImpl",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.github.javaparser.ast.CompilationUnit",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.body.BodyDeclaration",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "getAnnotations",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.github.javaparser.ast.body.CallableDeclaration",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.body.ClassOrInterfaceDeclaration",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "getExtendedTypes",
+          "parameterTypes": []
+        },
+        {
+          "name": "getImplementedTypes",
+          "parameterTypes": []
+        },
+        {
+          "name": "getPermittedTypes",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTypeParameters",
+          "parameterTypes": []
+        },
+        {
+          "name": "isInterface",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.github.javaparser.ast.body.ConstructorDeclaration",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.body.FieldDeclaration",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.body.MethodDeclaration"
+    },
+    {
+      "type": "com.github.javaparser.ast.body.Parameter",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.body.TypeDeclaration",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "getMembers",
+          "parameterTypes": []
+        },
+        {
+          "name": "getModifiers",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.github.javaparser.ast.expr.FieldAccessExpr",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.expr.LambdaExpr",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.expr.MethodCallExpr",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.expr.ObjectCreationExpr",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.expr.VariableDeclarationExpr",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.stmt.BlockStmt",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.stmt.CatchClause",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.stmt.TryStmt",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.type.ClassOrInterfaceType",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.type.PrimitiveType"
+    },
+    {
+      "type": "com.github.javaparser.ast.type.ReferenceType",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.type.Type",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.github.javaparser.ast.type.VoidType"
+    },
+    {
+      "type": "java.lang.Boolean",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.String",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "lastIndexOf",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "substring",
+          "parameterTypes": [
+            "int"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.System",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getProperty",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setProperty",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.util.concurrent.atomic.AtomicBoolean",
+      "fields": [
+        {
+          "name": "value"
+        }
+      ]
+    },
+    {
+      "type": "java.util.concurrent.atomic.AtomicMarkableReference",
+      "fields": [
+        {
+          "name": "pair"
+        }
+      ]
+    },
+    {
+      "type": "java.util.concurrent.atomic.AtomicReference",
+      "fields": [
+        {
+          "name": "value"
+        }
+      ]
+    },
+    {
+      "type": "openapi.Components",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "getExtensions",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "openapi.Contact",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.ExternalDocumentation",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.Info",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getExtensions",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "openapi.License",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.OpenAPI",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getExtensions",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "openapi.Operation",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.PathItem",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.Paths",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "getProperties",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "openapi.Responses",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.SecurityRequirement",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.Server",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.ServerVariable",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "openapi.Tag",
+      "allDeclaredFields": true
+    }
+  ]
+}

@@ -32,6 +32,10 @@ public class MiscParseEmitTest {
 	public void testTestsEmit() throws Exception {
 		tests.Emit emitter = new tests.Emit();
 		OpenAPI api = new OpenAPI();
+		api.servers = new java.util.ArrayList<>();
+		openapi.Server s = new openapi.Server();
+		s.url = "http://x/api/v3";
+		api.servers.add(s);
 		api.info = new Info();
 		api.info.title = "Test";
 		api.paths = new Paths();

@@ -147,10 +147,12 @@ public class Emit {
 		body.append("{\n");
 		body.append("  HttpRequest.Builder builder = HttpRequest.newBuilder()\n");
 		body.append("      .uri(URI.create(this.baseUrl + \"").append(resolvedPath).append("\"));\n");
+		body.append("  builder.header(\"Accept\", \"application/json\");\n");
 
 		boolean hasBody = (op.requestBody != null);
 		if (hasBody) {
 			md.addParameter("String", "requestBody");
+			body.append("  builder.header(\"Content-Type\", \"application/json\");\n");
 			body.append("  builder.method(\"").append(method)
 					.append("\", HttpRequest.BodyPublishers.ofString(requestBody));\n");
 		} else {

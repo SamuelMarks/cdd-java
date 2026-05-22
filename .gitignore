@@ -68,7 +68,7 @@ out1/
 out2/
 out3/
 out_traced/
-META-INF/
+/META-INF/
 
 # --- Tracing JSON ---
 docs_traced.json
@@ -142,7 +142,7 @@ docs/
 
 # Javadoc Wildcards
 *.html
-*.js
+docs/*.js
 package-search-index.js
 type-search-index.js
 member-search-index.js
@@ -157,3 +157,11 @@ patch_reflect_*.java
 petstore.yaml
 out_tests/
 test_out/
+
+# --- Extra Ad-Hoc & Temp Files ---
+patch*.java
+patch*.py
+prompt.md
+prompt*.md
+lib/*.jar
+sdk_test/
