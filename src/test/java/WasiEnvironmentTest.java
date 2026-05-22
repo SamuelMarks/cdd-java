@@ -28,8 +28,8 @@ public class WasiEnvironmentTest {
 			String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
 			String classpath = System.getProperty("java.class.path");
 
-			ProcessBuilder pb = new ProcessBuilder(javaBin, "-cp", "target/classes:lib/*", "cli.Main", "from_openapi",
-					"to_sdk", "-i", "/spec.json", "-o", "/out");
+			ProcessBuilder pb = new ProcessBuilder(javaBin, "-cp", classpath, "cli.Main", "from_openapi", "to_sdk",
+					"-i", "/spec.json", "-o", "/out");
 
 			// Mock environment variables
 			Map<String, String> env = pb.environment();
