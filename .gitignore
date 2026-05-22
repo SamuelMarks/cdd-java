@@ -149,3 +149,11 @@ member-search-index.js
 tag-search-index.js
 module-search-index.js
 \n# --- Custom CLI Ignored Dirs ---\noutput/\n/cdd-java-client*/\n
+
+AgentRunner.java
+FindField.java
+patch_reflect_*.java
+*.wasm
+petstore.yaml
+out_tests/
+test_out/

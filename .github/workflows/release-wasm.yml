@@ -3,6 +3,8 @@ on:
   push:
     tags:
       - 'v*'
+      - '0.*'
+      - 'latest'
 
 permissions:
   contents: write
@@ -60,8 +62,12 @@ jobs:
       run: |
         cd package
         # Update version based on tag
-        VERSION=${GITHUB_REF#refs/tags/v}
-        npm version $VERSION --no-git-tag-version
+        VERSION=${GITHUB_REF#refs/tags/}
+        VERSION=${VERSION#v}
+        # If tag is 'latest', maybe we don't want to fail npm version. We could skip it or handle it.
+        if [ "$VERSION" != "latest" ]; then
+          npm version $VERSION --no-git-tag-version
+        fi
         npm publish --access public || echo "Publishing skipped or failed"
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

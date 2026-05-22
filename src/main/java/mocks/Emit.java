@@ -58,9 +58,7 @@ public class Emit {
 			sb.append("}\n");
 			cu = StaticJavaParser.parse(sb.toString());
 			isNew = true;
-			LexicalPreservingPrinter.setup(cu);
 		}
-
 		ClassOrInterfaceDeclaration classDecl = cu.getClassByName(title + "MockServer").orElse(null);
 		if (classDecl == null) {
 			java.util.List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);

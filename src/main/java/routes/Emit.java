@@ -76,9 +76,7 @@ public class Emit {
 			sb.append("}\n");
 			cu = StaticJavaParser.parse(sb.toString());
 			isNew = true;
-			LexicalPreservingPrinter.setup(cu);
 		}
-
 		ClassOrInterfaceDeclaration classDecl = cu.getClassByName(title + "Client").orElse(null);
 		if (classDecl == null) {
 			// fallback if class name doesn't match

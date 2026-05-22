@@ -87,15 +87,20 @@ export class CddJavaBrowser {
         return res.files["docs.json"];
     }
 
-    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false) {
+    async generateSdkCli(specJsonStr, noGithubActions = false, noInstallablePackage = false, generateTests = false) {
         const args = ["from_openapi", "to_sdk_cli", "-i", "spec.json"];
         if (noGithubActions) args.push("--no-github-actions");
         if (noInstallablePackage) args.push("--no-installable-package");
+        if (generateTests) args.push("--tests");
         return this.run(args, { "spec.json": specJsonStr });
     }
 
-    async generateSdk(specJsonStr) {
-        return this.run(["from_openapi", "to_sdk", "-i", "spec.json"], { "spec.json": specJsonStr });
+    async generateSdk(specJsonStr, noGithubActions = false, noInstallablePackage = false, generateTests = false) {
+        const args = ["from_openapi", "to_sdk", "-i", "spec.json"];
+        if (noGithubActions) args.push("--no-github-actions");
+        if (noInstallablePackage) args.push("--no-installable-package");
+        if (generateTests) args.push("--tests");
+        return this.run(args, { "spec.json": specJsonStr });
     }
 
     async generateServer(specJsonStr) {
