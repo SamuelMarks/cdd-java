@@ -67,7 +67,7 @@ public class Emit {
 			root.put("info", infoObj);
 		}
 
-		if (api.paths != null && api.paths.pathItems != null) {
+		if (api.paths != null && api.paths.pathItems != null && !api.paths.pathItems.isEmpty()) {
 			JSONObject pathsObj = new JSONObject();
 			for (Map.Entry<String, PathItem> e : api.paths.pathItems.entrySet()) {
 				PathItem pi = e.getValue();
@@ -130,7 +130,7 @@ public class Emit {
 			obj.put("parameters", serializeParameters(op.parameters));
 		}
 
-		if (op.requestBody != null && op.requestBody instanceof RequestBody) {
+		if (op.requestBody instanceof RequestBody) {
 			RequestBody rb = (RequestBody) op.requestBody;
 			JSONObject rbObj = new JSONObject();
 			if (rb.description != null)
@@ -195,7 +195,7 @@ public class Emit {
 				pObj.put("description", p.description);
 			if (p.required != null)
 				pObj.put("required", p.required);
-			if (p.schema != null && p.schema instanceof Schema) {
+			if (p.schema instanceof Schema) {
 				pObj.put("schema", serializeSchema((Schema) p.schema));
 			}
 			arr.put(pObj);
@@ -213,7 +213,7 @@ public class Emit {
 			obj.put("description", s.description);
 		if (s.$ref != null)
 			obj.put("$ref", s.$ref);
-		if (s.items != null && s.items instanceof Schema) {
+		if (s.items instanceof Schema) {
 			obj.put("items", serializeSchema((Schema) s.items));
 		}
 		if (s.properties != null) {

@@ -7,6 +7,8 @@ if "%~1"=="all" goto help
 if "%~1"=="install_base" goto install_base
 if "%~1"=="install_deps" goto install_deps
 
+if "%~1"=="docs" goto docs
+
 if "%~1"=="build_wasm" goto build_wasm
 if "%~1"=="build_docker" goto build_docker
 if "%~1"=="run_docker" goto run_docker
@@ -39,6 +41,7 @@ goto help
 echo Available targets:
 echo   install_base : install language runtime (Java JDK)
 echo   install_deps : install local dependencies
+echo   docs         : build the API docs to target/docs and symlink docs/html
 echo   build_docs   : build the API docs (specify dir as second arg, e.g. make.bat build_docs custom_dir)
 echo   build        : build the CLI binary (specify dir as second arg, e.g. make.bat build custom_dir)
 echo   build_wasm   : build WASM variant (Not implemented)
@@ -58,6 +61,18 @@ goto :eof
 
 :install_deps
 echo Dependencies already in lib/
+goto :eof
+
+:docs
+echo Building API docs to target\docs...
+if exist "target\docs" rmdir /S /Q "target\docs"
+mkdir "target\docs"
+dir /s /B "src\main\java\*.java" | findstr /V "ApiIntegrationTest.java" > doc_sources.txt
+javadoc -d "target\docs" -cp "lib/*;src/main/java" @doc_sources.txt
+del doc_sources.txt
+if not exist "docs" mkdir "docs"
+if exist "docs\html" rmdir /S /Q "docs\html"
+mklink /D "docs\html" "..\target\docs" >nul 2>&1 || xcopy "target\docs\*" "docs\html\" /S /E /I /Q >nul
 goto :eof
 
 :build_docs

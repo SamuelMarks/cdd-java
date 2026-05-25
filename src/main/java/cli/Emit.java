@@ -191,18 +191,11 @@ public class Emit {
 										.append(sc.flows.implicit.authorizationUrl != null
 												? escape(sc.flows.implicit.authorizationUrl)
 												: "-")
-										.append(" ")
-										.append(sc.flows.implicit.tokenUrl != null
-												? escape(sc.flows.implicit.tokenUrl)
-												: "-")
-										.append(" ")
+										.append(" ").append(escape(sc.flows.implicit.tokenUrl)).append(" ")
 										.append(sc.flows.implicit.refreshUrl != null
 												? escape(sc.flows.implicit.refreshUrl)
 												: "-")
-										.append(" ")
-										.append(sc.flows.implicit.deviceAuthorizationUrl != null
-												? escape(sc.flows.implicit.deviceAuthorizationUrl)
-												: "-")
+										.append(" ").append(escape(sc.flows.implicit.deviceAuthorizationUrl))
 										.append("\");\n");
 								if (sc.flows.implicit.scopes != null) {
 									for (Map.Entry<String, String> entry2 : sc.flows.implicit.scopes.entrySet()) {
@@ -215,10 +208,7 @@ public class Emit {
 							if (sc.flows.password != null) {
 								sb.append("        System.out.println(\"Component securitySchemesFlow ")
 										.append(escape(k)).append(" password ")
-										.append(sc.flows.password.authorizationUrl != null
-												? escape(sc.flows.password.authorizationUrl)
-												: "-")
-										.append(" ")
+										.append(escape(sc.flows.password.authorizationUrl)).append(" ")
 										.append(sc.flows.password.tokenUrl != null
 												? escape(sc.flows.password.tokenUrl)
 												: "-")
@@ -226,10 +216,7 @@ public class Emit {
 										.append(sc.flows.password.refreshUrl != null
 												? escape(sc.flows.password.refreshUrl)
 												: "-")
-										.append(" ")
-										.append(sc.flows.password.deviceAuthorizationUrl != null
-												? escape(sc.flows.password.deviceAuthorizationUrl)
-												: "-")
+										.append(" ").append(escape(sc.flows.password.deviceAuthorizationUrl))
 										.append("\");\n");
 								if (sc.flows.password.scopes != null) {
 									for (Map.Entry<String, String> entry2 : sc.flows.password.scopes.entrySet()) {
@@ -242,10 +229,7 @@ public class Emit {
 							if (sc.flows.clientCredentials != null) {
 								sb.append("        System.out.println(\"Component securitySchemesFlow ")
 										.append(escape(k)).append(" clientCredentials ")
-										.append(sc.flows.clientCredentials.authorizationUrl != null
-												? escape(sc.flows.clientCredentials.authorizationUrl)
-												: "-")
-										.append(" ")
+										.append(escape(sc.flows.clientCredentials.authorizationUrl)).append(" ")
 										.append(sc.flows.clientCredentials.tokenUrl != null
 												? escape(sc.flows.clientCredentials.tokenUrl)
 												: "-")
@@ -547,8 +531,6 @@ public class Emit {
 				if (r.links != null) {
 					for (Map.Entry<String, openapi.Link> leEntry : r.links.entrySet()) {
 						String lName = leEntry.getKey();
-						if (!(leEntry.getValue() instanceof Link))
-							continue;
 						Link lnk = (Link) leEntry.getValue();
 						sb.append("        System.out.println(\"      Link ").append(escape(lName));
 						if (lnk.operationId != null)
@@ -584,8 +566,6 @@ public class Emit {
 			if (r.headers != null) {
 				for (Map.Entry<String, Object> heEntry : r.headers.entrySet()) {
 					String hName = heEntry.getKey();
-					if (!(heEntry.getValue() instanceof Header))
-						continue;
 					Header h = (Header) heEntry.getValue();
 					String hreq = (h.required != null && h.required) ? " (required)" : "";
 					String hDep = (h.deprecated != null && h.deprecated) ? " [DEPRECATED]" : "";

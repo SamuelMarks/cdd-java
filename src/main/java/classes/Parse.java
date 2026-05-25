@@ -356,8 +356,6 @@ public class Parse {
 			} else if (pType.equals("boolean")) {
 				propSchema.type = "boolean";
 			}
-		} else {
-			propSchema.type = "object";
 		}
 	}
 }

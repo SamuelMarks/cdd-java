@@ -1649,4 +1649,265 @@ public class RoutesParseEmitTest {
 
 		assertNotNull(errApi);
 	}
+
+	@Test
+	public void testGeneratedTagsCoverage() {
+		String source = "package test;\n" + "import java.net.http.HttpResponse;\n" + "/**\n"
+				+ " * @openapiVersion 3.2.0\n" + " * @openapiSelf self\n" + " * @jsonSchemaDialect dialect\n"
+				+ " * @title title\n" + " * @version 1.0.0\n" + " * @summary sum\n" + " * @description desc\n"
+				+ " * @termsOfService tos\n" + " * @contactName name\n" + " * @contactEmail email\n"
+				+ " * @contactUrl url\n" + " * @licenseName lname\n" + " * @licenseIdentifier lident\n"
+				+ " * @licenseUrl lurl\n" + " * @globalTag tag1\n" + " * @server srv url desc\n"
+				+ " * @serverName srv\n" + " * @serverVariable srv port 8080 desc\n"
+				+ " * @serverVariableEnum srv enum v1,v2\n" + " * @securityScheme sec1 type=http scheme=basic\n"
+				+ " * @securitySchemeFlow implicit sec1 http http scope1=a\n"
+				+ " * @securitySchemeFlowScope implicit sec1 scope1 desc1\n" + " * @componentResponse r1\n"
+				+ " * @componentParameter p1\n" + " * @componentRequestBody rb1\n" + " * @componentHeader h1\n"
+				+ " * @componentLink l1\n" + " * @componentLinkOpId l1 opId\n" + " * @componentLinkOpRef l1 opRef\n"
+				+ " * @componentLinkDesc l1 desc\n" + " * @componentLinkServer l1 srv\n"
+				+ " * @componentLinkParam l1 p1 v1\n" + " * @componentLinkRequestBody l1 rb\n"
+				+ " * @componentCallback cb1\n" + " * @componentPathItem pi1\n" + " * @componentMediaType mt1\n"
+				+ " * @pathSummary /path sum\n" + " * @pathDescription /path desc\n" + " * @pathServer /path s1\n"
+				+ " * @pathParameter /path p1\n" + " * @responseHeaderExamples 200 h1 ex1 sum|desc|val\n"
+				+ " * @responseHeader 200 h1 desc\n" + " * @responseHeaderRequired 200 h1 true\n"
+				+ " * @responseHeaderDeprecated 200 h1 true\n" + " * @responseHeaderStyle 200 h1 simple\n"
+				+ " * @responseHeaderExplode 200 h1 true\n" + " * @responseHeaderSchema 200 h1 string\n"
+				+ " * @responseHeaderExample 200 h1 val\n" + " * @responseHeaderContent 200 h1 application/json\n"
+				+ " * @responseContentExamples 200 application/json ex1 sum|desc|val\n"
+				+ " * @responseContent 200 application/json\n"
+				+ " * @responseContentItemSchema 200 application/json object\n"
+				+ " * @responseContentPrefixEncoding 200 application/json enc1 object\n"
+				+ " * @responseContentItemEncoding 200 application/json enc1 object\n"
+				+ " * @responseEncoding 200 application/json enc1 object\n"
+				+ " * @responseEncodingPrefixEncoding 200 application/json enc1 enc2 object\n"
+				+ " * @responseEncodingItemEncoding 200 application/json enc1 enc2 object\n"
+				+ " * @responseContentSchema 200 application/json object\n"
+				+ " * @responseContentExample 200 application/json ex1\n" + " * @responseLinkParam 200 l1 p1 v1\n"
+				+ " * @responseLink 200 l1\n" + " * @responseLinkOpId 200 l1 opId\n"
+				+ " * @responseLinkOpRef 200 l1 opRef\n" + " * @responseLinkDesc 200 l1 desc\n"
+				+ " * @responseLinkServer 200 l1 s1\n" + " * @responseLinkRequestBody 200 l1 rb\n" + " */\n"
+				+ "class GeneratedClassTags {\n" + "    /**\n" + "     * @callback cb1\n" + "     * @tag tag1\n"
+				+ "     * @externalDocs url desc\n" + "     * @deprecated true\n" + "     * @operationServer s1\n"
+				+ "     * @operationSecurity sec1\n" + "     * @param p1 desc\n" + "     * @requiredParam p1\n"
+				+ "     * @deprecatedParam p1\n" + "     * @paramAllowEmptyValue p1\n"
+				+ "     * @paramStyle p1 simple\n" + "     * @paramExplode p1\n" + "     * @paramAllowReserved p1\n"
+				+ "     * @paramSchema p1 string\n" + "     * @paramContent p1 application/json\n"
+				+ "     * @paramExample p1 val\n" + "     * @paramExamples p1 ex1 sum|desc|val\n"
+				+ "     * @requestBody desc\n" + "     * @requestBodyRequired true\n"
+				+ "     * @requestBodyContent application/json\n"
+				+ "     * @requestBodyContentSchema application/json object\n"
+				+ "     * @requestBodyContentExample application/json ex1\n"
+				+ "     * @requestBodyContentItemSchema application/json object\n"
+				+ "     * @requestBodyContentPrefixEncoding application/json enc1 object\n"
+				+ "     * @requestBodyContentItemEncoding application/json enc1 object\n"
+				+ "     * @requestBodyEncoding application/json enc1 object\n"
+				+ "     * @requestBodyEncodingPrefixEncoding application/json enc1 enc2 object\n"
+				+ "     * @requestBodyEncodingItemEncoding application/json enc1 enc2 object\n"
+				+ "     * @requestBodyContentExamples application/json ex1 sum|desc|val\n"
+				+ "     * @responseDefault desc\n" + "     * @response 200 desc\n" + "     */\n"
+				+ "    public HttpResponse<String> testMethod(String Authorization) { new StringBuilder(baseUrl + \"/test\"); HttpRequest.newBuilder().uri(java.net.URI.create(baseUrl + \"/test\")).GET(); return null; }\n"
+				+ "}\n";
+
+		openapi.OpenAPI api = routes.Parse.parse(source);
+
+		String sourceReversed = "package test;\n" + "import java.net.http.HttpResponse;\n" + "/**\n"
+				+ " * @responseLinkRequestBody 200 l1 rb\n" + " * @responseLinkServer 200 l1 s1\n"
+				+ " * @responseLinkDesc 200 l1 desc\n" + " * @responseLinkOpRef 200 l1 opRef\n"
+				+ " * @responseLinkOpId 200 l1 opId\n" + " * @responseLink 200 l1\n"
+				+ " * @responseLinkParam 200 l1 p1 v1\n" + " * @responseContentExample 200 application/json ex1\n"
+				+ " * @responseContentSchema 200 application/json object\n"
+				+ " * @responseEncodingItemEncoding 200 application/json enc1 enc2 object\n"
+				+ " * @responseEncodingPrefixEncoding 200 application/json enc1 enc2 object\n"
+				+ " * @responseEncoding 200 application/json enc1 object\n"
+				+ " * @responseContentItemEncoding 200 application/json enc1 object\n"
+				+ " * @responseContentPrefixEncoding 200 application/json enc1 object\n"
+				+ " * @responseContentItemSchema 200 application/json object\n"
+				+ " * @responseContent 200 application/json\n"
+				+ " * @responseContentExamples 200 application/json ex1 sum|desc|val\n"
+				+ " * @responseHeaderContent 200 h1 application/json\n" + " * @responseHeaderExample 200 h1 val\n"
+				+ " * @responseHeaderSchema 200 h1 string\n" + " * @responseHeaderExplode 200 h1 true\n"
+				+ " * @responseHeaderStyle 200 h1 simple\n" + " * @responseHeaderDeprecated 200 h1 true\n"
+				+ " * @responseHeaderRequired 200 h1 true\n" + " * @responseHeader 200 h1 desc\n"
+				+ " * @responseHeaderExamples 200 h1 ex1 sum|desc|val\n" + " * @pathParameter /path p1\n"
+				+ " * @pathServer /path s1\n" + " * @pathDescription /path desc\n" + " * @pathSummary /path sum\n"
+				+ " * @componentMediaType mt1\n" + " * @componentPathItem pi1\n" + " * @componentCallback cb1\n"
+				+ " * @componentLinkRequestBody l1 rb\n" + " * @componentLinkParam l1 p1 v1\n"
+				+ " * @componentLinkServer l1 srv\n" + " * @componentLinkDesc l1 desc\n"
+				+ " * @componentLinkOpRef l1 opRef\n" + " * @componentLinkOpId l1 opId\n" + " * @componentLink l1\n"
+				+ " * @componentHeader h1\n" + " * @componentRequestBody rb1\n" + " * @componentParameter p1\n"
+				+ " * @componentResponse r1\n" + " * @securitySchemeFlowScope implicit sec1 scope1 desc1\n"
+				+ " * @securitySchemeFlow implicit sec1 http http scope1=a\n"
+				+ " * @securityScheme sec1 type=http scheme=basic\n" + " * @serverVariableEnum srv enum v1,v2\n"
+				+ " * @serverVariable srv port 8080 desc\n" + " * @serverName srv\n" + " * @server srv url desc\n"
+				+ " * @globalTag tag1\n" + " * @licenseUrl lurl\n" + " * @licenseIdentifier lident\n"
+				+ " * @licenseName lname\n" + " * @contactUrl url\n" + " * @contactEmail email\n"
+				+ " * @contactName name\n" + " * @termsOfService tos\n" + " * @description desc\n" + " * @summary sum\n"
+				+ " * @version 1.0.0\n" + " * @title title\n" + " * @jsonSchemaDialect dialect\n"
+				+ " * @openapiSelf self\n" + " * @openapiVersion 3.2.0\n" + " */\n" + "class GeneratedClassTags {\n";
+		openapi.OpenAPI apiRev = routes.Parse.parse(sourceReversed);
+		assertNotNull(apiRev);
+	}
+
+	@Test
+	public void testRoutesEmitCoverage() {
+		openapi.OpenAPI api = new openapi.OpenAPI();
+		api.info = new openapi.Info();
+		api.info.title = "ServerRoutes";
+
+		api.paths = new openapi.Paths();
+		api.paths.pathItems = new java.util.HashMap<>();
+		openapi.PathItem pi = new openapi.PathItem();
+		api.paths.pathItems.put("/coverage", pi);
+
+		pi.post = new openapi.Operation();
+		pi.post.callbacks = new java.util.HashMap<>();
+		openapi.Callback cb = new openapi.Callback();
+		openapi.PathItem cbPi = new openapi.PathItem();
+		cbPi.post = new openapi.Operation();
+		cbPi.post.requestBody = new openapi.RequestBody();
+		cbPi.parameters = new java.util.ArrayList<>();
+		openapi.Parameter cbP = new openapi.Parameter();
+		cbP.name = "cb_param";
+		cbPi.parameters.add(cbP);
+		cb.pathItems = new java.util.HashMap<>();
+		cb.pathItems.put("cb1", cbPi);
+		pi.post.callbacks.put("cb1", cb);
+
+		pi.put = new openapi.Operation();
+		pi.put.callbacks = new java.util.HashMap<>();
+		pi.put.callbacks.put("cb2", cb);
+
+		pi.delete = new openapi.Operation();
+		pi.delete.callbacks = new java.util.HashMap<>();
+		pi.delete.callbacks.put("cb3", cb);
+
+		pi.patch = new openapi.Operation();
+		pi.patch.callbacks = new java.util.HashMap<>();
+		pi.patch.callbacks.put("cb4", cb);
+
+		pi.query = new openapi.Operation();
+		pi.query.callbacks = new java.util.HashMap<>();
+		pi.query.callbacks.put("cb5", cb);
+
+		api.webhooks = new java.util.HashMap<>();
+		openapi.PathItem wh = new openapi.PathItem();
+		wh.post = new openapi.Operation();
+		wh.post.requestBody = new openapi.RequestBody();
+		wh.parameters = new java.util.ArrayList<>();
+		openapi.Parameter whP = new openapi.Parameter();
+		whP.name = "wh_param";
+		wh.parameters.add(whP);
+		api.webhooks.put("wh1", wh);
+
+		pi.get = new openapi.Operation();
+		pi.get.operationId = "existingOp";
+		pi.get.parameters = new java.util.ArrayList<>();
+		openapi.Parameter getP1 = new openapi.Parameter();
+		getP1.in = "query";
+		getP1.name = "q1";
+		openapi.Example ex1 = new openapi.Example();
+		ex1.value = "val";
+		ex1.summary = "sum";
+		ex1.description = "desc";
+		getP1.examples = new java.util.HashMap<>();
+		getP1.examples.put("ex1", ex1);
+
+		openapi.Example ex2 = new openapi.Example();
+		ex2.value = null;
+		ex2.summary = null;
+		ex2.description = null;
+		getP1.examples.put("ex2", ex2);
+		pi.get.parameters.add(getP1);
+
+		pi.parameters = new java.util.ArrayList<>();
+		openapi.Parameter pathParam = new openapi.Parameter();
+		pathParam.name = "q1";
+		pathParam.in = "query";
+		pi.parameters.add(pathParam);
+
+		pi.patch.responses = new openapi.Responses();
+		pi.patch.responses.statusCodes = new java.util.HashMap<>();
+		openapi.Response getRes = new openapi.Response();
+		getRes.content = new java.util.HashMap<>();
+		openapi.MediaType mt = new openapi.MediaType();
+		mt.examples = new java.util.HashMap<>();
+		mt.examples.put("mtEx1", ex1);
+		mt.examples.put("mtEx2", ex2);
+		getRes.content.put("application/json", mt);
+		pi.patch.responses.statusCodes.put("200", getRes);
+
+		pi.patch.parameters = new java.util.ArrayList<>();
+		pi.patch.parameters.add(getP1);
+		pi.patch.security = new java.util.ArrayList<>();
+		openapi.SecurityRequirement secReq = new openapi.SecurityRequirement();
+		secReq.addRequirement("basicAuth", new java.util.ArrayList<>());
+		pi.patch.security.add(secReq);
+
+		api.components = new openapi.Components();
+		api.components.securitySchemes = new java.util.HashMap<>();
+		openapi.SecurityScheme ss = new openapi.SecurityScheme();
+		ss.type = "http";
+		ss.scheme = "basic";
+		api.components.securitySchemes.put("basicAuth", ss);
+
+		openapi.Parameter authParam = new openapi.Parameter();
+		authParam.name = "Authorization";
+		authParam.in = "header";
+		pi.patch.parameters.add(authParam);
+
+		String existing = "class ServerRoutesClient {\n" + "    public void existingOp(String q1) {\n"
+				+ "        // Preserve this\n" + "    }\n" + "}\n";
+		routes.Emit.emit(api, existing);
+	}
+
+	@Test
+	public void testIndividualTagsForNullBranches() {
+		String[] classTags = {"openapiVersion", "openapiSelf", "jsonSchemaDialect", "title", "version", "summary",
+				"description", "termsOfService", "contactName", "contactEmail", "contactUrl", "licenseName",
+				"licenseIdentifier", "licenseUrl", "globalTag", "server", "serverName", "serverVariable",
+				"serverVariableEnum", "securityScheme", "securitySchemeFlow", "securitySchemeFlowScope",
+				"componentResponse", "componentParameter", "componentRequestBody", "componentHeader", "componentLink",
+				"componentLinkOpId", "componentLinkOpRef", "componentLinkDesc", "componentLinkServer",
+				"componentLinkParam", "componentLinkRequestBody", "componentCallback", "componentPathItem",
+				"componentMediaType", "pathSummary", "pathDescription", "pathServer", "pathParameter",
+				"responseHeaderExamples", "responseHeader", "responseHeaderRequired", "responseHeaderDeprecated",
+				"responseHeaderStyle", "responseHeaderExplode", "responseHeaderSchema", "responseHeaderExample",
+				"responseHeaderContent", "responseContentExamples", "responseContent", "responseContentItemSchema",
+				"responseContentPrefixEncoding", "responseContentItemEncoding", "responseEncoding",
+				"responseEncodingPrefixEncoding", "responseEncodingItemEncoding", "responseContentSchema",
+				"responseContentExample", "responseLinkParam", "responseLink", "responseLinkOpId", "responseLinkOpRef",
+				"responseLinkDesc", "responseLinkServer", "responseLinkRequestBody"};
+
+		for (String tag : classTags) {
+			String content = "val1 val2 val3 val4 val5 val6";
+			if (tag.equals("serverVariable"))
+				content = "srv port 8080 desc";
+			if (tag.equals("serverVariableEnum"))
+				content = "srv enum v1,v2";
+			if (tag.equals("securityScheme"))
+				content = "sec1 type=http scheme=basic";
+			if (tag.equals("securitySchemeFlow"))
+				content = "implicit sec1 http http scope1=a";
+
+			String source = "package test;\n/**\n * @" + tag + " " + content + "\n */\nclass Test {}";
+			routes.Parse.parse(source);
+		}
+
+		String[] methodTags = {"callback", "tag", "externalDocs", "deprecated", "operationServer", "operationSecurity",
+				"param", "requiredParam", "deprecatedParam", "paramAllowEmptyValue", "paramStyle", "paramExplode",
+				"paramAllowReserved", "paramSchema", "paramContent", "paramExample", "paramExamples", "requestBody",
+				"requestBodyRequired", "requestBodyContent", "requestBodyContentSchema", "requestBodyContentExample",
+				"requestBodyContentItemSchema", "requestBodyContentPrefixEncoding", "requestBodyContentItemEncoding",
+				"requestBodyEncoding", "requestBodyEncodingPrefixEncoding", "requestBodyEncodingItemEncoding",
+				"requestBodyContentExamples", "responseDefault", "response"};
+
+		for (String tag : methodTags) {
+			String content = "val1 val2 val3 val4 val5 val6";
+			String source = "package test;\nimport java.net.http.HttpResponse;\nclass Test {\n" + "    /**\n * @" + tag
+					+ " " + content + "\n */\n"
+					+ "    public HttpResponse<String> testMethod(String Authorization) { new StringBuilder(baseUrl + \"/test\"); HttpRequest.newBuilder().uri(java.net.URI.create(baseUrl + \"/test\")).GET(); return null; }\n"
+					+ "}";
+			routes.Parse.parse(source);
+		}
+	}
 }

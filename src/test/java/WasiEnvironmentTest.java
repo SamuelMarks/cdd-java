@@ -9,63 +9,75 @@ public class WasiEnvironmentTest {
 	public static void run() throws Exception {
 		System.out.println("Running WASI Environment Simulation Test...");
 
-		// Setup virtual root
-		File tempDir = Files.createTempDirectory("cdd-wasi-test").toFile();
+		// 1. Create a temporary directory to act as the virtual root
+		File virtualRoot = Files.createTempDirectory("wasi_root").toFile();
 		try {
-			// Setup /spec.json inside virtual root
-			File specJson = new File(tempDir, "spec.json");
-			try (FileOutputStream fos = new FileOutputStream(specJson)) {
-				String minimalSpec = "{\"openapi\":\"3.2.0\",\"info\":{\"title\":\"Test API\",\"version\":\"1.0\"},\"paths\":{},\"components\":{\"schemas\":{\"MySchema\":{\"type\":\"object\",\"properties\":{\"myProp\":{\"type\":\"string\"}}}}}}";
-				fos.write(minimalSpec.getBytes("UTF-8"));
+			// 2. Create the spec.json inside the virtual root
+			File specFile = new File(virtualRoot, "spec.json");
+			String specJson = "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"Wasi API\",\"version\":\"1.0\"},\"paths\":{}}";
+			try (FileOutputStream fos = new FileOutputStream(specFile)) {
+				fos.write(specJson.getBytes("UTF-8"));
 			}
 
-			// Setup /out directory inside virtual root
-			File outDir = new File(tempDir, "out");
+			// 3. Create an output directory inside the virtual root
+			File outDir = new File(virtualRoot, "out");
 			outDir.mkdirs();
 
-			// Prepare process builder
+			// 4. Set up the ProcessBuilder
 			String javaHome = System.getProperty("java.home");
 			String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
 			String classpath = System.getProperty("java.class.path");
 
-			ProcessBuilder pb = new ProcessBuilder(javaBin, "-cp", classpath, "cli.Main", "from_openapi", "to_sdk",
-					"-i", "/spec.json", "-o", "/out");
+			java.util.List<String> command = new java.util.ArrayList<>();
+			command.add(javaBin);
+			command.add("-cp");
+			command.add(classpath);
 
-			// Mock environment variables
-			Map<String, String> env = pb.environment();
-			env.put("CDD_COMMAND", "from_openapi");
-			env.put("INPUT", "/spec.json");
-			env.put("OUTPUT_DIR", "out");
-			// Set the virtual root so cli.Main resolves /spec.json -> tempDir/spec.json
-			env.put("CDD_WASI_VIRTUAL_ROOT", tempDir.getAbsolutePath());
-
-			pb.redirectErrorStream(true);
-			Process process = pb.start();
-
-			// Read output
-			byte[] outBytes = process.getInputStream().readAllBytes();
-			String output = new String(outBytes, "UTF-8");
-
-			int exitCode = process.waitFor();
-
-			if (exitCode != 0) {
-				System.err.println("WASI Simulation process failed with exit code: " + exitCode);
-				System.err.println("Output:\n" + output);
-				throw new RuntimeException("WASI test exited with non-zero code");
+			// Pass jacoco agent if present
+			for (String arg : java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+				if (arg.startsWith("-javaagent:") && arg.contains("jacoco")) {
+					command.add(arg);
+				}
 			}
 
-			// Validate outputs
-			File generatedSdk = new File(new File(new File(outDir, "src"), "main"),
-					new File("java", "Sdk.java").getPath());
-			if (!generatedSdk.exists() || generatedSdk.length() == 0) {
-				System.err.println("Output:\n" + output);
-				throw new RuntimeException("Expected generated file /out/src/main/java/Sdk.java not found or is empty");
+			command.add("cli.Main");
+			command.add("from_openapi");
+			command.add("to_sdk");
+			command.add("-i");
+			command.add("/spec.json");
+			command.add("-o");
+			command.add("/out");
+
+			ProcessBuilder pb = new ProcessBuilder(command);
+
+			// 5. Inject the simulated environment variable
+			Map<String, String> env = pb.environment();
+			env.put("CDD_WASI_VIRTUAL_ROOT", virtualRoot.getAbsolutePath());
+
+			// 6. Run the process
+			Process process = pb.start();
+
+			// 7. Wait for completion and check the result
+			int exitCode = process.waitFor();
+			if (exitCode != 0) {
+				Scanner s = new Scanner(process.getErrorStream()).useDelimiter("\\A");
+				String error = s.hasNext() ? s.next() : "";
+				System.err.println("WASI Simulation process failed with exit code: " + exitCode);
+				System.err.println("Output:\n" + error);
+				throw new Exception("WASI Process Failed");
+			}
+
+			// 8. Verify the output was created in the virtual root
+			File expectedOutput = new File(outDir, "src/main/java/Sdk.java");
+			if (!expectedOutput.exists()) {
+				throw new Exception("Expected output file not found in virtual root: " + expectedOutput);
 			}
 
 			System.out.println("WASI Environment Simulation Test passed.");
+
 		} finally {
-			// Clean up
-			deleteDir(tempDir);
+			// Cleanup
+			deleteDir(virtualRoot);
 		}
 	}
 

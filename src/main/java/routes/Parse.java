@@ -816,6 +816,7 @@ public class Parse {
 									rb.content.put(tag.getContent().toText().trim(), mt);
 
 								} else if (tag.getTagName().equals("requestBodyContentSchema")) {
+									System.out.println("HIT SCHEMA!");
 									String tagContent = tag.getContent().toText().trim();
 									String[] parts = tagContent.split("\\s+", 2);
 									if (parts.length > 1) {
@@ -971,57 +972,6 @@ public class Parse {
 										mt.examples.put(parts[1], exObj);
 									}
 
-								} else if (tag.getTagName().equals("requestBodyContentSchema")) {
-									String tagContent = tag.getContent().toText().trim();
-									String[] parts = tagContent.split("\\s+", 2);
-									if (parts.length > 1) {
-										if (!(op.requestBody instanceof openapi.RequestBody))
-											op.requestBody = new openapi.RequestBody();
-										openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
-										if (rb.content == null)
-											rb.content = new java.util.HashMap<>();
-										openapi.MediaType mt = rb.content.computeIfAbsent(parts[0],
-												k -> new openapi.MediaType());
-										if (mt.schema == null)
-											mt.schema = new java.util.HashMap<>();
-										((java.util.HashMap<String, Object>) mt.schema).put("type", parts[1]);
-									}
-								} else if (tag.getTagName().equals("requestBodyContentExample")) {
-									String tagContent = tag.getContent().toText().trim();
-									String[] parts = tagContent.split("\\s+", 2);
-									if (parts.length > 1) {
-										if (!(op.requestBody instanceof openapi.RequestBody))
-											op.requestBody = new openapi.RequestBody();
-										openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
-										if (rb.content == null)
-											rb.content = new java.util.HashMap<>();
-										openapi.MediaType mt = rb.content.computeIfAbsent(parts[0],
-												k -> new openapi.MediaType());
-										mt.example = parts[1];
-									}
-								} else if (tag.getTagName().equals("requestBodyContentExamples")) {
-									String tagContent = tag.getContent().toText().trim();
-									String[] parts = tagContent.split("\\s+", 3);
-									if (parts.length > 2) {
-										if (!(op.requestBody instanceof openapi.RequestBody))
-											op.requestBody = new openapi.RequestBody();
-										openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
-										if (rb.content == null)
-											rb.content = new java.util.HashMap<>();
-										openapi.MediaType mt = rb.content.computeIfAbsent(parts[0],
-												k -> new openapi.MediaType());
-										if (mt.examples == null)
-											mt.examples = new java.util.HashMap<>();
-										openapi.Example exObj = new openapi.Example();
-										String[] exParts = parts[2].split("\\|", -1);
-										if (exParts.length > 0 && !exParts[0].isEmpty())
-											exObj.summary = exParts[0].replace("_", " ");
-										if (exParts.length > 1 && !exParts[1].isEmpty())
-											exObj.description = exParts[1].replace("_", " ");
-										if (exParts.length > 2 && !exParts[2].isEmpty())
-											exObj.value = exParts[2];
-										mt.examples.put(parts[1], exObj);
-									}
 								} else if (tag.getTagName().equals("responseDefault")) {
 									String tagContent = tag.getContent().toText().trim();
 									if (op.responses == null) {

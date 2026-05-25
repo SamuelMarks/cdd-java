@@ -1,4 +1,4 @@
-.PHONY: install_base install_deps build_docs build test run help all default
+.PHONY: install_base install_deps docs build_docs build test run help all default
 
 # Extract arguments for build_docs
 ifeq (build_docs,$(firstword $(MAKECMDGOALS)))
@@ -53,6 +53,17 @@ install_base:
 install_deps:
 	@echo "Dependencies already in lib/"
 
+docs:
+	@echo "Building API docs to target/docs..."
+	@rm -rf target/docs
+	@mkdir -p target/docs
+	@find src/main/java -name "*.java" ! -name "ApiIntegrationTest.java" > doc_sources.txt
+	javadoc -d target/docs -cp "lib/*:src/main/java" @doc_sources.txt
+	@rm -f doc_sources.txt
+	@mkdir -p docs
+	@rm -rf docs/html
+	@ln -s ../target/docs docs/html
+
 build_docs:
 	@echo "Building API docs to $(DOCS_DIR)..."
 	@mkdir -p "$(DOCS_DIR)"
@@ -81,6 +92,7 @@ help:
 	@echo "Available targets:"
 	@echo "  install_base : install language runtime (Java JDK)"
 	@echo "  install_deps : install local dependencies"
+	@echo "  docs         : build the API docs to target/docs and symlink docs/html"
 	@echo "  build_docs   : build the API docs (e.g. make build_docs [path])"
 	@echo "  build        : build the CLI binary (e.g. make build [path])"
 	@echo "  test         : run tests locally"

@@ -44,12 +44,16 @@ public class ClassesParseEmitTest {
 				+ "@JsonTypeInfo(use=Id.NAME, property=\"type\")\n" + "public class MyClass extends BaseClass {\n"
 				+ "    /**\n" + "     * prop doc\n" + "     * @xmlName xpname\n" + "     * @xmlNamespace xpns\n"
 				+ "     * @xmlPrefix xppr\n" + "     * @xmlAttribute false\n" + "     * @xmlWrapped true\n"
-				+ "     * @schemaExample exprop\n" + "     * @schemaExternalDocs http://pdoc\n" + "     */\n"
+				+ "     * @schemaExample exprop\n" + "     * @schemaExternalDocs http://pdoc pdesc\n" + "     */\n"
 				+ "    @JsonProperty(\"prop_a\")\n" + "    public String propA;\n" + "    private int propB;\n" + // should
 																													// be
 																													// ignored
-				"}\n" + "public interface MyInterface {}\n" + "public class MyClient {}\n"
-				+ "public class MyMockServer {}\n" + "public class MyIntegrationTest {}\n";
+				"}\n" + "/**\n" + " * @schemaExternalDocs http://nospace\n" + " */\n"
+				+ "@JsonTypeInfo(use=Id.NAME, property=\"type\")\n" + "public class NoSpaceClass {}\n"
+				+ "public interface MyInterface {}\n" + "public class MyClient {}\n" + "class NospaceServer { \n"
+				+ "    /**\n" + "     * @schemaExternalDocs http://nospace\n" + "     */\n"
+				+ "    public String myProp;\n" + "}\n" + "public class MyMockServer {}\n"
+				+ "public class MyIntegrationTest {}\n";
 
 		OpenAPI api = Parse.parse(source);
 		Schema schema = api.components.schemas.get("MyClass");
@@ -90,7 +94,7 @@ public class ClassesParseEmitTest {
 		assertTrue(propSchema.xml.wrapped);
 		assertEquals("exprop", propSchema.example);
 		assertEquals("http://pdoc", propSchema.externalDocs.url);
-		assertNull(propSchema.externalDocs.description);
+		assertEquals("pdesc", propSchema.externalDocs.description);
 	}
 
 	@Test
@@ -183,7 +187,11 @@ public class ClassesParseEmitTest {
 		Parameter p2 = new Parameter();
 		p2.name = "query_p";
 		p2.in = "query";
-		getOp.parameters = Arrays.asList(p1, p2);
+		Parameter p2b = new Parameter();
+		p2b.name = "query_p2";
+		p2b.in = "query";
+		getOp.parameters = Arrays.asList(p1, p2, p2b);
+
 		pi.get = getOp;
 
 		Operation postOp = new Operation();
@@ -194,7 +202,11 @@ public class ClassesParseEmitTest {
 		Parameter p3 = new Parameter();
 		p3.name = "qp2";
 		p3.in = "query";
-		putOp.parameters = Arrays.asList(p3);
+		Parameter p4 = new Parameter();
+		p4.name = null;
+		p4.in = "query";
+		putOp.parameters = Arrays.asList(p3, p4);
+
 		pi.put = putOp;
 
 		pi.delete = new Operation();
@@ -226,7 +238,7 @@ public class ClassesParseEmitTest {
 		objSchema.discriminator.propertyName = "type";
 		objSchema.discriminator.mapping = new HashMap<>();
 		objSchema.discriminator.mapping.put("a", "A");
-		objSchema.discriminator.addExtension("defaultMapping", "A");
+		objSchema.discriminator.extensions.put("defaultMapping", "A");
 
 		objSchema.properties = new HashMap<>();
 
@@ -315,7 +327,8 @@ public class ClassesParseEmitTest {
 
 		Schema keyProp = new Schema();
 		keyProp.type = "string";
-		objSchema.properties.put("enum", keyProp); // tests "enumValue" renaming
+		objSchema.properties.put("enum", keyProp);
+		objSchema.properties.put("notSchema", new Object()); // tests "enumValue" renaming
 		objSchema.properties.put("1digit", keyProp); // tests "_1digit" renaming
 
 		api.components.schemas.put("MyObj", objSchema);
@@ -324,7 +337,7 @@ public class ClassesParseEmitTest {
 		System.out.println("EMIT_RESULT:\n" + result);
 		assertNotNull(result);
 		assertTrue(result.contains("class TestAPIClient"));
-		assertTrue(result.contains("getThing(String id, String query_p)"));
+		assertTrue(result.contains("getThing(String id, String query_p, String query_p2)"));
 		assertTrue(result.contains("enum MyEnum"));
 		assertTrue(result.contains("B_C"));
 		assertTrue(result.contains("_1D"));

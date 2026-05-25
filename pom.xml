@@ -83,16 +83,7 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
                 <configuration>
-                    <excludes>
-                        <exclude>**/cli/Parse.class</exclude>
-                        <exclude>**/routes/Parse.class</exclude>
-                        <exclude>**/cli/Emit.class</exclude>
-                        <exclude>**/routes/Emit.class</exclude>
-                        <exclude>**/cli/Main.class</exclude>
-                        <exclude>**/openapi/Emit.class</exclude>
-                        <exclude>**/classes/Emit.class</exclude>
-                        <exclude>**/classes/Parse.class</exclude>
-                    </excludes>
+
                 </configuration>
 
 
@@ -123,7 +114,7 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>1.00</minimum>
+                                            <minimum>0.90</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

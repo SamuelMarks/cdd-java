@@ -321,9 +321,7 @@ public class Emit {
 		if (!(schemaObj instanceof Schema))
 			return "Object";
 		Schema schemaMap = (Schema) schemaObj;
-		if (schemaMap.$ref != null) {
-			return schemaMap.$ref.substring(schemaMap.$ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
-		}
+
 		String schemaType = (String) schemaMap.type;
 		if ("string".equals(schemaType)) {
 			if ("date-time".equals(schemaMap.format))

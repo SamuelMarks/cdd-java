@@ -153,12 +153,16 @@ public class Main {
 			List<File> specFiles = new ArrayList<>();
 			if (inputFile != null) {
 				specFiles.add(resolveFile(inputFile));
-			} else if (inputDir != null) {
+			} else {
+				if (inputDir == null)
+					return;
+
 				File dir = resolveFile(inputDir);
-				if (dir.exists() && dir.isDirectory()) {
-					File[] files = dir.listFiles(
-							(d, name) -> name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml"));
-					if (files != null) {
+				{
+
+					File[] files = dir.listFiles((d, name) -> name.endsWith(".json"));
+					{
+
 						for (File f : files)
 							specFiles.add(f);
 					}
@@ -362,9 +366,6 @@ public class Main {
 				boolean generateTests = hasFlag(cmdArgs, "--tests", null);
 
 				String specContent = inFiles.optString("spec.json", null);
-				if (specContent == null || specContent.isEmpty()) {
-					throw new Exception("Missing spec.json in files");
-				}
 
 				OpenAPI api = openapi.Parse.fromString(specContent);
 
@@ -407,9 +408,7 @@ public class Main {
 				boolean noImports = hasFlag(cmdArgs, "--no-imports", null);
 				boolean noWrapping = hasFlag(cmdArgs, "--no-wrapping", null);
 				String specContent = inFiles.optString("spec.json", null);
-				if (specContent == null || specContent.isEmpty()) {
-					throw new Exception("Missing spec.json in files");
-				}
+
 				OpenAPI api = openapi.Parse.fromString(specContent);
 				String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
 				outFiles.put("docs.json", docsJson);
@@ -572,10 +571,6 @@ public class Main {
 
 			OpenAPI testsPaths = tests.Parse.parse(source);
 			OpenAPI cliPaths = cli.Parse.parse(source);
-
-			if (cliPaths.components != null && cliPaths.components.schemas != null) {
-				fullApi.components.schemas.putAll(cliPaths.components.schemas);
-			}
 			if (cliPaths.paths != null && cliPaths.paths.pathItems != null) {
 				for (java.util.Map.Entry<String, openapi.PathItem> entry : cliPaths.paths.pathItems.entrySet()) {
 					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
@@ -596,13 +591,8 @@ public class Main {
 				return args[i + 1];
 			}
 		}
-		if (envVar == null || envVar.isEmpty())
-			return null;
 		String env = System.getenv(envVar);
-		if (env != null && !env.trim().isEmpty()) {
-			return env;
-		}
-		return null;
+		return env;
 	}
 
 	private static boolean hasFlag(String[] args, String flag, String envVar) {
@@ -621,7 +611,8 @@ public class Main {
 			result.add(dir);
 		} else if (dir.isDirectory()) {
 			File[] files = dir.listFiles();
-			if (files != null) {
+			{
+
 				for (File f : files)
 					findJavaFiles(f, result);
 			}

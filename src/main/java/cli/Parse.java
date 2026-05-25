@@ -15,8 +15,7 @@ public class Parse {
 	}
 
 	private static String unescape(String s) {
-		if (s == null)
-			return "";
+
 		return s.replace("\\n", "\n").replace("\\r", "\r").replace("\\\"", "\"").replace("\\\\", "\\");
 	}
 
@@ -29,6 +28,15 @@ public class Parse {
 	 */
 	public static OpenAPI parse(String existingSource) {
 		OpenAPI api = new OpenAPI();
+		api.components = new Components();
+		api.components.schemas = new HashMap<>();
+		api.components.responses = new HashMap<>();
+		api.components.parameters = new HashMap<>();
+		api.components.requestBodies = new HashMap<>();
+		api.components.headers = new HashMap<>();
+		api.components.links = new HashMap<>();
+		api.components.callbacks = new HashMap<>();
+		api.components.pathItems = new HashMap<>();
 		String helpBody = "";
 		Matcher hm = Pattern.compile("(?s)private static void printHelp\\(\\) \\{(.*?)\\n    \\}")
 				.matcher(existingSource);
@@ -501,19 +509,6 @@ public class Parse {
 						if (mt.itemSchema == null)
 							mt.itemSchema = new HashMap<String, Object>();
 						((Map<String, Object>) mt.itemSchema).put("type", parts[1]);
-					}
-				}
-			} else if (line.startsWith("      RequestBodyContentPrefixEncoding ")) {
-				if (currentOp != null && currentOp.requestBody instanceof RequestBody) {
-					RequestBody rb = (RequestBody) currentOp.requestBody;
-					String[] parts = line.substring(39).split(" ", 2);
-					if (parts.length > 1 && rb.content != null && rb.content.containsKey(parts[0])) {
-						MediaType mt = rb.content.get(parts[0]);
-						if (mt.prefixEncoding == null)
-							mt.prefixEncoding = new ArrayList<>();
-						Encoding enc = new Encoding();
-						enc.contentType = parts[1];
-						mt.prefixEncoding.add(enc);
 					}
 				}
 			} else if (line.startsWith("      RequestBodyContentItemEncoding ")) {

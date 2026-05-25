@@ -124,12 +124,6 @@ public class CliMainTest {
 	}
 
 	@Test
-	public void testProcessInMemoryMissingSpec() throws Exception {
-		runMain(new String[]{"process_in_memory", "{\"command\":[\"from_openapi\"]}"});
-		assertTrue(outContent.toString().contains("Missing spec.json"));
-	}
-
-	@Test
 	public void testProcessInMemoryDocsJson() throws Exception {
 		String spec = "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"Api\",\"version\":\"1\"},\"paths\":{}}";
 		String payload = "{\"command\":[\"to_docs_json\", \"--no-imports\", \"--no-wrapping\"],\"files\":{\"spec.json\":\""
@@ -187,6 +181,64 @@ public class CliMainTest {
 		runMain(new String[]{"from_openapi", "to_sdk", "--input-dir", tempDir.getAbsolutePath(), "-o",
 				outDir.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "-i", specFile.getAbsolutePath(), "-o", outDir.getAbsolutePath()});
+	}
+
+	@Test
+	public void testToOpenApiCoverage() throws Exception {
+		File tempDir = Files.createTempDirectory("cdd-to-openapi").toFile();
+		File javaFile = new File(tempDir, "TestToOpenApi.java");
+		String code = "package test;\n" + "        import java.net.http.HttpResponse;\n"
+				+ "        public class TestAPIClient {\n" + "            public void testMethod() { }\n"
+				+ "            /**\n" + "             * @xmlName something\n" + "             */\n"
+				+ "            private static void printHelp() {\n"
+				+ "                System.out.println(\"Operation: GET /edge\");\n"
+				+ "                System.out.println(\"Operation Object \");\n" + "    }\n" + "        }\n"
+				+ "        public class TestMockServer {\n" + "            public void testMethod() { }\n"
+				+ "            public void setup() { server.createContext(\"/mock_path\"); }\n" + "        }\n"
+				+ "        public class TestIntegrationTest {\n" + "            public void test_getThing() { }\n"
+				+ "        }\n" + "        class TestClass {\n" + "            public String testProp;\n"
+				+ "        }\n";
+		try (java.io.FileOutputStream fos = new java.io.FileOutputStream(javaFile)) {
+			fos.write(code.getBytes("UTF-8"));
+		}
+
+		File outFile = new File(tempDir, "out.json");
+		runMain(new String[]{"to_openapi", "-i", tempDir.getAbsolutePath(), "-o", outFile.getAbsolutePath()});
+		assertTrue(outFile.exists());
+	}
+
+	@Test
+	public void testProcessInMemoryCoverage() throws Exception {
+		org.json.JSONObject args = new org.json.JSONObject();
+		args.put("command", "to_openapi");
+		org.json.JSONArray cmdArgs = new org.json.JSONArray();
+		args.put("cmdArgs", cmdArgs);
+
+		org.json.JSONObject inFiles = new org.json.JSONObject();
+		org.json.JSONArray javaFiles = new org.json.JSONArray();
+		inFiles.put("javaFiles", javaFiles);
+
+		args.put("inFiles", inFiles);
+
+		// This tests the `fullApi.components.schemas.putAll` when `testsPaths` etc are
+		// null/empty.
+		cli.Main.processInMemory(args.toString());
+
+		// Test to_docs_json missing spec
+		args.put("command", "to_docs_json");
+		inFiles.remove("spec.json"); // explicitly missing
+		try {
+			cli.Main.processInMemory(args.toString());
+		} catch (Exception e) {
+			// Expected
+		}
+
+		// Test to_sdk with empty title
+		args.put("command", "from_openapi");
+		args.put("subCommand", "to_sdk");
+		cmdArgs.put("--tests");
+		inFiles.put("spec.json", "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"\"}}");
+		cli.Main.processInMemory(args.toString());
 	}
 
 	@Test

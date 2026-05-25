@@ -147,4 +147,56 @@ public class OpenapiParseEmitTest {
 		OpenAPI parsed = Parse.fromFile(tempFile);
 		assertEquals("3.1.0", parsed.openapi);
 	}
+
+	@Test
+	public void testEmitRemainingBranches2() throws Exception {
+		openapi.OpenAPI api = new openapi.OpenAPI();
+
+		// 70: api.paths != null && api.paths.pathItems != null &&
+		// !api.paths.pathItems.isEmpty()
+		api.paths = new openapi.Paths();
+		api.paths.pathItems = new java.util.HashMap<>(); // Empty Map
+
+		// 129: op.parameters != null && !op.parameters.isEmpty()
+		openapi.PathItem pi = new openapi.PathItem();
+		api.paths.pathItems.put("/test2", pi);
+		openapi.Operation op = new openapi.Operation();
+		pi.get = op;
+		op.parameters = new java.util.ArrayList<>(); // Empty List
+
+		// 140: rb.content != null
+		openapi.RequestBody rb = new openapi.RequestBody();
+		rb.content = null;
+		op.requestBody = rb;
+
+		// 154: op.responses != null && op.responses.statusCodes != null
+		op.responses = new openapi.Responses();
+		op.responses.statusCodes = null;
+
+		openapi.Emit.toString(api);
+	}
+
+	@Test
+	public void testEmitRemainingBranches3() throws Exception {
+		openapi.OpenAPI api = new openapi.OpenAPI();
+
+		// 70: api.paths != null && api.paths.pathItems == null
+		api.paths = new openapi.Paths();
+		api.paths.pathItems = null;
+		openapi.Emit.toString(api);
+
+		api.paths.pathItems = new java.util.HashMap<>();
+		openapi.PathItem pi = new openapi.PathItem();
+		api.paths.pathItems.put("/test3", pi);
+
+		// 86: pi.parameters != null && !pi.parameters.isEmpty()
+		pi.parameters = new java.util.ArrayList<>();
+		openapi.Emit.toString(api); // empty list
+
+		openapi.Parameter p = new openapi.Parameter();
+		p.name = "p1";
+		pi.parameters.add(p);
+		openapi.Emit.toString(api); // non-empty list
+	}
+
 }

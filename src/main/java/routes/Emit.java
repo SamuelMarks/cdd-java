@@ -202,8 +202,6 @@ public class Emit {
 	 *            param doc
 	 */
 	private static void emitCallbacksToAST(ClassOrInterfaceDeclaration classDecl, Map<String, Object> callbacks) {
-		if (callbacks == null)
-			return;
 		for (Map.Entry<String, Object> cbEntry : callbacks.entrySet()) {
 			if (cbEntry.getValue() instanceof openapi.Callback) {
 				openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
@@ -449,14 +447,14 @@ public class Emit {
 					String mtStr = mEntry.getKey();
 					openapi.MediaType mt = mEntry.getValue();
 					docBuilder.append(" * @requestBodyContent ").append(mtStr).append("\n");
-					if (mt.schema != null && mt.schema instanceof java.util.Map) {
+					if (mt.schema instanceof java.util.Map) {
 						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
 						if (schMap.containsKey("type")) {
 							docBuilder.append(" * @requestBodyContentSchema ").append(mtStr).append(" ")
 									.append(schMap.get("type")).append("\n");
 						}
 					}
-					if (mt.itemSchema != null && mt.itemSchema instanceof java.util.Map) {
+					if (mt.itemSchema instanceof java.util.Map) {
 						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
 						if (schMap.containsKey("type")) {
 							docBuilder.append(" * @requestBodyContentItemSchema ").append(mtStr).append(" ")
@@ -529,7 +527,7 @@ public class Emit {
 							openapi.MediaType mt = mEntry.getValue();
 							docBuilder.append(" * @responseContent ").append(statusCode).append(" ").append(mtStr)
 									.append("\n");
-							if (mt.schema != null && mt.schema instanceof java.util.Map) {
+							if (mt.schema instanceof java.util.Map) {
 								java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
 								if (schMap.containsKey("type")) {
 									docBuilder.append(" * @responseContentSchema ").append(statusCode).append(" ")
@@ -569,14 +567,14 @@ public class Emit {
 					String mtStr = mEntry.getKey();
 					openapi.MediaType mt = mEntry.getValue();
 					docBuilder.append(" * @responseContent ").append(statusCode).append(" ").append(mtStr).append("\n");
-					if (mt.schema != null && mt.schema instanceof java.util.Map) {
+					if (mt.schema instanceof java.util.Map) {
 						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
 						if (schMap.containsKey("type")) {
 							docBuilder.append(" * @responseContentSchema ").append(statusCode).append(" ").append(mtStr)
 									.append(" ").append(schMap.get("type")).append("\n");
 						}
 					}
-					if (mt.itemSchema != null && mt.itemSchema instanceof java.util.Map) {
+					if (mt.itemSchema instanceof java.util.Map) {
 						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
 						if (schMap.containsKey("type")) {
 							docBuilder.append(" * @responseContentItemSchema ").append(statusCode).append(" ")
@@ -617,7 +615,7 @@ public class Emit {
 							}
 						}
 					}
-					if (mt.itemSchema != null && mt.itemSchema instanceof java.util.Map) {
+					if (mt.itemSchema instanceof java.util.Map) {
 						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
 						if (schMap.containsKey("type")) {
 							docBuilder.append(" * @responseContentItemSchema ").append(statusCode).append(" ")
