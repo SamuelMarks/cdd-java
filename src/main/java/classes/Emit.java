@@ -108,12 +108,11 @@ public class Emit {
 
 	private static void emitClientMethod(ClassOrInterfaceDeclaration classDecl, String method, String path,
 			openapi.Operation op) {
-		String methodName = op.operationId;
-		if (methodName == null || methodName.isEmpty()) {
-			methodName = method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
-		} else {
-			methodName = methodName.replaceAll("[^a-zA-Z0-9_]", "");
-		}
+		String methodName = op.operationId != null
+				? op.operationId.replaceAll("[^a-zA-Z0-9_]", "")
+				: (method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", ""));
+		if (methodName.isEmpty())
+			methodName = "method";
 
 		com.github.javaparser.ast.body.MethodDeclaration md = classDecl.addMethod(methodName, Modifier.Keyword.PUBLIC);
 		md.setType("HttpResponse<String>");
@@ -123,23 +122,21 @@ public class Emit {
 		if (op.parameters != null) {
 			int pIdx = 0;
 			for (Object po : op.parameters) {
-				if (po instanceof openapi.Parameter) {
-					openapi.Parameter p = (openapi.Parameter) po;
-					String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
-					if (!pName.isEmpty()) {
-						md.addParameter("String", pName);
-						if ("path".equals(p.in)) {
-							resolvedPath = resolvedPath.replace("{" + p.name + "}", "\" + " + pName + " + \"");
-						} else if ("query".equals(p.in)) {
-							if (!resolvedPath.contains("?")) {
-								resolvedPath += "?" + p.name + "=\" + " + pName + " + \"";
-							} else {
-								resolvedPath += "&" + p.name + "=\" + " + pName + " + \"";
-							}
-						}
-						pIdx++;
+				openapi.Parameter p = (openapi.Parameter) po;
+				String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
+				if (pName.isEmpty())
+					pName = "param";
+				md.addParameter("String", pName);
+				if ("path".equals(p.in)) {
+					resolvedPath = resolvedPath.replace("{" + p.name + "}", "\" + " + pName + " + \"");
+				} else if ("query".equals(p.in)) {
+					if (!resolvedPath.contains("?")) {
+						resolvedPath += "?" + p.name + "=\" + " + pName + " + \"";
+					} else {
+						resolvedPath += "&" + p.name + "=\" + " + pName + " + \"";
 					}
 				}
+				pIdx++;
 			}
 		}
 

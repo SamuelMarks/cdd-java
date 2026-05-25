@@ -168,23 +168,17 @@ public class Parse {
 
 				// Discriminator
 				for (AnnotationExpr ann : classDecl.getAnnotations()) {
-					if (ann.getNameAsString().equals("JsonTypeInfo")) {
-						if (ann instanceof NormalAnnotationExpr) {
-							NormalAnnotationExpr nae = (NormalAnnotationExpr) ann;
-							Discriminator discriminator = schema.discriminator != null
-									? schema.discriminator
-									: new Discriminator();
-							boolean added = false;
-							for (MemberValuePair mvp : nae.getPairs()) {
-								if (mvp.getNameAsString().equals("property")) {
-									discriminator.propertyName = mvp.getValue().toString().replace("\"", "");
-									added = true;
-								}
-							}
-							if (added) {
-								schema.discriminator = discriminator;
+					if (ann.getNameAsString().equals("JsonTypeInfo") && ann instanceof NormalAnnotationExpr) {
+						NormalAnnotationExpr nae = (NormalAnnotationExpr) ann;
+						Discriminator discriminator = schema.discriminator != null
+								? schema.discriminator
+								: new Discriminator();
+						for (MemberValuePair mvp : nae.getPairs()) {
+							if (mvp.getNameAsString().equals("property")) {
+								discriminator.propertyName = mvp.getValue().toString().replace("\"", "");
 							}
 						}
+						schema.discriminator = discriminator;
 					}
 				}
 

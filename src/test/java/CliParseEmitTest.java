@@ -368,6 +368,150 @@ public class CliParseEmitTest {
 		assertNotNull(extraParsed);
 
 		// Try edge cases: emit with completely empty API
+		OpenAPI emptyApi = new OpenAPI();
+		emptyApi.components = new Components(); // hit components != null but everything inside is null
+		emptyApi.paths = new Paths(); // hit paths != null but pathItems is null
+		Emit.emitCli(emptyApi);
+
+		emptyApi.paths.pathItems = new HashMap<>();
+		PathItem emptyPi = new PathItem();
+		emptyPi.post = new Operation(); // get is null, post is empty
+		emptyApi.paths.pathItems.put("/empty", emptyPi);
+
+		String emptyGenerated = Emit.emitCli(emptyApi);
+		assertNotNull(emptyGenerated);
+
+		// Try edge cases: emit with objects present but inner properties null
+		OpenAPI nullProps = new OpenAPI();
+		nullProps.info = new Info();
+		nullProps.info.contact = new Contact();
+		nullProps.info.license = new License();
+		nullProps.servers = new ArrayList<>();
+		Server nullServer = new Server();
+		nullServer.variables = new HashMap<>();
+		nullServer.variables.put("var", new ServerVariable());
+		nullProps.servers.add(nullServer);
+		nullProps.components = new Components();
+		nullProps.components.schemas = new HashMap<>();
+		Schema nullSch = new Schema();
+		nullSch.discriminator = new Discriminator();
+		nullSch.xml = new XML();
+		nullSch.xml.attribute = null;
+		nullSch.xml.wrapped = null;
+		nullProps.components.schemas.put("nullSch", nullSch);
+		nullProps.components.securitySchemes = new HashMap<>();
+		SecurityScheme nullSs = new SecurityScheme();
+		nullSs.flows = new OAuthFlows();
+		nullSs.flows.implicit = new OAuthFlow();
+		nullSs.flows.password = new OAuthFlow();
+		nullSs.flows.clientCredentials = new OAuthFlow();
+		nullSs.flows.authorizationCode = new OAuthFlow();
+		nullSs.flows.deviceAuthorization = new OAuthFlow();
+		nullProps.components.securitySchemes.put("nullSs", nullSs);
+		nullProps.components.links = new HashMap<>();
+		Link nullLnk = new Link();
+		nullLnk.server = new Server();
+		nullProps.components.links.put("nullLnk", nullLnk);
+
+		nullProps.paths = new Paths();
+		nullProps.paths.pathItems = new HashMap<>();
+		PathItem nullPi = new PathItem();
+		nullPi.get = new Operation();
+		nullPi.get.externalDocs = new ExternalDocumentation();
+		nullPi.get.parameters = new ArrayList<>();
+		Parameter nullP = new Parameter();
+		nullP.required = null;
+		nullP.deprecated = null;
+		nullPi.get.parameters.add(nullP);
+
+		RequestBody nullRb = new RequestBody();
+		nullRb.required = null;
+		nullRb.content = new HashMap<>();
+		MediaType nullMt = new MediaType();
+		nullMt.itemSchema = new HashMap<>();
+		nullMt.prefixEncoding = Arrays.asList(new Encoding());
+		nullMt.itemEncoding = new Encoding();
+		nullMt.encoding = new HashMap<>();
+		Encoding nullEnc = new Encoding();
+		nullEnc.prefixEncoding = Arrays.asList(new Encoding());
+		nullEnc.itemEncoding = new Encoding();
+		nullMt.encoding.put("nullEnc", nullEnc);
+		nullRb.content.put("application/json", nullMt);
+		nullPi.get.requestBody = nullRb;
+
+		nullPi.get.responses = new Responses();
+		nullPi.get.responses.statusCodes = new HashMap<>();
+		Response nullResp = new Response();
+		nullResp.headers = new HashMap<>();
+		Header nullH = new Header();
+		nullH.required = null;
+		nullH.deprecated = null;
+		nullResp.headers.put("h", nullH);
+		nullResp.links = new HashMap<>();
+		nullResp.links.put("l", nullLnk);
+		nullPi.get.responses.statusCodes.put("200", nullResp);
+		nullPi.get.responses.defaultResponse = nullResp;
+
+		nullProps.paths.pathItems.put("/null", nullPi);
+
+		String nullGenerated = Emit.emitCli(nullProps);
+		assertNotNull(nullGenerated);
+
+		// Try with false booleans and empty nested objects
+		OpenAPI falseProps = new OpenAPI();
+		falseProps.components = new Components();
+		falseProps.components.schemas = new HashMap<>();
+		falseProps.components.securitySchemes = new HashMap<>();
+		falseProps.components.links = new HashMap<>();
+
+		Schema falseSch = new Schema();
+		falseSch.xml = new XML();
+		falseSch.xml.attribute = false;
+		falseSch.xml.wrapped = false;
+		falseProps.components.schemas.put("f1", falseSch);
+		falseProps.components.schemas.put("f2", new Schema());
+
+		SecurityScheme falseSc = new SecurityScheme();
+		falseSc.deprecated = false;
+		falseSc.flows = new OAuthFlows();
+		falseProps.components.securitySchemes.put("sc1", falseSc);
+
+		falseProps.paths = new Paths();
+		falseProps.paths.pathItems = new HashMap<>();
+		PathItem falsePi = new PathItem();
+		falsePi.get = new Operation();
+		falsePi.get.deprecated = false;
+		falsePi.get.parameters = new ArrayList<>();
+		Parameter falseP = new Parameter();
+		falseP.required = false;
+		falseP.deprecated = false;
+		falseP.examples = new HashMap<>();
+		Example falseEx = new Example(); // all nulls
+		falseP.examples.put("ex1", falseEx);
+		falsePi.get.parameters.add(falseP);
+
+		RequestBody falseRb = new RequestBody();
+		falseRb.required = false;
+		falseRb.content = new HashMap<>();
+		MediaType falseMt = new MediaType();
+		falseRb.content.put("application/json", falseMt);
+		falsePi.get.requestBody = falseRb;
+
+		falsePi.get.responses = new Responses();
+		falsePi.get.responses.statusCodes = new HashMap<>();
+		Response falseResp = new Response();
+		falseResp.headers = new HashMap<>();
+		Header falseH = new Header();
+		falseH.required = false;
+		falseH.deprecated = false;
+		falseResp.headers.put("h1", falseH);
+		falsePi.get.responses.statusCodes.put("200", falseResp);
+		falsePi.get.responses.defaultResponse = falseResp;
+
+		falseProps.paths.pathItems.put("/false", falsePi);
+
+		String falseGenerated = Emit.emitCli(falseProps);
+		assertNotNull(falseGenerated);
 
 		String cliEdge = "private static void printHelp() {\n"
 				+ "        System.out.println(\"Server Object url: http://a name:  description: \");\n"

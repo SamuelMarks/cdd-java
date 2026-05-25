@@ -168,6 +168,11 @@ public class CliMainTest {
 		File outDir = new File(tempDir, "out");
 
 		runMain(new String[]{"from_openapi", "-h"});
+		runMain(new String[]{"from_openapi", "--help"});
+		runMain(new String[]{"to_openapi", "--help"});
+		runMain(new String[]{"to_docs_json", "--help"});
+		runMain(new String[]{"serve_json_rpc", "--help"});
+		runMain(new String[]{"sync", "--help"});
 		runMain(new String[]{"from_openapi", "unknown_sub", "-i", specFile.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "to_sdk"});
 		runMain(new String[]{"from_openapi", "to_sdk_cli", "-i", specFile.getAbsolutePath(), "-o",
@@ -328,6 +333,16 @@ public class CliMainTest {
 					"{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"\",\"version\":\"1\"},\"paths\":{}}");
 			setEnv("CDD_INPUT_FILE", specFile.getAbsolutePath());
 
+			runMain(new String[]{"from_openapi", "to_sdk"});
+
+			setEnv("CDD_NO_GITHUB_ACTIONS", "1");
+			setEnv("CDD_NO_INSTALLABLE_PACKAGE", "1");
+			setEnv("CDD_TESTS", "1");
+			runMain(new String[]{"from_openapi", "to_sdk"});
+
+			setEnv("CDD_NO_GITHUB_ACTIONS", "false");
+			setEnv("CDD_NO_INSTALLABLE_PACKAGE", "false");
+			setEnv("CDD_TESTS", "false");
 			runMain(new String[]{"from_openapi", "to_sdk"});
 		} finally {
 			setEnv("CDD_WASI", null);

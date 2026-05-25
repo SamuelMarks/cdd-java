@@ -37,6 +37,8 @@ public class Parse {
 		api.components.links = new HashMap<>();
 		api.components.callbacks = new HashMap<>();
 		api.components.pathItems = new HashMap<>();
+		api.components.securitySchemes = new HashMap<>();
+		api.components.mediaTypes = new HashMap<>();
 		String helpBody = "";
 		Matcher hm = Pattern.compile("(?s)private static void printHelp\\(\\) \\{(.*?)\\n    \\}")
 				.matcher(existingSource);
@@ -116,8 +118,7 @@ public class Parse {
 					api.servers = new ArrayList<>();
 				Server s = new Server();
 				String[] parts = line.substring(19).split(" name: | description: ");
-				if (parts.length > 0)
-					s.url = parts[0];
+				s.url = parts[0];
 				if (line.contains(" name: ")) {
 					int nIdx = line.indexOf(" name: ") + 7;
 					int dIdx = line.indexOf(" description: ");
@@ -133,12 +134,11 @@ public class Parse {
 					if (s.description.isEmpty())
 						s.description = null;
 				}
+				s.variables = new HashMap<>();
 				api.servers.add(s);
 			} else if (line.startsWith("Server Variable Object ")) {
-				if (api.servers != null && !api.servers.isEmpty()) {
+				if (api.servers != null) {
 					Server s = api.servers.get(api.servers.size() - 1);
-					if (s.variables == null)
-						s.variables = new HashMap<>();
 					String rem = line.substring(23);
 					int dIdx = rem.indexOf(" defaultValue: ");
 					String name = rem.substring(0, dIdx);
@@ -158,10 +158,6 @@ public class Parse {
 					s.variables.put(name, sv);
 				}
 			} else if (line.startsWith("Component schemas ")) {
-				if (api.components == null)
-					api.components = new Components();
-				if (api.components.schemas == null)
-					api.components.schemas = new HashMap<>();
 				String key = line.substring("Component schemas ".length());
 				lastParsedSchema = new openapi.Schema();
 				api.components.schemas.put(key, lastParsedSchema);
@@ -325,22 +321,16 @@ public class Parse {
 					}
 				}
 			} else if (line.startsWith("Component linksParam ")) {
-				if (api.components != null && api.components.links != null) {
-					String[] parts = line.substring(21).split(" ", 3);
-					if (parts.length >= 3) {
-						Link lnk = (Link) api.components.links.get(parts[0]);
-						if (lnk != null) {
-							if (lnk.parameters == null)
-								lnk.parameters = new HashMap<>();
-							lnk.parameters.put(parts[1], parts[2]);
-						}
+				String[] parts = line.substring(21).split(" ", 3);
+				if (parts.length >= 3) {
+					Link lnk = (Link) api.components.links.get(parts[0]);
+					if (lnk != null) {
+						if (lnk.parameters == null)
+							lnk.parameters = new HashMap<>();
+						lnk.parameters.put(parts[1], parts[2]);
 					}
 				}
 			} else if (line.startsWith("Component links ")) {
-				if (api.components == null)
-					api.components = new Components();
-				if (api.components.links == null)
-					api.components.links = new HashMap<>();
 				String rem = line.substring(16);
 				String[] parts = rem.split(" ", 2);
 				String key = parts[0];
@@ -366,45 +356,27 @@ public class Parse {
 				}
 				api.components.links.put(key, lnk);
 			} else if (line.startsWith("Component ")) {
-				if (api.components == null)
-					api.components = new Components();
 				String[] parts = line.split(" ");
 				if (parts.length >= 3) {
 					String type = parts[1];
 					String key = parts[2];
 					if (type.equals("responses")) {
-						if (api.components.responses == null)
-							api.components.responses = new HashMap<>();
 						api.components.responses.put(key, new Response());
 					} else if (type.equals("parameters")) {
-						if (api.components.parameters == null)
-							api.components.parameters = new HashMap<>();
 						api.components.parameters.put(key, new Parameter());
 					} else if (type.equals("requestBodies")) {
-						if (api.components.requestBodies == null)
-							api.components.requestBodies = new HashMap<>();
 						api.components.requestBodies.put(key, new RequestBody());
 					} else if (type.equals("headers")) {
-						if (api.components.headers == null)
-							api.components.headers = new HashMap<>();
 						api.components.headers.put(key, new Header());
 					}
 					// securitySchemes handled above
 					else if (type.equals("links")) {
-						if (api.components.links == null)
-							api.components.links = new HashMap<>();
 						api.components.links.put(key, new Link());
 					} else if (type.equals("callbacks")) {
-						if (api.components.callbacks == null)
-							api.components.callbacks = new HashMap<>();
 						api.components.callbacks.put(key, new Callback());
 					} else if (type.equals("pathItems")) {
-						if (api.components.pathItems == null)
-							api.components.pathItems = new HashMap<>();
 						api.components.pathItems.put(key, new PathItem());
 					} else if (type.equals("mediaTypes")) {
-						if (api.components.mediaTypes == null)
-							api.components.mediaTypes = new HashMap<>();
 						api.components.mediaTypes.put(key, new MediaType());
 					}
 				}
@@ -604,8 +576,8 @@ public class Parse {
 					Parameter p = new Parameter();
 					String l = line.substring(6);
 					int colIdx = l.indexOf(" : ");
-					String pre = l.substring(0, colIdx);
-					String desc = l.substring(colIdx + 3);
+					String pre = colIdx != -1 ? l.substring(0, colIdx) : l;
+					String desc = colIdx != -1 ? l.substring(colIdx + 3) : "";
 					if (pre.contains(" [DEPRECATED]")) {
 						p.deprecated = true;
 						pre = pre.replace(" [DEPRECATED]", "");
@@ -630,8 +602,8 @@ public class Parse {
 
 					String l = line.substring(12);
 					int colIdx = l.indexOf(": ");
-					String code = l.substring(0, colIdx);
-					String desc = l.substring(colIdx + 2);
+					String code = colIdx != -1 ? l.substring(0, colIdx) : l;
+					String desc = colIdx != -1 ? l.substring(colIdx + 2) : "";
 
 					currentResponse = new Response();
 					Matcher ctMatcher = Pattern.compile(" \\[Content-Types: (.*?)\\]$").matcher(desc);
@@ -759,8 +731,8 @@ public class Parse {
 					Header h = new Header();
 					String l = line.substring(13);
 					int colIdx = l.indexOf(": ");
-					String pre = l.substring(0, colIdx);
-					String desc = l.substring(colIdx + 2);
+					String pre = colIdx != -1 ? l.substring(0, colIdx) : l;
+					String desc = colIdx != -1 ? l.substring(colIdx + 2) : "";
 
 					if (pre.contains(" [DEPRECATED]")) {
 						h.deprecated = true;

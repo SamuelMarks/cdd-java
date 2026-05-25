@@ -119,7 +119,7 @@ public class Emit {
 				}
 			}
 
-			if (model.webhooks != null && !model.webhooks.isEmpty()) {
+			if (model.webhooks != null) {
 				for (Map.Entry<String, PathItem> entry : model.webhooks.entrySet()) {
 					String name = entry.getKey();
 					PathItem item = entry.getValue();
@@ -144,7 +144,10 @@ public class Emit {
 									if (o instanceof Parameter) {
 										if (!first)
 											sb.append(", ");
-										sb.append("String ").append(((Parameter) o).name);
+										String pName = ((Parameter) o).name;
+										if (pName == null || pName.isEmpty())
+											pName = "param";
+										sb.append("String ").append(pName.replaceAll("[^a-zA-Z0-9_]", ""));
 										first = false;
 									}
 								}

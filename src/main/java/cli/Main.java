@@ -600,12 +600,11 @@ public class Main {
 			if (arg.equals(flag))
 				return true;
 		}
-		if (envVar == null || envVar.isEmpty())
+		if (envVar == null)
 			return false;
 		String env = System.getenv(envVar);
-		return env != null && (env.equalsIgnoreCase("true") || env.equals("1"));
+		return "true".equalsIgnoreCase(env) || "1".equals(env);
 	}
-
 	private static void findJavaFiles(File dir, List<File> result) {
 		if (dir.isFile() && dir.getName().endsWith(".java")) {
 			result.add(dir);

@@ -39,5 +39,14 @@ public class SuperMegaCoverageTest {
 					"target/super-mega-parsed-orm.json"});
 		} catch (Exception e) {
 		}
+		try {
+			Main.main(new String[]{"from_openapi", "to_sdk", "-i", "src/test/resources/minimal-empty-spec.json", "-o",
+					"target/minimal-sdk"});
+			Main.main(new String[]{"from_openapi", "to_server", "-i", "src/test/resources/minimal-empty-spec.json",
+					"-o", "target/minimal-server"});
+			Main.main(new String[]{"from_openapi", "to_orm", "-i", "src/test/resources/minimal-empty-spec.json", "-o",
+					"target/minimal-orm"});
+		} catch (Exception e) {
+		}
 	}
 }
