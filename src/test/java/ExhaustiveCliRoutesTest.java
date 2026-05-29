@@ -77,7 +77,7 @@ public class ExhaustiveCliRoutesTest {
 
 	@Test
 	public void testCliMainReflection() throws Exception {
-		Method processInMemory = cli.Main.class.getDeclaredMethod("processInMemory", String.class);
+		Method processInMemory = cli.CddCli.class.getDeclaredMethod("processInMemory", String.class);
 		processInMemory.setAccessible(true);
 		try {
 			processInMemory.invoke(null, "{");
@@ -87,7 +87,7 @@ public class ExhaustiveCliRoutesTest {
 			processInMemory.invoke(null, "{\"command\": \"to_openapi\"}");
 		} catch (Exception e) {
 		}
-		Method startStdioJsonRpcServer = cli.Main.class.getDeclaredMethod("startStdioJsonRpcServer");
+		Method startStdioJsonRpcServer = cli.CddCli.class.getDeclaredMethod("startStdioJsonRpcServer");
 		startStdioJsonRpcServer.setAccessible(true);
 		InputStream oldIn = System.in;
 		System.setIn(new ByteArrayInputStream("".getBytes()));
@@ -107,23 +107,25 @@ public class ExhaustiveCliRoutesTest {
 			cli.Main.main(new String[]{"invalid_cmd"});
 		} catch (Exception e) {
 		}
-		Method hasFlag = cli.Main.class.getDeclaredMethod("hasFlag", String[].class, String.class, String.class);
+		Method hasFlag = cli.CddCli.class.getDeclaredMethod("hasFlag", String[].class, String.class, String.class,
+				String.class);
 		hasFlag.setAccessible(true);
-		assertEquals(true, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"-a"}, "-a", null}));
-		assertEquals(true, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"--all"}, "--all", null}));
-		assertEquals(false, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"-b"}, "-a", null}));
-		Method getArg = cli.Main.class.getDeclaredMethod("getArg", String[].class, String.class, String.class);
+		assertEquals(true, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"-a"}, "-a", "--all", null}));
+		assertEquals(true, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"--all"}, "-a", "--all", null}));
+		assertEquals(false, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"-b"}, "-a", "--all", null}));
+		Method getArg = cli.CddCli.class.getDeclaredMethod("getArg", String[].class, String.class, String.class,
+				String.class);
 		getArg.setAccessible(true);
-		assertEquals("val", getArg.invoke(null, new Object[]{new String[]{"-a", "val"}, "-a", ""}));
-		assertNull(getArg.invoke(null, new Object[]{new String[]{"-a"}, "-a", ""}));
-		assertNull(getArg.invoke(null, new Object[]{new String[]{"-b", "val"}, "-a", ""}));
-		Method extractOpenAPI = cli.Main.class.getDeclaredMethod("extractOpenAPI", java.io.File.class);
+		assertEquals("val", getArg.invoke(null, new Object[]{new String[]{"-a", "val"}, "-a", "--all", ""}));
+		assertNull(getArg.invoke(null, new Object[]{new String[]{"-a"}, "-a", "--all", ""}));
+		assertNull(getArg.invoke(null, new Object[]{new String[]{"-b", "val"}, "-a", "--all", ""}));
+		Method extractOpenAPI = cli.CddCli.class.getDeclaredMethod("extractOpenAPI", java.io.File.class);
 		extractOpenAPI.setAccessible(true);
 		try {
 			extractOpenAPI.invoke(null, new java.io.File("non_existent_file.json"));
 		} catch (Exception e) {
 		}
-		Method resolveFile = cli.Main.class.getDeclaredMethod("resolveFile", String.class);
+		Method resolveFile = cli.CddCli.class.getDeclaredMethod("resolveFile", String.class);
 		resolveFile.setAccessible(true);
 		assertNotNull(resolveFile.invoke(null, "/absolute/path"));
 	}

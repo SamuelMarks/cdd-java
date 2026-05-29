@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import org.json.JSONObject;
 
 import cli.Main;
+import cli.CddCli;
 
 public class CliMainTest {
 
@@ -85,8 +86,8 @@ public class CliMainTest {
 	@Test
 	public void testBasic() throws Exception {
 		new Main();
-		Main._start();
-		Main._start(new String[]{"-h"});
+		CddCli._start();
+		CddCli._start(new String[]{"-h"});
 		runMain(new String[]{});
 		runMain(new String[]{"--help"});
 		runMain(new String[]{"-h"});
@@ -227,13 +228,13 @@ public class CliMainTest {
 
 		// This tests the `fullApi.components.schemas.putAll` when `testsPaths` etc are
 		// null/empty.
-		cli.Main.processInMemory(args.toString());
+		cli.CddCli.processInMemory(args.toString());
 
 		// Test to_docs_json missing spec
 		args.put("command", "to_docs_json");
 		inFiles.remove("spec.json"); // explicitly missing
 		try {
-			cli.Main.processInMemory(args.toString());
+			cli.CddCli.processInMemory(args.toString());
 		} catch (Exception e) {
 			// Expected
 		}
@@ -243,7 +244,7 @@ public class CliMainTest {
 		args.put("subCommand", "to_sdk");
 		cmdArgs.put("--tests");
 		inFiles.put("spec.json", "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"\"}}");
-		cli.Main.processInMemory(args.toString());
+		cli.CddCli.processInMemory(args.toString());
 	}
 
 	@Test

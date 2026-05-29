@@ -51,7 +51,8 @@ install_base:
 	fi
 
 install_deps:
-	@echo "Dependencies already in lib/"
+	@echo "Installing dependencies to lib/..."
+	mvn dependency:copy-dependencies -DoutputDirectory=lib
 
 docs:
 	@echo "Building API docs to target/docs..."
@@ -109,6 +110,8 @@ build_wasm:
 	mkdir -p bin
 	cp target/wasm/cdd-java.wasm bin/ || true
 	cp target/wasm/cdd-java.js* bin/ || true
+	@echo "Building JS wrapper..."
+	cd package && npm install && npm run build
 DOCKER_CMD ?= $(shell if command -v docker >/dev/null 2>&1 && docker ps >/dev/null 2>&1; then echo docker; elif command -v nerdctl >/dev/null 2>&1 && nerdctl ps >/dev/null 2>&1; then echo nerdctl; elif command -v lima >/dev/null 2>&1 && lima nerdctl ps >/dev/null 2>&1; then echo "lima nerdctl"; else echo docker; fi)
 
 build_docker:

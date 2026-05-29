@@ -7,6 +7,8 @@
   "exports": {
     ".": {
       "node": "./dist/index.js",
+      "import": "./dist/browser.js",
+      "require": "./dist/index.js",
       "default": "./dist/browser.js"
     },
     "./cdd-java.js": "./dist/cdd-java.js",

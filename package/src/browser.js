@@ -1,17 +1,50 @@
 export class CddJavaBrowser {
-    constructor(wasmPath = './cdd-java.js.wasm') {
+    constructor(wasmPath = './cdd-java.js.wasm', jsUrl = null) {
         this.wasmPath = wasmPath;
+        this.jsUrl = jsUrl;
+        this.GraalVM = null;
+    }
+
+    async initGraalVM() {
+        if (this.GraalVM) return this.GraalVM;
+
+        if (this.jsUrl) {
+            try {
+                // If a jsUrl is provided (e.g. GitHub releases or public assets), try to dynamically import it
+                const mod = await import(this.jsUrl);
+                if (mod && mod.GraalVM) {
+                    this.GraalVM = mod.GraalVM;
+                    return this.GraalVM;
+                }
+            } catch(e) {
+                // Try classic fetch+eval if dynamic import fails due to CORS or MIME types
+                try {
+                    const resp = await fetch(this.jsUrl);
+                    if (resp.ok) {
+                        const scriptText = await resp.text();
+                        const globalEval = eval;
+                        globalEval('var window = self; var globalThis = self; ' + scriptText);
+                    }
+                } catch(e2) {
+                    console.warn("Failed to dynamically load GraalVM from jsUrl: " + this.jsUrl, e2);
+                }
+            }
+        }
+
+        // Final fallback to checking globals in case it was loaded via importScripts by the caller
+        if (typeof globalThis !== 'undefined' && globalThis.GraalVM) this.GraalVM = globalThis.GraalVM;
+        else if (typeof self !== 'undefined' && self.GraalVM) this.GraalVM = self.GraalVM;
+        else if (typeof window !== 'undefined' && window.GraalVM) this.GraalVM = window.GraalVM;
+
+        if (!this.GraalVM) {
+            throw new Error("GraalVM is completely missing from the browser context.");
+        }
+
+        return this.GraalVM;
     }
 
     async run(args, files = {}) {
-        let GraalVM = null;
-        if (typeof globalThis !== 'undefined' && globalThis.GraalVM) GraalVM = globalThis.GraalVM;
-        else if (typeof self !== 'undefined' && self.GraalVM) GraalVM = self.GraalVM;
-        else if (typeof window !== 'undefined' && window.GraalVM) GraalVM = window.GraalVM;
-
-        if (!GraalVM) {
-            throw new Error("GraalVM is completely missing from the browser context.");
-        }
+        const GraalVM = await this.initGraalVM();
 
         const payload = {
             command: args,
@@ -64,15 +97,21 @@ export class CddJavaBrowser {
         const endIdx = fullOut.indexOf('CDD_IN_MEMORY_END');
 
         if (startIdx !== -1 && endIdx !== -1) {
-            const jsonStr = fullOut.substring(startIdx + 19, endIdx).trim();
-            const result = JSON.parse(jsonStr);
-            if (!result.success) {
-                throw new Error("WASM execution failed: " + result.error);
+            let jsonStr = fullOut.substring(startIdx + 19, endIdx).trim();
+            // cdd-ctl-wasm-sdk prepends this to every console.log, which ConsoleWriter splits by newline
+            jsonStr = jsonStr.replace(/\[GraalVM Log\]\s*/g, '');
+            try {
+                const result = JSON.parse(jsonStr);
+                if (!result.success) {
+                    throw new Error("WASM execution failed: " + result.error);
+                }
+                return {
+                    output: "Success",
+                    files: result.files || {}
+                };
+            } catch (e) {
+                throw new Error("Failed to parse JSON. jsonStr starts with: " + jsonStr.substring(0, 100) + " | Error: " + e.message);
             }
-            return {
-                output: fullOut,
-                files: result.files || {}
-            };
         } else {
             throw new Error("Failed to parse WASM output. Expected CDD_IN_MEMORY_START, got:\n" + fullOut);
         }

@@ -69,6 +69,12 @@ if (typeof exports !== 'undefined') {
 if (typeof window !== 'undefined') {
     window.GraalVM = GraalVM;
 }
+if (typeof globalThis !== 'undefined') {
+    globalThis.GraalVM = GraalVM;
+}
+if (typeof self !== 'undefined') {
+    self.GraalVM = GraalVM;
+}
 JS_EOF
 
 rm -f target/wasm/cdd-java.js.bak
