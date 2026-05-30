@@ -104,3 +104,17 @@ jobs:
         git config user.email github-actions@github.com
         git tag -f latest
         git push origin latest --force
+
+    - name: Release to latest tag
+      if: startsWith(github.ref, 'refs/tags/v') && github.ref != 'refs/tags/latest'
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: latest
+        files: |
+          cdd-java.wasm
+          cdd-java.js
+          cdd-java.wasm.sha256
+        body: "Latest WasmGC binary automatically updated from ${{ github.ref_name }}"
+        draft: false
+        prerelease: false
+        make_latest: true
