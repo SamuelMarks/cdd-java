@@ -2,17 +2,16 @@ package openapi;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-
 import java.util.Map;
 
 /**
  * Emits OpenAPI descriptions.
  */
 public class Emit {
+
 	/**
 	 * Default constructor.
 	 */
@@ -30,7 +29,6 @@ public class Emit {
 		JSONObject root = new JSONObject();
 		if (api.openapi != null)
 			root.put("openapi", api.openapi);
-
 		if (api.swagger != null)
 			root.put("swagger", api.swagger);
 		if (api.host != null)
@@ -55,7 +53,6 @@ public class Emit {
 				arr.put(s);
 			root.put("produces", arr);
 		}
-
 		if (api.info != null) {
 			JSONObject infoObj = new JSONObject();
 			if (api.info.title != null)
@@ -66,7 +63,6 @@ public class Emit {
 				infoObj.put("description", api.info.description);
 			root.put("info", infoObj);
 		}
-
 		if (api.paths != null && api.paths.pathItems != null && !api.paths.pathItems.isEmpty()) {
 			JSONObject pathsObj = new JSONObject();
 			for (Map.Entry<String, PathItem> e : api.paths.pathItems.entrySet()) {
@@ -82,16 +78,13 @@ public class Emit {
 					piObj.put("delete", serializeOperation(pi.delete));
 				if (pi.patch != null)
 					piObj.put("patch", serializeOperation(pi.patch));
-
 				if (pi.parameters != null && !pi.parameters.isEmpty()) {
 					piObj.put("parameters", serializeParameters(pi.parameters));
 				}
-
 				pathsObj.put(e.getKey(), piObj);
 			}
 			root.put("paths", pathsObj);
 		}
-
 		if (api.definitions != null) {
 			JSONObject defsObj = new JSONObject();
 			for (Map.Entry<String, Schema> e : api.definitions.entrySet()) {
@@ -101,7 +94,6 @@ public class Emit {
 			}
 			root.put("definitions", defsObj);
 		}
-
 		if (api.components != null && api.components.schemas != null) {
 			JSONObject compObj = new JSONObject();
 			JSONObject schemasObj = new JSONObject();
@@ -113,10 +105,12 @@ public class Emit {
 			compObj.put("schemas", schemasObj);
 			root.put("components", compObj);
 		}
-
 		return root.toString(2);
 	}
 
+	/**
+	 * serializeOperation doc
+	 */
 	private static JSONObject serializeOperation(Operation op) {
 		JSONObject obj = new JSONObject();
 		if (op.operationId != null)
@@ -125,11 +119,9 @@ public class Emit {
 			obj.put("summary", op.summary);
 		if (op.description != null)
 			obj.put("description", op.description);
-
 		if (op.parameters != null && !op.parameters.isEmpty()) {
 			obj.put("parameters", serializeParameters(op.parameters));
 		}
-
 		if (op.requestBody instanceof RequestBody) {
 			RequestBody rb = (RequestBody) op.requestBody;
 			JSONObject rbObj = new JSONObject();
@@ -150,7 +142,6 @@ public class Emit {
 			}
 			obj.put("requestBody", rbObj);
 		}
-
 		if (op.responses != null && op.responses.statusCodes != null) {
 			JSONObject responsesObj = new JSONObject();
 			for (Map.Entry<String, Object> _re : op.responses.statusCodes.entrySet()) {
@@ -176,10 +167,12 @@ public class Emit {
 			}
 			obj.put("responses", responsesObj);
 		}
-
 		return obj;
 	}
 
+	/**
+	 * serializeParameters doc
+	 */
 	private static JSONArray serializeParameters(java.util.List<Object> params) {
 		JSONArray arr = new JSONArray();
 		for (Object objP : params) {
@@ -203,6 +196,9 @@ public class Emit {
 		return arr;
 	}
 
+	/**
+	 * serializeSchema doc
+	 */
 	private static JSONObject serializeSchema(Schema s) {
 		JSONObject obj = new JSONObject();
 		if (s.type != null)

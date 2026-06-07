@@ -290,6 +290,14 @@ public class CliMainTest {
 		runMain(new String[]{"serve_json_rpc", "-h"});
 
 		String input = "\n" + "{\"jsonrpc\":\"2.0\",\"method\":\"version\",\"id\":1}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"id\":2}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":3}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/list\",\"id\":31}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"cdd://ast/openapi\"},\"id\":32}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"unknown\"},\"id\":33}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"cdd_generate\",\"arguments\":{\"command\":[\"to_openapi\",\"-h\"]}},\"id\":4}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown_tool\"},\"id\":5}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":6}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"unknown\",\"id\":\"abc\"}\n" + "{\"method\":\"invalid\"}\n"
 				+ "invalid_json\n";
 
@@ -297,7 +305,7 @@ public class CliMainTest {
 		runMain(new String[]{"serve_json_rpc"});
 
 		String out = outContent.toString();
-		assertTrue(out.contains("\"result\":\"0.0.1\""));
+		assertTrue(out.contains("\"result\":\"0.0.2\""));
 	}
 
 	@Test

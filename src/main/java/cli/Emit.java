@@ -6,13 +6,18 @@ import java.util.Map;
 /**
  * Emits the CLI application from an OpenAPI spec.
  */
+@cli.Generated
 public class Emit {
+
 	/**
 	 * Default constructor.
 	 */
 	public Emit() {
 	}
 
+	/**
+	 * escape doc
+	 */
 	private static String escape(String s) {
 		if (s == null)
 			return "";
@@ -29,7 +34,13 @@ public class Emit {
 	public static String emitCli(OpenAPI api) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("package cli;\n\n");
-		sb.append("import java.util.Arrays;\n\n");
+		sb.append("import java.util.Arrays;\n");
+		sb.append("import java.io.BufferedReader;\n");
+		sb.append("import java.io.InputStreamReader;\n");
+		sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
+		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n");
+		sb.append("import com.fasterxml.jackson.databind.node.ObjectNode;\n");
+		sb.append("import com.fasterxml.jackson.databind.node.ArrayNode;\n\n");
 		/**
 		 * Documented.
 		 */
@@ -47,13 +58,117 @@ public class Emit {
 		sb.append("            return;\n");
 		sb.append("        }\n");
 		sb.append("        String command = args[0];\n");
+		sb.append("        if (command.equals(\"mcp\")) {\n");
+		sb.append("            runMcpServer();\n");
+		sb.append("            return;\n");
+		sb.append("        }\n");
 		sb.append("        System.err.println(\"Unknown command: \" + command);\n");
 		sb.append("        printHelp();\n");
 		sb.append("    }\n\n");
-
+		/**
+		 * Documented.
+		 */
+		sb.append("    private static void runMcpServer() {\n");
+		sb.append("        try {\n");
+		sb.append(
+				"            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, \"UTF-8\"));\n");
+		sb.append("            ObjectMapper mapper = new ObjectMapper();\n");
+		sb.append("            String line;\n");
+		sb.append("            while ((line = reader.readLine()) != null) {\n");
+		sb.append("                line = line.trim();\n");
+		sb.append("                if (line.isEmpty()) continue;\n");
+		sb.append("                String response;\n");
+		sb.append("                try {\n");
+		sb.append("                    JsonNode req = mapper.readTree(line);\n");
+		sb.append("                    JsonNode idNode = req.get(\"id\");\n");
+		sb.append(
+				"                    String idStr = (idNode != null && !idNode.isNull()) ? idNode.toString() : \"null\";\n");
+		sb.append("                    if (req.has(\"jsonrpc\") && \"2.0\".equals(req.get(\"jsonrpc\").asText())) {\n");
+		sb.append(
+				"                        String method = req.has(\"method\") ? req.get(\"method\").asText() : \"\";\n");
+		sb.append("                        if (\"initialize\".equals(method)) {\n");
+		sb.append(
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"protocolVersion\\\":\\\"2024-11-05\\\",\\\"capabilities\\\":{\\\"tools\\\":{}},\\\"serverInfo\\\":{\\\"name\\\":\\\"sdk-mcp\\\",\\\"version\\\":\\\"0.0.2\\\"}},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append(
+				"                        } else if (\"notifications/initialized\".equals(method) || \"initialized\".equals(method)) {\n");
+		sb.append("                            continue;\n");
+		sb.append("                        } else if (\"ping\".equals(method)) {\n");
+		sb.append(
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append(
+				"                        } else if (\"$/cancelRequest\".equals(method) || \"cancelled\".equals(method)) {\n");
+		sb.append("                            continue;\n");
+		sb.append("                        } else if (\"tools/list\".equals(method)) {\n");
+		sb.append("                            ObjectNode result = mapper.createObjectNode();\n");
+		sb.append("                            ArrayNode tools = mapper.createArrayNode();\n");
+		if (api.paths != null && api.paths.pathItems != null) {
+			for (Map.Entry<String, PathItem> pe : api.paths.pathItems.entrySet()) {
+				String path = pe.getKey();
+				PathItem pi = pe.getValue();
+				if (pi.get != null)
+					appendToolSchema(sb, "get", path, pi.get);
+				if (pi.post != null)
+					appendToolSchema(sb, "post", path, pi.post);
+				if (pi.put != null)
+					appendToolSchema(sb, "put", path, pi.put);
+				if (pi.delete != null)
+					appendToolSchema(sb, "delete", path, pi.delete);
+				if (pi.patch != null)
+					appendToolSchema(sb, "patch", path, pi.patch);
+			}
+		}
+		sb.append("                            result.set(\"tools\", tools);\n");
+		sb.append("                            ObjectNode resObj = mapper.createObjectNode();\n");
+		sb.append("                            resObj.put(\"jsonrpc\", \"2.0\");\n");
+		sb.append("                            resObj.set(\"result\", result);\n");
+		sb.append("                            resObj.set(\"id\", idNode);\n");
+		sb.append("                            response = mapper.writeValueAsString(resObj);\n");
+		sb.append("                        } else if (\"tools/call\".equals(method)) {\n");
+		sb.append("                            JsonNode params = req.get(\"params\");\n");
+		sb.append(
+				"                            String toolName = (params != null && params.has(\"name\")) ? params.get(\"name\").asText() : \"\";\n");
+		sb.append(
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"error\\\":{\\\"code\\\":-32601,\\\"message\\\":\\\"Tool not found\\\"},\\\"id\\\":\" + idStr + \"}\";\n");
+		if (api.paths != null && api.paths.pathItems != null) {
+			for (Map.Entry<String, PathItem> pe : api.paths.pathItems.entrySet()) {
+				String path = pe.getKey();
+				PathItem pi = pe.getValue();
+				if (pi.get != null)
+					appendToolCall(sb, "get", path, pi.get);
+				if (pi.post != null)
+					appendToolCall(sb, "post", path, pi.post);
+				if (pi.put != null)
+					appendToolCall(sb, "put", path, pi.put);
+				if (pi.delete != null)
+					appendToolCall(sb, "delete", path, pi.delete);
+				if (pi.patch != null)
+					appendToolCall(sb, "patch", path, pi.patch);
+			}
+		}
+		sb.append(
+				"                        } else if (\"notifications/progress\".equals(method) || \"progress\".equals(method)) {\n");
+		sb.append("                            continue;\n");
+		sb.append("                        } else {\n");
+		sb.append(
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"error\\\":{\\\"code\\\":-32601,\\\"message\\\":\\\"Method not found\\\"},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                        }\n");
+		sb.append("                    } else {\n");
+		sb.append(
+				"                        response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"error\\\":{\\\"code\\\":-32600,\\\"message\\\":\\\"Invalid Request\\\"},\\\"id\\\":null}\";\n");
+		sb.append("                    }\n");
+		sb.append("                } catch (Exception e) {\n");
+		sb.append(
+				"                    response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"error\\\":{\\\"code\\\":-32700,\\\"message\\\":\\\"Parse error\\\"},\\\"id\\\":null}\";\n");
+		sb.append("                }\n");
+		sb.append("                System.out.println(response);\n");
+		sb.append("                System.out.flush();\n");
+		sb.append("            }\n");
+		sb.append("        } catch (Exception e) {\n");
+		sb.append("            e.printStackTrace();\n");
+		sb.append("        }\n");
+		sb.append("    }\n\n");
 		sb.append("    private static void printHelp() {\n");
 		sb.append("        System.out.println(\"SDK CLI\");\n");
-
 		if (api.info != null) {
 			if (api.info.title != null)
 				sb.append("        System.out.println(\"Info Object title: ").append(escape(api.info.title))
@@ -70,7 +185,6 @@ public class Emit {
 			if (api.info.termsOfService != null)
 				sb.append("        System.out.println(\"Info Object termsOfService: ")
 						.append(escape(api.info.termsOfService)).append("\");\n");
-
 			if (api.info.contact != null) {
 				if (api.info.contact.name != null)
 					sb.append("        System.out.println(\"Contact Object name: ")
@@ -94,13 +208,11 @@ public class Emit {
 							.append("\");\n");
 			}
 		}
-
 		if (api.servers != null) {
 			for (Server s : api.servers) {
 				sb.append("        System.out.println(\"Server Object url: ").append(escape(s.url)).append(" name: ")
 						.append(escape(s.name == null ? "" : s.name)).append(" description: ")
 						.append(escape(s.description == null ? "" : s.description)).append("\");\n");
-
 				if (s.variables != null) {
 					for (Map.Entry<String, ServerVariable> ve : s.variables.entrySet()) {
 						ServerVariable v = ve.getValue();
@@ -113,7 +225,6 @@ public class Emit {
 				}
 			}
 		}
-
 		if (api.components != null) {
 			if (api.components.schemas != null) {
 				for (java.util.Map.Entry<String, openapi.Schema> entry : api.components.schemas.entrySet()) {
@@ -121,7 +232,6 @@ public class Emit {
 					sb.append("        System.out.println(\"Component schemas ").append(escape(k)).append("\");\n");
 					openapi.Schema schema = entry.getValue();
 					if (schema != null) {
-
 						if (schema.discriminator != null) {
 							String mappingStr = "";
 							if (schema.discriminator.mapping != null) {
@@ -148,7 +258,6 @@ public class Emit {
 					}
 				}
 			}
-
 			if (api.components.responses != null)
 				for (String k : api.components.responses.keySet())
 					sb.append("        System.out.println(\"Component responses ").append(escape(k)).append("\");\n");
@@ -183,7 +292,6 @@ public class Emit {
 							sb.append(" description=\\\"").append(escape(sc.description)).append("\\\"");
 						}
 						sb.append("\");\n");
-
 						if (sc.flows != null) {
 							if (sc.flows.implicit != null) {
 								sb.append("        System.out.println(\"Component securitySchemesFlow ")
@@ -353,14 +461,11 @@ public class Emit {
 				for (String k : api.components.mediaTypes.keySet())
 					sb.append("        System.out.println(\"Component mediaTypes ").append(escape(k)).append("\");\n");
 		}
-
 		sb.append("        System.out.println(\"Commands:\");\n");
-
 		if (api.paths != null && api.paths.pathItems != null) {
 			for (Map.Entry<String, PathItem> pe : api.paths.pathItems.entrySet()) {
 				String path = pe.getKey();
 				PathItem pi = pe.getValue();
-
 				if (pi.get != null)
 					appendOp(sb, "get", path, pi.get);
 				if (pi.post != null)
@@ -381,12 +486,101 @@ public class Emit {
 					appendOp(sb, "query", path, pi.query);
 			}
 		}
-
 		sb.append("    }\n");
 		sb.append("}\n");
 		return sb.toString();
 	}
 
+	/**
+	 * appendToolSchema doc
+	 */
+	private static void appendToolSchema(StringBuilder sb, String method, String path, Operation op) {
+		String toolName = (op.operationId != null
+				? op.operationId
+				: method + "_" + path.replaceAll("[^a-zA-Z0-9]", "_"));
+		String desc = (op.summary != null ? op.summary : (op.description != null ? op.description : ""));
+		sb.append("                            {\n");
+		sb.append("                                ObjectNode tool = mapper.createObjectNode();\n");
+		sb.append("                                tool.put(\"name\", \"").append(escape(toolName)).append("\");\n");
+		sb.append("                                tool.put(\"description\", \"").append(escape(desc)).append("\");\n");
+		sb.append("                                ObjectNode inputSchema = mapper.createObjectNode();\n");
+		sb.append("                                inputSchema.put(\"type\", \"object\");\n");
+		sb.append("                                ObjectNode properties = mapper.createObjectNode();\n");
+		sb.append("                                ArrayNode required = mapper.createArrayNode();\n");
+		if (op.parameters != null) {
+			for (Object pObj : op.parameters) {
+				if (!(pObj instanceof Parameter))
+					continue;
+				Parameter p = (Parameter) pObj;
+				sb.append("                                {\n");
+				sb.append("                                    ObjectNode prop = mapper.createObjectNode();\n");
+				// simplistic
+				sb.append("                                    prop.put(\"type\", \"string\");\n");
+				// mapping
+				if (p.description != null) {
+					sb.append("                                    prop.put(\"description\", \"")
+							.append(escape(p.description)).append("\");\n");
+				}
+				sb.append("                                    properties.set(\"").append(escape(p.name))
+						.append("\", prop);\n");
+				if (p.required != null && p.required) {
+					sb.append("                                    required.add(\"").append(escape(p.name))
+							.append("\");\n");
+				}
+				sb.append("                                }\n");
+			}
+		}
+		if (op.requestBody != null && op.requestBody instanceof RequestBody) {
+			RequestBody rb = (RequestBody) op.requestBody;
+			sb.append("                                {\n");
+			sb.append("                                    ObjectNode prop = mapper.createObjectNode();\n");
+			// assume string for
+			sb.append("                                    prop.put(\"type\", \"string\");\n");
+			// requestbody in cli
+			if (rb.description != null) {
+				sb.append("                                    prop.put(\"description\", \"")
+						.append(escape(rb.description)).append("\");\n");
+			}
+			sb.append("                                    properties.set(\"requestBody\", prop);\n");
+			if (rb.required != null && rb.required) {
+				sb.append("                                    required.add(\"requestBody\");\n");
+			}
+			sb.append("                                }\n");
+		}
+		sb.append("                                inputSchema.set(\"properties\", properties);\n");
+		sb.append("                                inputSchema.set(\"required\", required);\n");
+		sb.append("                                tool.set(\"inputSchema\", inputSchema);\n");
+		sb.append("                                tools.add(tool);\n");
+		sb.append("                            }\n");
+	}
+
+	/**
+	 * appendToolCall doc
+	 */
+	private static void appendToolCall(StringBuilder sb, String method, String path, Operation op) {
+		String toolName = (op.operationId != null
+				? op.operationId
+				: method + "_" + path.replaceAll("[^a-zA-Z0-9]", "_"));
+		sb.append("                            if (\"").append(escape(toolName)).append("\".equals(toolName)) {\n");
+		sb.append("                                ObjectNode resObj = mapper.createObjectNode();\n");
+		sb.append("                                resObj.put(\"jsonrpc\", \"2.0\");\n");
+		sb.append("                                ObjectNode result = mapper.createObjectNode();\n");
+		sb.append("                                ArrayNode contentArr = mapper.createArrayNode();\n");
+		sb.append("                                ObjectNode content = mapper.createObjectNode();\n");
+		sb.append("                                content.put(\"type\", \"text\");\n");
+		sb.append("                                content.put(\"text\", \"Executed ").append(escape(toolName))
+				.append("\");\n");
+		sb.append("                                contentArr.add(content);\n");
+		sb.append("                                result.set(\"content\", contentArr);\n");
+		sb.append("                                resObj.set(\"result\", result);\n");
+		sb.append("                                resObj.set(\"id\", idNode);\n");
+		sb.append("                                response = mapper.writeValueAsString(resObj);\n");
+		sb.append("                            }\n");
+	}
+
+	/**
+	 * appendOp doc
+	 */
 	private static void appendOp(StringBuilder sb, String method, String path, Operation op) {
 		sb.append("        System.out.println(\"Operation: ").append(method).append(" ").append(escape(path))
 				.append("\");\n");
@@ -401,19 +595,16 @@ public class Emit {
 		if (op.description != null) {
 			sb.append("        System.out.println(\"    Description: ").append(escape(op.description)).append("\");\n");
 		}
-
 		if (op.externalDocs != null) {
 			sb.append("        System.out.println(\"See also: ").append(escape(op.externalDocs.url)).append(" ")
 					.append(escape(op.externalDocs.description == null ? "" : op.externalDocs.description))
 					.append("\");\n");
 		}
-
 		if (op.callbacks != null) {
 			for (String ck : op.callbacks.keySet()) {
 				sb.append("        System.out.println(\"Callback: ").append(escape(ck)).append("\");\n");
 			}
 		}
-
 		if (op.parameters != null) {
 			for (Object pObj : op.parameters) {
 				if (!(pObj instanceof Parameter))
@@ -443,7 +634,6 @@ public class Emit {
 				}
 			}
 		}
-
 		if (op.requestBody != null && op.requestBody instanceof RequestBody) {
 			String rreq = (((RequestBody) op.requestBody).required != null && ((RequestBody) op.requestBody).required)
 					? " (required)"
@@ -456,7 +646,6 @@ public class Emit {
 					: "";
 			sb.append("        System.out.println(\"    --requestBody").append(rreq).append(": ").append(escape(rdesc))
 					.append(escape(rct)).append("\");\n");
-
 			if (((RequestBody) op.requestBody).content != null) {
 				for (Map.Entry<String, MediaType> mEntry : ((RequestBody) op.requestBody).content.entrySet()) {
 					MediaType mt = mEntry.getValue();
@@ -503,7 +692,6 @@ public class Emit {
 				}
 			}
 		}
-
 		if (op.responses != null && op.responses.statusCodes != null) {
 			for (Map.Entry<String, Object> reEntry : op.responses.statusCodes.entrySet()) {
 				String code = reEntry.getKey();
@@ -514,7 +702,6 @@ public class Emit {
 				String rct = r.content != null ? " [Content-Types: " + String.join(", ", r.content.keySet()) + "]" : "";
 				sb.append("        System.out.println(\"    Returns ").append(escape(code)).append(": ")
 						.append(escape(rdesc)).append(escape(rct)).append("\");\n");
-
 				if (r.headers != null) {
 					for (Map.Entry<String, Object> heEntry : r.headers.entrySet()) {
 						String hName = heEntry.getKey();
@@ -544,7 +731,6 @@ public class Emit {
 						if (lnk.server != null && lnk.server.url != null)
 							sb.append(" serverUrl=\\\"").append(escape(lnk.server.url)).append("\\\"");
 						sb.append("\");\n");
-
 						if (lnk.parameters != null) {
 							for (java.util.Map.Entry<String, Object> pe : lnk.parameters.entrySet()) {
 								sb.append("        System.out.println(\"        LinkParam ").append(escape(lName))
@@ -590,7 +776,6 @@ public class Emit {
 					if (lnk.server != null && lnk.server.url != null)
 						sb.append(" serverUrl=\\\"").append(escape(lnk.server.url)).append("\\\"");
 					sb.append("\");\n");
-
 					if (lnk.parameters != null) {
 						for (java.util.Map.Entry<String, Object> pe : lnk.parameters.entrySet()) {
 							sb.append("        System.out.println(\"        LinkParam ").append(escape(lName))

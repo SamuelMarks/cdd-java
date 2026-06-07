@@ -338,6 +338,13 @@ public class ClassesParseEmitTest {
 		assertNotNull(result);
 		assertTrue(result.contains("class TestAPIClient"));
 		assertTrue(result.contains("getThing(String id, String query_p, String query_p2)"));
+		assertTrue(result.contains("class McpAdapter"));
+		assertTrue(result.contains("public java.util.List<Tool> getTools()"));
+		assertTrue(result.contains("public java.util.List<Resource> getResources()"));
+		assertTrue(result.contains(
+				"public CallToolResult callTool(String name, java.util.Map<String, Object> arguments) throws Exception"));
+		assertTrue(result.contains("if (\"getThing\".equals(name))"));
+		assertTrue(result.contains("if (\"POST__thing__id_\".equals(name))"));
 		assertTrue(result.contains("enum MyEnum"));
 		assertTrue(result.contains("B_C"));
 		assertTrue(result.contains("_1D"));

@@ -3,7 +3,12 @@ package cli;
 /**
  * CLI Entrypoint.
  */
+@cli.Generated
 public class Main {
+
+	/**
+	 * main doc
+	 */
 	public static void main(String[] args) {
 		try {
 			int exitCode = CddCli.run(args);

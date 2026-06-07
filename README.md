@@ -3,7 +3,7 @@ cdd-java
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![interactive WASM web demo](https://img.shields.io/badge/interactive-WASM_web_demo-blue.svg)](https://offscale.io/wasm_web_demo)
 [![CI](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-java/actions)
-[![Test Coverage](https://img.shields.io/badge/test_coverage-97%25-brightgreen.svg)](#)
+[![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen.svg)](#)
 [![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen.svg)](#)
 
 ----
@@ -23,7 +23,7 @@ The CLI—at a minimum—has:
 - `cdd-java from_openapi to_server -i spec.json`
 - `cdd-java to_openapi -f path/to/code`
 - `cdd-java to_docs_json --no-imports --no-wrapping -i spec.json`
-- `cdd-java serve_json_rpc --port 8080 --listen 0.0.0.0`
+- `cdd-java serve_json_rpc --port 8080 --listen 0.0.0.0` (provides Model Context Protocol (MCP) server)
 
 ## SDK Example
 
@@ -73,6 +73,7 @@ The `cdd-java` compiler leverages a unified architecture to support various face
     - **OpenAPI → `Java`**: Generate idiomatic native models, network routes, client SDKs, and boilerplate directly from OpenAPI (`.json` / `.yaml`) specifications.
     - **`Java` → OpenAPI**: Statically parse existing `Java` source code and emit compliant OpenAPI specifications.
 - **AST-Driven & Safe**: Employs static analysis instead of unsafe dynamic execution or reflection, allowing it to safely parse and emit code even for incomplete or un-compilable project states.
+- **Model Context Protocol (MCP)**: Native JSON-RPC server (`serve_json_rpc`) enabling LLMs and agents to discover and interact with the codebase tools.
 - **Seamless Sync**: Keep your docs, tests, database, clients, and routing in perfect harmony. Update your code, and generate the docs; or update the docs, and generate the code.
 
 **Uncommon Features:**

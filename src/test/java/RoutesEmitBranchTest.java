@@ -90,6 +90,8 @@ public class RoutesEmitBranchTest {
 		wh2.post = new Operation();
 		api.webhooks.put("wh2", wh2);
 
-		Emit.emit(api, null);
+		String result = Emit.emit(api, null);
+		org.junit.Assert.assertTrue(result.contains(
+				"public void mcpSse(String toolName, java.util.Map<String, Object> arguments, java.util.Map<String, String> headers)"));
 	}
 }

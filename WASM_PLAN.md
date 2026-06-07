@@ -38,7 +38,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Add flag `--target=wasm32-wasi` to the `native-image` command.
 - [x] Add flag `-H:WasiSdkPath=$WASI_SDK_PATH` to explicitly link the SDK.
 - [x] Add flag `--no-fallback` to ensure pure standalone binary compilation.
-- [x] Add flag `-cp target/cdd-java-0.0.1-jar-with-dependencies.jar` to define the classpath.
+- [x] Add flag `-cp target/cdd-java-0.0.2-jar-with-dependencies.jar` to define the classpath.
 - [x] Provide the entrypoint class `cli.Main` to the `native-image` command.
 - [x] Define output file parameter `-o target/wasm/cdd-java`.
 - [x] Make `build_wasm.sh` executable via `chmod +x build_wasm.sh`.
@@ -168,7 +168,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Validate presence of `"jsonrpc": "2.0"` field.
 - [x] Extract `"method"` and `"id"` fields.
 - [x] Switch on the `"method"` value (e.g., `case "version":`).
-- [x] For `version` method, formulate success response: `{"jsonrpc":"2.0","result":"0.0.1","id":<id>}`.
+- [x] For `version` method, formulate success response: `{"jsonrpc":"2.0","result":"0.0.2","id":<id>}`.
 - [x] For unknown methods, formulate error response: `{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found"},"id":<id>}`.
 - [x] Print the response payload strictly to `System.out`.
 - [x] Add `System.out.flush()` after printing to prevent buffering blocks in IPC.
@@ -185,22 +185,22 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 
 ### Preparing the Tracing Environment
 - [x] Rebuild the standard JVM fat JAR: `mvn clean package`.
-- [x] Verify `target/cdd-java-0.0.1-jar-with-dependencies.jar` exists.
+- [x] Verify `target/cdd-java-0.0.2-jar-with-dependencies.jar` exists.
 - [x] Create an output directory: `mkdir -p META-INF/native-image/org.cdd/cdd-java`.
 - [x] Clear existing config files in `META-INF/native-image/` to prevent cross-contamination.
 - [x] Create a mock `spec.json` file for the agent to process during tracing.
 - [x] Create a mock `java_source_dir/Mock.java` file for the agent to parse during tracing.
 
 ### Executing Tracing Runs
-- [x] Run Trace 1 (Help): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar --help`
-- [x] Run Trace 2 (Version): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar --version`
-- [x] Run Trace 3 (to_openapi): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar to_openapi -i java_source_dir -o traced_out.json`
-- [x] Run Trace 4 (to_sdk_cli): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar from_openapi to_sdk_cli -i spec.json -o out_traced`
-- [x] Run Trace 5 (to_sdk): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar from_openapi to_sdk -i spec.json -o out_traced`
-- [x] Run Trace 6 (to_server): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar from_openapi to_server -i spec.json -o out_traced`
-- [x] Run Trace 7 (to_orm): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar from_openapi to_orm -i spec.json -o out_traced`
-- [x] Run Trace 8 (to_docs_json): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar to_docs_json -i spec.json -o docs_traced.json`
-- [x] Run Trace 9 (RPC): `echo '{"jsonrpc":"2.0","method":"version","id":1}' | java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.1-jar-with-dependencies.jar serve_json_rpc`
+- [x] Run Trace 1 (Help): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar --help`
+- [x] Run Trace 2 (Version): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar --version`
+- [x] Run Trace 3 (to_openapi): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar to_openapi -i java_source_dir -o traced_out.json`
+- [x] Run Trace 4 (to_sdk_cli): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar from_openapi to_sdk_cli -i spec.json -o out_traced`
+- [x] Run Trace 5 (to_sdk): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar from_openapi to_sdk -i spec.json -o out_traced`
+- [x] Run Trace 6 (to_server): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar from_openapi to_server -i spec.json -o out_traced`
+- [x] Run Trace 7 (to_orm): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar from_openapi to_orm -i spec.json -o out_traced`
+- [x] Run Trace 8 (to_docs_json): `java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar to_docs_json -i spec.json -o docs_traced.json`
+- [x] Run Trace 9 (RPC): `echo '{"jsonrpc":"2.0","method":"version","id":1}' | java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image -jar target/cdd-java-0.0.2-jar-with-dependencies.jar serve_json_rpc`
 
 ### Validating Generated Configurations
 - [x] Inspect `META-INF/native-image/reflect-config.json`.
@@ -236,7 +236,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 
 ### Command Execution Parity Tests (Wasmtime)
 - [x] Run `wasmtime target/wasm/cdd-java.wasm --help`. Verify correct output.
-- [x] Run `wasmtime target/wasm/cdd-java.wasm --version`. Verify `0.0.1` output.
+- [x] Run `wasmtime target/wasm/cdd-java.wasm --version`. Verify `0.0.2` output.
 - [x] Create a `test_dir/spec.json`.
 - [x] Run `wasmtime --dir . target/wasm/cdd-java.wasm from_openapi to_sdk -i test_dir/spec.json -o test_dir/out_sdk`.
 - [x] Verify `test_dir/out_sdk/Sdk.java` is generated correctly.
@@ -245,7 +245,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Run `wasmtime --dir . target/wasm/cdd-java.wasm to_openapi -i src/main/java/cli -o test_dir/extracted_spec.json`.
 - [x] Verify `test_dir/extracted_spec.json` contains valid OpenAPI syntax.
 - [x] Test JSON-RPC via Pipe: `echo '{"jsonrpc":"2.0","method":"version","id":99}' | wasmtime target/wasm/cdd-java.wasm serve_json_rpc`.
-- [x] Verify standard output is EXACTLY `{"jsonrpc":"2.0","result":"0.0.1","id":99}` with no extra log lines.
+- [x] Verify standard output is EXACTLY `{"jsonrpc":"2.0","result":"0.0.2","id":99}` with no extra log lines.
 
 ### Command Execution Parity Tests (Wasmer)
 - [x] Run `wasmer run target/wasm/cdd-java.wasm -- --help`. Verify output.
@@ -305,7 +305,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Define `files:` payload to include `target/wasm/cdd-java.wasm` and `cdd-java.wasm.sha256`.
 - [x] Define `body:` payload to include release notes, specifying it is a standalone WASI binary compiled via GraalVM.
 - [x] Set `draft: false` and `prerelease: false`.
-- [x] Test the release workflow by pushing a dummy tag to a sandbox branch (e.g., `v0.0.1-rc1`).
+- [x] Test the release workflow by pushing a dummy tag to a sandbox branch (e.g., `v0.0.2-rc1`).
 - [x] Verify the Release appears on GitHub with both assets downloadable.
 
 ## Phase 11: Cleanup, Documentation, & Git Hygiene

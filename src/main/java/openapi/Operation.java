@@ -8,43 +8,103 @@ import java.util.Map;
  * Operation object compliant with OpenAPI 3.2.0.
  */
 public class Operation {
-	/** Default constructor. */
+
+	/**
+	 * Default constructor.
+	 */
 	public Operation() {
 	}
 
-	/** The tags property. */
+	/**
+	 * The tags property.
+	 */
 	public List<String> tags;
-	/** The summary property. */
+
+	/**
+	 * The summary property.
+	 */
 	public String summary;
-	/** The description property. */
+
+	/**
+	 * The description property.
+	 */
 	public String description;
-	/** The consumes property. */
+
+	/**
+	 * The consumes property.
+	 */
 	public List<String> consumes;
-	/** The produces property. */
+
+	/**
+	 * The produces property.
+	 */
 	public List<String> produces;
-	/** The schemes property. */
+
+	/**
+	 * The schemes property.
+	 */
 	public List<String> schemes;
-	/** The externalDocs property. */
+
+	/**
+	 * The externalDocs property.
+	 */
 	public ExternalDocumentation externalDocs;
-	/** The operationId property. */
+
+	/**
+	 * The operationId property.
+	 */
 	public String operationId;
-	/** The parameters property. */
-	public List<Object> parameters; // Parameter or Reference
-	/** The requestBody property. */
-	public Object requestBody; // RequestBody or Reference
-	/** The responses property. */
+
+	/**
+	 * The parameters property.
+	 */
+	/**
+	 * parameters doc
+	 */
+	public List<Object> parameters;
+
+	/**
+	 * The requestBody property.
+	 */
+	/**
+	 * requestBody doc
+	 */
+	public Object requestBody;
+
+	/**
+	 * The responses property.
+	 */
 	public Responses responses;
-	/** The callbacks property. */
-	public Map<String, Object> callbacks; // Callback or Reference
-	/** The deprecated property. */
+
+	/**
+	 * The callbacks property.
+	 */
+	/**
+	 * callbacks doc
+	 */
+	public Map<String, Object> callbacks;
+
+	/**
+	 * The deprecated property.
+	 */
 	public Boolean deprecated;
-	/** The security property. */
+
+	/**
+	 * The security property.
+	 */
 	public List<SecurityRequirement> security;
-	/** The servers property. */
+
+	/**
+	 * The servers property.
+	 */
 	public List<Server> servers;
 
-	/** Extensions. */
-	/** Extensions. */
+	/**
+	 * Extensions.
+	 */
+	/**
+	 * Extensions.
+	 */
 	public Map<String, Object> extensions = new HashMap<>();
 
 	/**

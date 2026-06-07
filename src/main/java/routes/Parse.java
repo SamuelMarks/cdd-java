@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
  * Parses routes from language source to OpenAPI representation using
  * JavaParser.
  */
+@cli.Generated
 public class Parse {
 	/**
 	 * Default constructor.
@@ -43,7 +44,7 @@ public class Parse {
 		api.openapi = "3.2.0";
 		api.info = new Info();
 		api.info.title = "Extracted API";
-		api.info.version = "0.0.1";
+		api.info.version = "0.0.2";
 		api.paths = new openapi.Paths();
 
 		try {

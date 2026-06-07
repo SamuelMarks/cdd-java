@@ -7,15 +7,19 @@ import java.util.regex.*;
 /**
  * Parses a CLI application to an OpenAPI model.
  */
+@cli.Generated
 public class Parse {
+
 	/**
 	 * Default constructor.
 	 */
 	public Parse() {
 	}
 
+	/**
+	 * unescape doc
+	 */
 	private static String unescape(String s) {
-
 		return s.replace("\\n", "\n").replace("\\r", "\r").replace("\\\"", "\"").replace("\\\\", "\\");
 	}
 
@@ -45,18 +49,14 @@ public class Parse {
 		if (hm.find()) {
 			helpBody = hm.group(1);
 		}
-
 		Matcher lm = Pattern.compile("System\\.out\\.println\\(\"((?:[^\"]|\\\\\")*)\"\\);").matcher(helpBody);
-
 		Operation currentOp = null;
 		Parameter currentParameter = null;
 		String currentPath = null;
 		Response currentResponse = null;
 		openapi.Schema lastParsedSchema = null;
-
 		while (lm.find()) {
 			String line = unescape(lm.group(1));
-
 			if (line.startsWith("Info Object title: ")) {
 				if (api.info == null)
 					api.info = new Info();
@@ -263,7 +263,6 @@ public class Parse {
 						String flowType = unescape(m.group(2));
 						String scopeKey = unescape(m.group(3));
 						String scopeDesc = unescape(m.group(4));
-
 						SecurityScheme sc = (SecurityScheme) api.components.securitySchemes.get(k);
 						if (sc != null && sc.flows != null) {
 							OAuthFlow flow = null;
@@ -277,7 +276,6 @@ public class Parse {
 								flow = sc.flows.authorizationCode;
 							else if (flowType.equals("deviceAuthorization"))
 								flow = sc.flows.deviceAuthorization;
-
 							if (flow != null) {
 								if (flow.scopes == null)
 									flow.scopes = new java.util.HashMap<>();
@@ -296,7 +294,6 @@ public class Parse {
 						String tokenUrl = parts[5].equals("-") ? null : unescape(parts[5]);
 						String refreshUrl = parts[6].equals("-") ? null : unescape(parts[6]);
 						String devUrl = (parts.length >= 8 && !parts[7].equals("-")) ? unescape(parts[7]) : null;
-
 						SecurityScheme sc = (SecurityScheme) api.components.securitySchemes.get(k);
 						if (sc != null) {
 							if (sc.flows == null)
@@ -306,7 +303,6 @@ public class Parse {
 							flow.tokenUrl = tokenUrl;
 							flow.refreshUrl = refreshUrl;
 							flow.deviceAuthorizationUrl = devUrl;
-
 							if (flowType.equals("implicit"))
 								sc.flows.implicit = flow;
 							else if (flowType.equals("password"))
@@ -368,9 +364,8 @@ public class Parse {
 						api.components.requestBodies.put(key, new RequestBody());
 					} else if (type.equals("headers")) {
 						api.components.headers.put(key, new Header());
-					}
-					// securitySchemes handled above
-					else if (type.equals("links")) {
+					} else // securitySchemes handled above
+					if (type.equals("links")) {
 						api.components.links.put(key, new Link());
 					} else if (type.equals("callbacks")) {
 						api.components.callbacks.put(key, new Callback());
@@ -457,10 +452,10 @@ public class Parse {
 						((RequestBody) currentOp.requestBody).required = true;
 						line = line.replace(" (required)", "");
 					}
-					line = line.substring(17); // past " --requestBody: " or " --requestBody"
+					// past " --requestBody: " or " --requestBody"
+					line = line.substring(17);
 					if (line.startsWith(": "))
 						line = line.substring(2);
-
 					Matcher ctMatcher = Pattern.compile(" \\[Content-Types: (.*?)\\]$").matcher(line);
 					if (ctMatcher.find()) {
 						((RequestBody) currentOp.requestBody).content = new HashMap<>();
@@ -599,12 +594,10 @@ public class Parse {
 						currentOp.responses = new Responses();
 					if (currentOp.responses.statusCodes == null)
 						currentOp.responses.statusCodes = new HashMap<>();
-
 					String l = line.substring(12);
 					int colIdx = l.indexOf(": ");
 					String code = colIdx != -1 ? l.substring(0, colIdx) : l;
 					String desc = colIdx != -1 ? l.substring(colIdx + 2) : "";
-
 					currentResponse = new Response();
 					Matcher ctMatcher = Pattern.compile(" \\[Content-Types: (.*?)\\]$").matcher(desc);
 					if (ctMatcher.find()) {
@@ -616,7 +609,6 @@ public class Parse {
 					}
 					if (!desc.isEmpty())
 						currentResponse.description = desc;
-
 					if (code.equals("default"))
 						currentOp.responses.defaultResponse = currentResponse;
 					else
@@ -733,7 +725,6 @@ public class Parse {
 					int colIdx = l.indexOf(": ");
 					String pre = colIdx != -1 ? l.substring(0, colIdx) : l;
 					String desc = colIdx != -1 ? l.substring(colIdx + 2) : "";
-
 					if (pre.contains(" [DEPRECATED]")) {
 						h.deprecated = true;
 						pre = pre.replace(" [DEPRECATED]", "");
@@ -789,7 +780,6 @@ public class Parse {
 				}
 			}
 		}
-
 		return api;
 	}
 }

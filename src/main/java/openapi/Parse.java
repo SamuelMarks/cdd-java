@@ -2,11 +2,9 @@ package openapi;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -14,6 +12,7 @@ import java.util.HashMap;
  * Parses OpenAPI descriptions.
  */
 public class Parse {
+
 	/**
 	 * Default constructor.
 	 */
@@ -33,10 +32,8 @@ public class Parse {
 		try {
 			JSONObject root = new JSONObject(content);
 			OpenAPI api = new OpenAPI();
-
 			if (root.has("openapi"))
 				api.openapi = root.getString("openapi");
-
 			if (root.has("swagger"))
 				api.swagger = root.getString("swagger");
 			if (root.has("host"))
@@ -61,7 +58,6 @@ public class Parse {
 				for (int i = 0; i < arr.length(); i++)
 					api.produces.add(arr.getString(i));
 			}
-
 			if (root.has("info")) {
 				JSONObject infoObj = root.getJSONObject("info");
 				api.info = new Info();
@@ -73,7 +69,6 @@ public class Parse {
 					api.info.description = infoObj.getString("description");
 				}
 			}
-
 			if (root.has("paths")) {
 				api.paths = new Paths();
 				api.paths.pathItems = new HashMap<>();
@@ -83,7 +78,6 @@ public class Parse {
 						continue;
 					JSONObject piObj = pathsObj.getJSONObject(pathKey);
 					PathItem pi = new PathItem();
-
 					if (piObj.has("get"))
 						pi.get = parseOperation(piObj.getJSONObject("get"));
 					if (piObj.has("post"))
@@ -94,15 +88,12 @@ public class Parse {
 						pi.delete = parseOperation(piObj.getJSONObject("delete"));
 					if (piObj.has("patch"))
 						pi.patch = parseOperation(piObj.getJSONObject("patch"));
-
 					if (piObj.has("parameters")) {
 						pi.parameters = parseParameters(piObj.getJSONArray("parameters"));
 					}
-
 					api.paths.pathItems.put(pathKey, pi);
 				}
 			}
-
 			if (root.has("definitions")) {
 				api.definitions = new HashMap<>();
 				JSONObject schemasObj = root.getJSONObject("definitions");
@@ -111,7 +102,6 @@ public class Parse {
 					api.definitions.put(sKey, s);
 				}
 			}
-
 			if (root.has("components")) {
 				api.components = new Components();
 				JSONObject compObj = root.getJSONObject("components");
@@ -124,13 +114,15 @@ public class Parse {
 					}
 				}
 			}
-
 			return api;
 		} catch (Exception e) {
 			throw new IOException("Failed to parse OpenAPI: " + e.getMessage(), e);
 		}
 	}
 
+	/**
+	 * parseSchema doc
+	 */
 	private static Schema parseSchema(JSONObject sObj) {
 		Schema s = new Schema();
 		if (sObj.has("type"))
@@ -154,6 +146,9 @@ public class Parse {
 		return s;
 	}
 
+	/**
+	 * parseOperation doc
+	 */
 	private static Operation parseOperation(JSONObject obj) {
 		Operation op = new Operation();
 		if (obj.has("operationId"))
@@ -162,11 +157,9 @@ public class Parse {
 			op.summary = obj.getString("summary");
 		if (obj.has("description"))
 			op.description = obj.getString("description");
-
 		if (obj.has("parameters")) {
 			op.parameters = parseParameters(obj.getJSONArray("parameters"));
 		}
-
 		if (obj.has("requestBody")) {
 			RequestBody reqBody = new RequestBody();
 			JSONObject rbObj = obj.getJSONObject("requestBody");
@@ -189,7 +182,6 @@ public class Parse {
 			}
 			op.requestBody = reqBody;
 		}
-
 		if (obj.has("responses")) {
 			op.responses = new Responses();
 			op.responses.statusCodes = new HashMap<>();
@@ -215,10 +207,12 @@ public class Parse {
 				op.responses.statusCodes.put(rKey, r);
 			}
 		}
-
 		return op;
 	}
 
+	/**
+	 * parseParameters doc
+	 */
 	private static java.util.List<Object> parseParameters(JSONArray arr) {
 		java.util.List<Object> list = new ArrayList<>();
 		for (int i = 0; i < arr.length(); i++) {

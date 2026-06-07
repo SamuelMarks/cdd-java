@@ -7,7 +7,6 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.BodyDeclaration;
 import com.github.javaparser.printer.lexicalpreservation.LexicalPreservingPrinter;
-
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -19,7 +18,10 @@ import openapi.Parameter;
  * Emits API integration tests to language source preserving lexical layout.
  */
 public class Emit {
-	/** Default constructor. */
+
+	/**
+	 * Default constructor.
+	 */
 	public Emit() {
 	}
 
@@ -38,10 +40,8 @@ public class Emit {
 				: "Api";
 		if (title.isEmpty())
 			title = "Api";
-
 		String clientClass = title + "Client";
 		String testClass = title + "IntegrationTest";
-
 		StringBuilder sb = new StringBuilder();
 		sb.append("import org.junit.Test;\n");
 		sb.append("import org.junit.BeforeClass;\n");
@@ -53,7 +53,6 @@ public class Emit {
 		 * Documented.
 		 */
 		sb.append("public class ").append(testClass).append(" {\n");
-
 		sb.append("    @BeforeClass\n");
 		sb.append("    public static void setUpClass() {\n");
 		sb.append(
@@ -72,12 +71,10 @@ public class Emit {
 		sb.append("            try { Thread.sleep(2000); } catch (Exception e) { }\n");
 		sb.append("        }\n");
 		sb.append("    }\n\n");
-
 		if (model.paths != null && model.paths.pathItems != null) {
 			for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 				String path = entry.getKey();
 				PathItem pi = entry.getValue();
-
 				if (pi.get != null)
 					appendJUnitTest(sb, clientClass, "GET", path, pi.get, pi.parameters, model);
 				if (pi.post != null)
@@ -88,12 +85,13 @@ public class Emit {
 					appendJUnitTest(sb, clientClass, "DELETE", path, pi.delete, pi.parameters, model);
 			}
 		}
-
 		sb.append("}\n");
-
 		return sb.toString();
 	}
 
+	/**
+	 * appendJUnitTest doc
+	 */
 	private static void appendJUnitTest(StringBuilder sb, String clientClass, String method, String path, Operation op,
 			List<Object> pathParams, OpenAPI model) {
 		String methodName = op.operationId;
@@ -102,9 +100,7 @@ public class Emit {
 		} else {
 			methodName = methodName.replaceAll("[^a-zA-Z0-9_]", "");
 		}
-
 		String testMethodName = "test" + methodName.substring(0, 1).toUpperCase() + methodName.substring(1);
-
 		List<Parameter> allParams = new ArrayList<>();
 		if (pathParams != null) {
 			for (Object po : pathParams) {
@@ -128,7 +124,6 @@ public class Emit {
 				}
 			}
 		}
-
 		int paramCount = 0;
 		for (Parameter p : allParams) {
 			if (p.name == null)
@@ -137,9 +132,7 @@ public class Emit {
 			if (!safeName.isEmpty())
 				paramCount++;
 		}
-
 		boolean hasBody = (op.requestBody != null);
-
 		String literalBaseUrl = "http://localhost:8080/v2";
 		String rawPathPrefix = "/v2";
 		try {
@@ -147,27 +140,22 @@ public class Emit {
 			literalBaseUrl = "http://localhost:8080" + rawPathPrefix;
 		} catch (Exception e) {
 		}
-
 		sb.append("    @Test\n");
 		sb.append("    public void ").append(testMethodName).append("() throws Exception {\n");
 		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"")
 				.append(literalBaseUrl).append("\");\n");
-
 		// Log to access log to satisfy verify_coverage.py since Petstore Docker does
 		// not log to stdout
 		sb.append(
 				"        try { java.nio.file.Files.writeString(java.nio.file.Paths.get(\"../java_petstore_access.log\"), \"")
 				.append(method).append(" ").append(rawPathPrefix).append(path)
 				.append(" HTTP/1.1\\n\", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND); } catch (Exception e) {}\n");
-
 		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(");
-
 		for (int i = 0; i < paramCount; i++) {
 			if (i > 0)
 				sb.append(", ");
 			sb.append("\"0\"");
 		}
-
 		if (hasBody) {
 			if (paramCount > 0)
 				sb.append(", ");
@@ -179,7 +167,6 @@ public class Emit {
 				sb.append("\"{}\"");
 			}
 		}
-
 		sb.append(");\n");
 		sb.append(
 				"        assertTrue(\"Expected valid status code, got: \" + res.statusCode(), res.statusCode() >= 200 && res.statusCode() < 500);\n");

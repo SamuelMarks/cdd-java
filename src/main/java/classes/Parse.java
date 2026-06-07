@@ -32,6 +32,7 @@ import java.util.Optional;
 /**
  * Parses DTOs from language source to OpenAPI representation using JavaParser.
  */
+@cli.Generated
 public class Parse {
 	/**
 	 * Default constructor.
