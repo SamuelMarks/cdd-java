@@ -44,11 +44,11 @@ repos:
         pass_filenames: false
       - id: swagger-2-petstore-test
         name: Swagger 2.0 Petstore Test
-        entry: bash -c 'rm -rf ../cdd-java-client-v2 && java -cp "lib/*:bin" cli.Main from_openapi to_sdk -i "../petstore.json" --tests -o "../cdd-java-client-v2" && (cd ../cdd-java-client-v2 && mvn clean test-compile)'
+        entry: scripts/test_petstore.sh v2 ../petstore.json
         language: system
         pass_filenames: false
       - id: openapi-3-petstore-test
         name: OpenAPI 3.2.0 Petstore Test
-        entry: bash -c 'rm -rf ../cdd-java-client-v3 && java -cp "lib/*:bin" cli.Main from_openapi to_sdk -i "../petstore_oas3.json" --tests -o "../cdd-java-client-v3" && (cd ../cdd-java-client-v3 && mvn clean test-compile)'
+        entry: scripts/test_petstore.sh v3 ../petstore_oas3.json
         language: system
         pass_filenames: false
