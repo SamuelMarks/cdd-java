@@ -109,8 +109,17 @@ public class CliMainTest {
 		Files.writeString(specFile.toPath(),
 				"{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"\",\"version\":\"1\"},\"paths\":{}}");
 
-		runMain(new String[]{"from_openapi", "to_sdk", "-i", specFile.getAbsolutePath(), "-o",
-				new File(wasiDir, "out").getAbsolutePath()});
+		try {
+			setEnv("CDD_WASI_VIRTUAL_ROOT", wasiDir.getAbsolutePath());
+			// Force a path starting with '/' so it triggers the VFS resolution logic even
+			// on Windows
+			String inPath = "/absolute/spec.json";
+			String outPath = "/out";
+
+			runMain(new String[]{"from_openapi", "to_sdk", "-i", inPath, "-o", outPath});
+		} finally {
+			setEnv("CDD_WASI_VIRTUAL_ROOT", null);
+		}
 	}
 
 	@Test

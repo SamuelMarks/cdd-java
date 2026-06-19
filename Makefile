@@ -54,7 +54,7 @@ install_deps:
 	@echo "Installing dependencies to lib/..."
 	mvn dependency:copy-dependencies -DoutputDirectory=lib
 
-docs:
+docs: install_deps
 	@echo "Building API docs to target/docs..."
 	@rm -rf target/docs
 	@mkdir -p target/docs
@@ -72,7 +72,7 @@ build_docs:
 	javadoc -d "$(DOCS_DIR)" -cp "lib/*:src/main/java" @doc_sources.txt
 	@rm -f doc_sources.txt
 
-build:
+build: install_deps
 	@echo "Building CLI to $(BIN_DIR)..."
 	@mkdir -p "$(BIN_DIR)"
 	@find src/main/java -name "*.java" ! -name "ApiIntegrationTest.java" > sources.txt

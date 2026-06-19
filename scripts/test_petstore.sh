@@ -17,7 +17,8 @@ lsof -i :8080 | awk 'NR>1 {print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 sleep 1
 
 echo "Starting JVM official petstore server..."
-if [ ! -d "/tmp/swagger-petstore" ]; then
+if [ ! -f "/tmp/swagger-petstore/pom.xml" ]; then
+    rm -rf /tmp/swagger-petstore
     git clone https://github.com/swagger-api/swagger-petstore.git /tmp/swagger-petstore
 fi
 if [ ! -f "/tmp/swagger-petstore/target/lib/jetty-runner.jar" ]; then
