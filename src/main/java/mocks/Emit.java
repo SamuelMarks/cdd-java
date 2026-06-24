@@ -110,6 +110,95 @@ public class Emit {
 	}
 
 	/**
+	 * Emits modular Java code for mock servers.
+	 *
+	 * @param model
+	 *            The OpenAPI model.
+	 * @return A map of file paths to generated Java source code.
+	 */
+	public static java.util.Map<String, String> emitModular(OpenAPI model) {
+		java.util.Map<String, String> files = new java.util.HashMap<>();
+		if (model.paths == null || model.paths.pathItems == null)
+			return files;
+
+		for (java.util.Map.Entry<String, openapi.PathItem> entry : model.paths.pathItems.entrySet()) {
+			String path = entry.getKey();
+			String resourceName = getResourceName(path);
+			String className = resourceName + "MockServer";
+
+			CompilationUnit cu = new CompilationUnit();
+			cu.setPackageDeclaration("mocks");
+			cu.addImport("com.sun.net.httpserver.HttpServer");
+			cu.addImport("com.sun.net.httpserver.HttpExchange");
+			cu.addImport("java.net.InetSocketAddress");
+			cu.addImport("java.io.IOException");
+			cu.addImport("java.io.OutputStream");
+
+			ClassOrInterfaceDeclaration classDecl = cu.addClass(className)
+					.setModifier(com.github.javaparser.ast.Modifier.Keyword.PUBLIC, true);
+			classDecl.setJavadocComment("Mock server for " + resourceName + ".");
+
+			classDecl.addField("HttpServer", "server", com.github.javaparser.ast.Modifier.Keyword.PRIVATE);
+
+			MethodDeclaration startMethod = classDecl.addMethod("start",
+					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			startMethod.addParameter("int", "port");
+			startMethod.addThrownException(com.github.javaparser.ast.type.ClassOrInterfaceType.class
+					.cast(StaticJavaParser.parseType("IOException")));
+			startMethod.setJavadocComment(
+					"Starts the mock server.\n@param port The port to listen on.\n@throws IOException If an I/O error occurs.");
+
+			StringBuilder startBody = new StringBuilder();
+			startBody.append("{\n");
+			startBody.append("    server = HttpServer.create(new InetSocketAddress(port), 0);\n");
+
+			String handlerPath = path.replaceAll("\\{[^}]+\\}", "");
+			if (handlerPath.endsWith("/") && handlerPath.length() > 1) {
+				handlerPath = handlerPath.substring(0, handlerPath.length() - 1);
+			}
+
+			startBody.append("    server.createContext(\"").append(handlerPath)
+					.append("\", (HttpExchange exchange) -> {\n");
+			startBody.append("        String response = \"{\\\"mock\\\": \\\"true\\\"}\";\n");
+			startBody.append("        exchange.sendResponseHeaders(200, response.length());\n");
+			startBody.append("        try (OutputStream os = exchange.getResponseBody()) {\n");
+			startBody.append("            os.write(response.getBytes());\n");
+			startBody.append("        }\n");
+			startBody.append("    });\n");
+			startBody.append("    server.setExecutor(null);\n");
+			startBody.append("    server.start();\n");
+			startBody.append("    System.out.println(\"").append(className).append(" started on port \" + port);\n");
+			startBody.append("}\n");
+			startMethod.setBody(StaticJavaParser.parseBlock(startBody.toString()));
+
+			MethodDeclaration stopMethod = classDecl.addMethod("stop",
+					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			stopMethod.setJavadocComment("Stops the mock server.");
+			StringBuilder stopBody = new StringBuilder();
+			stopBody.append("{\n");
+			stopBody.append("    if (server != null) {\n");
+			stopBody.append("        server.stop(0);\n");
+			stopBody.append("    }\n");
+			stopBody.append("}\n");
+			stopMethod.setBody(StaticJavaParser.parseBlock(stopBody.toString()));
+
+			files.put("mocks/" + className + ".java", cu.toString());
+		}
+
+		return files;
+	}
+
+	private static String getResourceName(String path) {
+		String[] parts = path.split("/");
+		for (String p : parts) {
+			if (!p.isEmpty() && !p.startsWith("{")) {
+				return p.substring(0, 1).toUpperCase() + p.substring(1).replaceAll("[^a-zA-Z0-9]", "");
+			}
+		}
+		return "Root";
+	}
+
+	/**
 	 * Generated JavaDoc.
 	 */
 	/**

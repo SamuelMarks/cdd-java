@@ -13,6 +13,16 @@ jobs:
         distribution: 'temurin'
     - name: Build with Maven
       run: mvn clean install
+    - name: Test Generated Petstore Clients
+      run: |
+        curl -sL "https://raw.githubusercontent.com/swagger-api/swagger-petstore/master/src/main/resources/openapi.yaml" | npx swagger-cli bundle -t json > petstore_oas3.json
+        curl -sL "https://petstore.swagger.io/v2/swagger.json" > petstore.json
+        python3 scripts/test_petstore.py v2 petstore.json
+        python3 scripts/test_petstore.py v3 petstore_oas3.json
+    - name: Test Generated Petstore Servers
+      run: |
+        python3 scripts/test_generated_server.py v2 petstore.json
+        python3 scripts/test_generated_server.py v3 petstore_oas3.json
 
   release:
     needs: test
@@ -48,8 +58,8 @@ jobs:
 
     - name: Generate WASM Binary
       run: |
-        chmod +x build_wasm.sh
-        ./build_wasm.sh
+
+        python3 build_wasm.py
 
     - name: Verify WASM File Exists
       run: |

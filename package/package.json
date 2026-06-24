@@ -1,6 +1,6 @@
 {
   "name": "cdd-java-cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "JS Wrapper for cdd-java WASM module",
   "main": "dist/index.js",
   "browser": "dist/browser.js",

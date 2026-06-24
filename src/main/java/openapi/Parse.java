@@ -96,10 +96,17 @@ public class Parse {
 			}
 			if (root.has("definitions")) {
 				api.definitions = new HashMap<>();
+				if (api.components == null) {
+					api.components = new Components();
+				}
+				if (api.components.schemas == null) {
+					api.components.schemas = new HashMap<>();
+				}
 				JSONObject schemasObj = root.getJSONObject("definitions");
 				for (String sKey : schemasObj.keySet()) {
 					Schema s = parseSchema(schemasObj.getJSONObject(sKey));
 					api.definitions.put(sKey, s);
+					api.components.schemas.put(sKey, s);
 				}
 			}
 			if (root.has("components")) {

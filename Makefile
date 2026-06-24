@@ -106,7 +106,7 @@ help:
 
 build_wasm:
 	@echo "Building WASM variant..."
-	bash build_wasm.sh
+	python3 build_wasm.py
 	mkdir -p bin
 	cp target/wasm/cdd-java.wasm bin/ || true
 	cp target/wasm/cdd-java.js* bin/ || true

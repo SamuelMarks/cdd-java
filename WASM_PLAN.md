@@ -27,9 +27,9 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Validate `wasi-sysroot` exists in `wasi-sdk-24.0-arm64-macos/share/wasi-sysroot`.
 - [x] Export `WASI_SDK_PATH` pointing to absolute path of `./wasi-sdk-24.0-arm64-macos`.
 
-### Build Script Scaffolding (`build_wasm.sh`)
-- [x] Create a new executable script `build_wasm.sh` in the project root.
-- [x] Add `#!/bin/bash` shebang to `build_wasm.sh`.
+### Build Script Scaffolding (`build_wasm.py`)
+- [x] Create a new executable script `build_wasm.py` in the project root.
+- [x] Add `#!/bin/bash` shebang to `build_wasm.py`.
 - [x] Add `set -e` to fail the script on any errors.
 - [x] Add validation to assert `GRAALVM_HOME` is set.
 - [x] Add validation to assert `WASI_SDK_PATH` is set.
@@ -41,7 +41,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Add flag `-cp target/cdd-java-0.0.2-jar-with-dependencies.jar` to define the classpath.
 - [x] Provide the entrypoint class `cli.Main` to the `native-image` command.
 - [x] Define output file parameter `-o target/wasm/cdd-java`.
-- [x] Make `build_wasm.sh` executable via `chmod +x build_wasm.sh`.
+- [x] Make `build_wasm.py` executable via `chmod +x build_wasm.py`.
 
 ## Phase 2: Maven pom.xml & Build Lifecycle Overhaul
 
@@ -213,18 +213,18 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 ## Phase 7: GraalVM WASM Build Execution & Optimization
 
 ### First Compilation Pass
-- [x] Execute `./build_wasm.sh`.
+- [x] Execute `./build_wasm.py`.
 - [x] Monitor log for "Unsupported API" errors (indicates missed `java.net` or `java.nio` references).
 - [x] Monitor log for Threading API errors (e.g., `java.lang.Thread.start()` is restricted in WASI).
 - [x] Provide stub implementations for any missed unsupported JDK classes using GraalVM substitutions (`@Substitute`) if absolutely necessary.
 - [x] Ensure successful termination resulting in a `.wasm` file in `target/wasm/cdd-java.wasm`.
 
 ### Advanced Build Tuning
-- [x] Add `--initialize-at-build-time=com.github.javaparser` to `build_wasm.sh` to shift AST initialization out of the runtime.
+- [x] Add `--initialize-at-build-time=com.github.javaparser` to `build_wasm.py` to shift AST initialization out of the runtime.
 - [x] Add `--initialize-at-build-time=org.json` to the build script.
 - [x] Add `-O3` flag for aggressive WASM size and speed optimizations.
 - [x] Add `-g0` to strip DWARF debugging symbols to reduce binary size.
-- [x] Re-run `./build_wasm.sh` and compare binary size against the first pass.
+- [x] Re-run `./build_wasm.py` and compare binary size against the first pass.
 
 ## Phase 8: Comprehensive Local WASM Testing (Wasmtime / Wasmer)
 
@@ -271,7 +271,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Add a step to download and extract `wasi-sdk` dynamically based on runner OS (using `wget` and `tar`).
 - [x] Export `WASI_SDK_PATH` to the extracted directory path in the GITHUB_ENV.
 - [x] Add a step to run `mvn clean package` to build the standard JAR.
-- [x] Add a step to execute `build_wasm.sh` to generate the `.wasm` file.
+- [x] Add a step to execute `build_wasm.py` to generate the `.wasm` file.
 - [x] Fail the CI run if the `.wasm` file does not exist.
 
 ### Remote WASM Integration Tests
@@ -295,7 +295,7 @@ This document outlines the exhaustive, step-by-step strategy for refactoring `cd
 - [x] Remove legacy `cd wasm_stub` logic.
 
 ### Release Artifact Generation
-- [x] Execute `build_wasm.sh` script to generate the production optimized `.wasm` artifact.
+- [x] Execute `build_wasm.py` script to generate the production optimized `.wasm` artifact.
 - [x] Validate `target/wasm/cdd-java.wasm` exists.
 - [x] Rename artifact to include architecture context if desired, or keep as `cdd-java.wasm`.
 - [x] Generate SHA-256 checksum for the `.wasm` file (e.g., `sha256sum target/wasm/cdd-java.wasm > cdd-java.wasm.sha256`).

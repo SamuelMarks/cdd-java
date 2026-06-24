@@ -7,7 +7,16 @@ package cli;
 public class Main {
 
 	/**
+	 * Default constructor for Main.
+	 */
+	public Main() {
+	}
+
+	/**
 	 * main doc
+	 *
+	 * @param args
+	 *            Command-line arguments.
 	 */
 	public static void main(String[] args) {
 		try {

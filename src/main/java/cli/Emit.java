@@ -88,7 +88,7 @@ public class Emit {
 				"                        String method = req.has(\"method\") ? req.get(\"method\").asText() : \"\";\n");
 		sb.append("                        if (\"initialize\".equals(method)) {\n");
 		sb.append(
-				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"protocolVersion\\\":\\\"2024-11-05\\\",\\\"capabilities\\\":{\\\"tools\\\":{}},\\\"serverInfo\\\":{\\\"name\\\":\\\"sdk-mcp\\\",\\\"version\\\":\\\"0.0.2\\\"}},\\\"id\\\":\" + idStr + \"}\";\n");
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"protocolVersion\\\":\\\"2024-11-05\\\",\\\"capabilities\\\":{\\\"tools\\\":{}},\\\"serverInfo\\\":{\\\"name\\\":\\\"sdk-mcp\\\",\\\"version\\\":\\\"0.0.3\\\"}},\\\"id\\\":\" + idStr + \"}\";\n");
 		sb.append(
 				"                        } else if (\"notifications/initialized\".equals(method) || \"initialized\".equals(method)) {\n");
 		sb.append("                            continue;\n");

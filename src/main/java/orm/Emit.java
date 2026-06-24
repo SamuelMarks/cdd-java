@@ -22,6 +22,47 @@ public class Emit {
 	}
 
 	/**
+	 * Emits Modular Java code for JPA entities.
+	 *
+	 * @param model
+	 *            The OpenAPI model.
+	 * @return Map of filenames to generated Java source.
+	 */
+	public static Map<String, String> emitModular(OpenAPI model) {
+		Map<String, String> files = new java.util.HashMap<>();
+		if (model.components == null || model.components.schemas == null)
+			return files;
+
+		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
+			if (className.equals("Emit") || className.equals("Parse")) {
+				continue;
+			}
+			Schema schemaMap = entry.getValue();
+			if (schemaMap.enumValues == null) {
+				CompilationUnit cu = new CompilationUnit();
+				cu.setPackageDeclaration("models");
+				cu.addImport("jakarta.persistence.Entity");
+				cu.addImport("jakarta.persistence.Table");
+				cu.addImport("jakarta.persistence.Column");
+				cu.addImport("jakarta.persistence.Id");
+				cu.addImport("jakarta.persistence.GeneratedValue");
+				cu.addImport("jakarta.persistence.GenerationType");
+				cu.addImport("jakarta.persistence.OneToMany");
+				cu.addImport("jakarta.persistence.ManyToOne");
+				cu.addImport("java.util.List");
+				cu.addImport("java.util.Map");
+
+				emitEntity(cu, className, schemaMap, model);
+
+				cu.getClassByName(className).ifPresent(c -> c.setModifier(Modifier.Keyword.PUBLIC, true));
+				files.put("models/" + className + ".java", cu.toString());
+			}
+		}
+		return files;
+	}
+
+	/**
 	 * Emits Java code for JPA entities.
 	 *
 	 * @param model

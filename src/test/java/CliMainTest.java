@@ -314,7 +314,7 @@ public class CliMainTest {
 		runMain(new String[]{"serve_json_rpc"});
 
 		String out = outContent.toString();
-		assertTrue(out.contains("\"result\":\"0.0.2\""));
+		assertTrue(out.contains("\"result\":\"0.0.3\""));
 	}
 
 	@Test

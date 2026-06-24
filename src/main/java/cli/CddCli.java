@@ -79,9 +79,6 @@ public @Generated class CddCli {
 	 *            Command-line arguments.
 	 * @return Exit code (0 for success).
 	 */
-	/**
-	 * Generate code from an OpenAPI specification.
-	 */
 	public static int generateFromOpenApi(String[] args) {
 		String[] fullArgs = new String[args.length + 1];
 		fullArgs[0] = "from_openapi";
@@ -100,9 +97,6 @@ public @Generated class CddCli {
 	 * @param args
 	 *            Command-line arguments.
 	 * @return Exit code (0 for success).
-	 */
-	/**
-	 * Generate an OpenAPI specification from source code.
 	 */
 	public static int generateToOpenApi(String[] args) {
 		String[] fullArgs = new String[args.length + 1];
@@ -123,9 +117,6 @@ public @Generated class CddCli {
 	 *            Command-line arguments.
 	 * @return Exit code (0 for success).
 	 */
-	/**
-	 * Generate JSON documentation with code snippets for an OpenAPI specification.
-	 */
 	public static int generateDocsJson(String[] args) {
 		String[] fullArgs = new String[args.length + 1];
 		fullArgs[0] = "to_docs_json";
@@ -145,9 +136,6 @@ public @Generated class CddCli {
 	 *            Command-line arguments.
 	 * @return Exit code (0 for success).
 	 */
-	/**
-	 * Expose CLI interface as a JSON-RPC server.
-	 */
 	public static int serveJsonRpc(String[] args) {
 		String[] fullArgs = new String[args.length + 1];
 		fullArgs[0] = "serve_json_rpc";
@@ -162,6 +150,12 @@ public @Generated class CddCli {
 
 	/**
 	 * run doc
+	 *
+	 * @param args
+	 *            Command-line arguments.
+	 * @return Exit code (0 for success).
+	 * @throws Exception
+	 *             if an error occurs.
 	 */
 	public static int run(String[] args) throws Exception {
 		if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
@@ -169,7 +163,7 @@ public @Generated class CddCli {
 			return 0;
 		}
 		if (args[0].equals("--version") || args[0].equals("-v")) {
-			System.out.println("0.0.2");
+			System.out.println("0.0.3");
 			return 0;
 		}
 		String command = args[0];
@@ -282,9 +276,43 @@ public @Generated class CddCli {
 						System.out.println("Generated Composable Tests & Mocks in " + outDir.getAbsolutePath());
 					}
 				} else if (subCommand.equals("to_server")) {
-					String code = routes.Emit.emit(api, null);
-					writeFile(new File(outDir, "ServerRoutes.java"), code);
-					System.out.println("Generated Server Routes in " + outDir.getAbsolutePath());
+					java.util.Map<String, String> modelsCode = classes.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : modelsCode.entrySet()) {
+						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
+					}
+					java.util.Map<String, String> ormCode = orm.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : ormCode.entrySet()) {
+						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
+					}
+					java.util.Map<String, String> daoCode = dao.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : daoCode.entrySet()) {
+						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
+					}
+					java.util.Map<String, String> sRoutes = serverroutes.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : sRoutes.entrySet()) {
+						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
+					}
+					java.util.Map<String, String> seederCode = seeder.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : seederCode.entrySet()) {
+						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
+					}
+					java.util.Map<String, String> sMain = servermain.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : sMain.entrySet()) {
+						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
+					}
+					java.util.Map<String, String> sTests = servertests.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : sTests.entrySet()) {
+						if (e.getKey().startsWith("../main/")) {
+							writeFile(new File(outDir, "src/" + e.getKey().substring(3)), e.getValue());
+						} else {
+							writeFile(new File(outDir, "src/test/java/" + e.getKey()), e.getValue());
+						}
+					}
+					java.util.Map<String, String> sMocks = mocks.Emit.emitModular(api);
+					for (java.util.Map.Entry<String, String> e : sMocks.entrySet()) {
+						writeFile(new File(outDir, "src/test/java/" + e.getKey()), e.getValue());
+					}
+					System.out.println("Generated Modular Server in " + outDir.getAbsolutePath());
 				} else if (subCommand.equals("to_orm")) {
 					String code = orm.Emit.emit(api, null);
 					writeFile(new File(outDir, "OrmEntities.java"), code);
@@ -462,7 +490,30 @@ public @Generated class CddCli {
 						outFiles.put("src/test/java/" + title4 + "MockServer.java", mocks.Emit.emit(api, null));
 					}
 				} else if (subCommand.equals("to_server")) {
-					outFiles.put("ServerRoutes.java", routes.Emit.emit(api, null));
+					for (java.util.Map.Entry<String, String> e : classes.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : orm.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : dao.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : serverroutes.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : seeder.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : servermain.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : servertests.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
+					for (java.util.Map.Entry<String, String> e : mocks.Emit.emitModular(api).entrySet()) {
+						outFiles.put(e.getKey(), e.getValue());
+					}
 				} else if (subCommand.equals("to_orm")) {
 					outFiles.put("OrmEntities.java", orm.Emit.emit(api, null));
 				}
@@ -496,6 +547,8 @@ public @Generated class CddCli {
 	 * writeFile doc
 	 */
 	private static void writeFile(File file, String content) throws IOException {
+		if (file.getParentFile() != null)
+			file.getParentFile().mkdirs();
 		try (FileOutputStream fos = new FileOutputStream(file)) {
 			fos.write(content.getBytes("UTF-8"));
 		}
@@ -521,7 +574,7 @@ public @Generated class CddCli {
 				+ "xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 "
 				+ "http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" + "    <modelVersion>4.0.0</modelVersion>\n"
 				+ "    <groupId>com.example</groupId>\n" + "    <artifactId>generated-sdk</artifactId>\n"
-				+ "    <version>0.0.2</version>\n" + "    <properties>\n"
+				+ "    <version>0.0.3</version>\n" + "    <properties>\n"
 				+ "        <maven.compiler.source>11</maven.compiler.source>\n"
 				+ "        <maven.compiler.target>11</maven.compiler.target>\n" + "    </properties>\n"
 				+ "    <dependencies>\n" + "        <dependency>\n" + "            <groupId>io.javalin</groupId>\n"
@@ -535,10 +588,12 @@ public @Generated class CddCli {
 				+ "        </dependency>\n" + "        <dependency>\n"
 				+ "            <groupId>com.fasterxml.jackson.core</groupId>\n"
 				+ "            <artifactId>jackson-databind</artifactId>\n" + "            <version>2.15.2</version>\n"
-				+ "        </dependency>\n" + "        <dependency>\n" + "            <groupId>junit</groupId>\n"
-				+ "            <artifactId>junit</artifactId>\n" + "            <version>4.13.2</version>\n"
-				+ "            <scope>test</scope>\n" + "        </dependency>\n" + "    </dependencies>\n"
-				+ "</project>";
+				+ "        </dependency>\n" + "        <dependency>\n"
+				+ "            <groupId>net.datafaker</groupId>\n" + "            <artifactId>datafaker</artifactId>\n"
+				+ "            <version>2.0.2</version>\n" + "        </dependency>\n" + "        <dependency>\n"
+				+ "            <groupId>junit</groupId>\n" + "            <artifactId>junit</artifactId>\n"
+				+ "            <version>4.13.2</version>\n" + "            <scope>test</scope>\n"
+				+ "        </dependency>\n" + "    </dependencies>\n" + "</project>";
 	}
 
 	/**
@@ -582,7 +637,7 @@ public @Generated class CddCli {
 				if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
 					String method = req.has("method") ? req.getString("method") : "";
 					if ("initialize".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.2\"}},\"id\":"
+						response = "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.3\"}},\"id\":"
 								+ idStr + "}";
 					} else if ("notifications/initialized".equals(method) || "initialized".equals(method)) {
 						continue;
@@ -638,7 +693,7 @@ public @Generated class CddCli {
 									+ idStr + "}";
 						}
 					} else if ("version".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.2\",\"id\":" + idStr + "}";
+						response = "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.3\",\"id\":" + idStr + "}";
 					} else if ("notifications/progress".equals(method) || "progress".equals(method)) {
 						continue;
 					} else {
@@ -672,7 +727,7 @@ public @Generated class CddCli {
 		fullApi.openapi = "3.2.0";
 		fullApi.info = new openapi.Info();
 		fullApi.info.title = "Extracted API";
-		fullApi.info.version = "0.0.2";
+		fullApi.info.version = "0.0.3";
 		fullApi.paths = new openapi.Paths();
 		fullApi.paths.pathItems = new java.util.HashMap<>();
 		fullApi.components = new openapi.Components();

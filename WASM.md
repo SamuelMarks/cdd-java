@@ -11,7 +11,7 @@ WASM support for Java is currently implemented natively in this repository using
 
 To compile the WebAssembly module natively, you need **GraalVM 25 EA** (or newer).
 
-If you do not have GraalVM 25 installed locally or `GRAALVM_HOME` set to it, the `build_wasm.sh` script will automatically download the correct GraalVM 25 EA release for your operating system and architecture (macOS or Linux) and use it to compile the WASM binary.
+If you do not have GraalVM 25 installed locally or `GRAALVM_HOME` set to it, the `build_wasm.py` script will automatically download the correct GraalVM 25 EA release for your operating system and architecture (macOS or Linux) and use it to compile the WASM binary.
 
 You no longer need Docker or any container runtimes to compile WASM on macOS. It compiles natively!
 

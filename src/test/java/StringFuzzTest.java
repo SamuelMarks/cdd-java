@@ -337,11 +337,11 @@ public class StringFuzzTest {
 		} catch (Exception e) {
 		}
 		try {
-			routes.Parse.parse("/** \n* @0.0.2 test \n*/ class T { void m() { 0.0.2(); } }");
+			routes.Parse.parse("/** \n* @0.0.3 test \n*/ class T { void m() { 0.0.3(); } }");
 		} catch (Exception e) {
 		}
 		try {
-			routes.Parse.parse("/** \n* @0.0.2 test \n*/ class T { void m() { obj.0.0.2(); } }");
+			routes.Parse.parse("/** \n* @0.0.3 test \n*/ class T { void m() { obj.0.0.3(); } }");
 		} catch (Exception e) {
 		}
 		try {

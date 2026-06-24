@@ -165,3 +165,7 @@ prompt.md
 prompt*.md
 lib/*.jar
 sdk_test/
+\n# Maven/Java Archives\n*.jar\n*.war\n*.ear\n*.zip\n*.tar.gz\n*.rar\n
+*.tmp
+*.temp
+.idea/

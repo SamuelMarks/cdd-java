@@ -37,6 +37,45 @@ public class Emit {
 	}
 
 	/**
+	 * Emits Modular Java code for schemas.
+	 *
+	 * @param model
+	 *            The OpenAPI model.
+	 * @return Map of filenames to generated Java source.
+	 */
+	public static Map<String, String> emitModular(OpenAPI model) {
+		Map<String, String> files = new java.util.HashMap<>();
+		if (model.components == null || model.components.schemas == null)
+			return files;
+
+		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
+			if (className.equals("Emit") || className.equals("Parse")) {
+				continue;
+			}
+			CompilationUnit cu = new CompilationUnit();
+			cu.setPackageDeclaration("models");
+			cu.addImport("com.fasterxml.jackson.annotation.JsonInclude");
+			cu.addImport("com.fasterxml.jackson.annotation.JsonProperty");
+			cu.addImport("com.fasterxml.jackson.annotation.JsonTypeInfo");
+			cu.addImport("com.fasterxml.jackson.annotation.JsonSubTypes");
+			cu.addImport("com.fasterxml.jackson.annotation.JsonValue");
+			cu.addImport("java.util.List");
+			cu.addImport("java.util.Map");
+
+			emitClass(cu, className, entry.getValue(), model);
+
+			// For enums, set Modifier to PUBLIC
+			cu.getEnumByName(className).ifPresent(e -> e.setModifier(Modifier.Keyword.PUBLIC, true));
+			// For classes, set Modifier to PUBLIC
+			cu.getClassByName(className).ifPresent(c -> c.setModifier(Modifier.Keyword.PUBLIC, true));
+
+			files.put("models/" + className + ".java", cu.toString());
+		}
+		return files;
+	}
+
+	/**
 	 * Emits Java code for schemas.
 	 *
 	 * @param model
