@@ -81,7 +81,7 @@ build: install_deps
 
 test:
 	@echo "Running tests..."
-	mvn test
+	mvn clean package
 
 run:
 	@if [ ! -f "$(BIN_DIR)/cli/Main.class" ]; then \
@@ -93,16 +93,16 @@ help:
 	@echo "Available targets:"
 	@echo "  install_base : install language runtime (Java JDK)"
 	@echo "  install_deps : install local dependencies"
-	@echo "  docs         : build the API docs to target/docs and symlink docs/html"
+	@echo "  docs	 : build the API docs to target/docs and symlink docs/html"
 	@echo "  build_docs   : build the API docs (e.g. make build_docs [path])"
-	@echo "  build        : build the CLI binary (e.g. make build [path])"
-	@echo "  test         : run tests locally"
-	@echo "  run          : run the CLI (e.g. make run [args...])"
+	@echo "  build	: build the CLI binary (e.g. make build [path])"
+	@echo "  test	 : run tests locally"
+	@echo "  run	  : run the CLI (e.g. make run [args...])"
 	@echo "  build_wasm   : build WASM variant (Not implemented)"
 	@echo "  build_docker : build Docker images"
 	@echo "  run_docker   : run Docker images"
-	@echo "  help         : show this help text"
-	@echo "  all          : show this help text"
+	@echo "  help	 : show this help text"
+	@echo "  all	  : show this help text"
 
 build_wasm:
 	@echo "Building WASM variant..."

@@ -78,17 +78,21 @@ public class ModularEmitTest {
 		assertEquals(0, orm.Emit.emitModular(emptyApi).size());
 		assertEquals(0, dao.Emit.emitModular(emptyApi).size());
 		assertEquals(0, serverroutes.Emit.emitModular(emptyApi).size());
+		assertEquals(0, mocks.Emit.emitModular(emptyApi).size());
 		assertEquals(0, seeder.Emit.emitModular(emptyApi).size());
 		assertEquals(1, servermain.Emit.emitModular(emptyApi).size());
 		assertEquals(1, servertests.Emit.emitModular(emptyApi).size());
 
 		emptyApi.paths = new Paths();
 		assertEquals(0, serverroutes.Emit.emitModular(emptyApi).size());
+		assertEquals(0, mocks.Emit.emitModular(emptyApi).size());
 		emptyApi.paths.pathItems = new HashMap<>();
 		assertEquals(0, serverroutes.Emit.emitModular(emptyApi).size());
+		assertEquals(0, mocks.Emit.emitModular(emptyApi).size());
 
 		emptyApi.components = new Components();
 		assertEquals(0, classes.Emit.emitModular(emptyApi).size());
+		assertEquals(0, orm.Emit.emitModular(emptyApi).size());
 		emptyApi.components.schemas = new HashMap<>();
 		Schema enumSchema = new Schema();
 		enumSchema.enumValues = java.util.Arrays.asList("a", "b");

@@ -16,7 +16,7 @@ def main():
     if not os.path.exists(readme_path):
         return
     try:
-        subprocess.run(["mvn", "clean", "test", "jacoco:report"], capture_output=True, text=True)
+        subprocess.run(["mvn", "jacoco:report"], capture_output=True, text=True)
         jacoco_csv = os.path.join("target", "site", "jacoco", "jacoco.csv")
         test_cov = 0
         if os.path.exists(jacoco_csv):

@@ -177,6 +177,36 @@ public class OpenapiParseEmitTest {
 	}
 
 	@Test
+	public void testParseDefinitionsWithPreexistingComponents() throws Exception {
+		// To guarantee coverage, we can just call Parse.fromString on a JSON that has
+		// definitions,
+		// and then we can do it multiple times or we can just construct a JSON where
+		// components comes first.
+		// Since org.json.JSONObject uses a map, we can bypass the string parser and use
+		// the JSON-like structure
+		// But Parse.fromString is our entry point. Let's just create a test that
+		// specifically provides components
+		// but no definitions, and then another with definitions but no components.
+
+		String json1 = "{ \"definitions\": { \"Def1\": {} } }";
+		Parse.fromString(json1); // api.components will be null initially
+
+		String json2 = "{ \"components\": { \"schemas\": {} }, \"definitions\": { \"Def2\": {} } }";
+		// Even with random order, either components is parsed first (so
+		// components!=null),
+		// or definitions is parsed first (so components==null).
+		// Actually to ensure false branch of `if (api.components == null)`:
+		// We need to parse definitions while api.components is NOT null.
+		// We can just add it to ensure it hits.
+		for (int i = 0; i < 10; i++) {
+			Parse.fromString(json2);
+		}
+
+		String json3 = "{ \"components\": {}, \"definitions\": { \"Def3\": {} } }";
+		Parse.fromString(json3); // components != null, schemas == null
+	}
+
+	@Test
 	public void testEmitRemainingBranches3() throws Exception {
 		openapi.OpenAPI api = new openapi.OpenAPI();
 

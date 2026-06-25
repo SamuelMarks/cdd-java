@@ -118,7 +118,9 @@ public class Emit {
 	 */
 	public static java.util.Map<String, String> emitModular(OpenAPI model) {
 		java.util.Map<String, String> files = new java.util.HashMap<>();
-		if (model.paths == null || model.paths.pathItems == null)
+		if (model.paths == null)
+			return files;
+		if (model.paths.pathItems == null)
 			return files;
 
 		for (java.util.Map.Entry<String, openapi.PathItem> entry : model.paths.pathItems.entrySet()) {

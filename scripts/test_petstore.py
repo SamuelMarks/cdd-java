@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import glob
 import os
 import shutil
 import subprocess
@@ -18,11 +19,20 @@ client_dir = f"../cdd-java-client-{version}"
 if os.path.exists(client_dir):
     shutil.rmtree(client_dir)
 
-cp_sep = ";" if os.name == "nt" else ":"
-cp = f"lib/*{cp_sep}bin"
+print("test_petstore cwd:", os.getcwd())
+if os.path.exists("target"):
+    print("test_petstore target contents:", os.listdir("target"))
+else:
+    print("test_petstore target NOT FOUND")
+
+jar_files = glob.glob("target/*-jar-with-dependencies.jar")
+if not jar_files:
+    print("Error: Could not find jar-with-dependencies in target/")
+    sys.exit(1)
+jar_file = jar_files[0]
 
 try:
-    subprocess.run(["java", "-cp", cp, "cli.Main", "from_openapi", "to_sdk", "-i", json_file, "--tests", "-o", client_dir], check=True)
+    subprocess.run(["java", "-jar", jar_file, "from_openapi", "to_sdk", "-i", json_file, "--tests", "-o", client_dir], check=True)
 except subprocess.CalledProcessError:
     sys.exit(1)
 

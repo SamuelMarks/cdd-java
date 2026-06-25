@@ -130,6 +130,7 @@ public class OrmParseEmitTest {
 		assertEquals("test", Emit.emit(api, "test"));
 		api.components = new openapi.Components();
 		assertEquals("", Emit.emit(api, null));
+		assertEquals("test2", Emit.emit(api, "test2")); // Hits the components != null && schemas == null case
 	}
 
 	@Test

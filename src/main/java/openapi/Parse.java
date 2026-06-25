@@ -94,6 +94,18 @@ public class Parse {
 					api.paths.pathItems.put(pathKey, pi);
 				}
 			}
+			if (root.has("components")) {
+				api.components = new Components();
+				JSONObject compObj = root.getJSONObject("components");
+				if (compObj.has("schemas")) {
+					api.components.schemas = new HashMap<>();
+					JSONObject schemasObj = compObj.getJSONObject("schemas");
+					for (String sKey : schemasObj.keySet()) {
+						Schema s = parseSchema(schemasObj.getJSONObject(sKey));
+						api.components.schemas.put(sKey, s);
+					}
+				}
+			}
 			if (root.has("definitions")) {
 				api.definitions = new HashMap<>();
 				if (api.components == null) {
@@ -107,18 +119,6 @@ public class Parse {
 					Schema s = parseSchema(schemasObj.getJSONObject(sKey));
 					api.definitions.put(sKey, s);
 					api.components.schemas.put(sKey, s);
-				}
-			}
-			if (root.has("components")) {
-				api.components = new Components();
-				JSONObject compObj = root.getJSONObject("components");
-				if (compObj.has("schemas")) {
-					api.components.schemas = new HashMap<>();
-					JSONObject schemasObj = compObj.getJSONObject("schemas");
-					for (String sKey : schemasObj.keySet()) {
-						Schema s = parseSchema(schemasObj.getJSONObject(sKey));
-						api.components.schemas.put(sKey, s);
-					}
 				}
 			}
 			return api;
