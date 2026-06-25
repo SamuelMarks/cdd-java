@@ -10,6 +10,11 @@ repos:
         exclude: \.(bat|cmd|ps1)$
   - repo: local
     hooks:
+      - id: make-install-deps
+        name: Make Install Deps
+        entry: make install_deps
+        language: system
+        pass_filenames: false
       - id: maven-spotless-check
         name: Maven Spotless Check
         entry: mvn spotless:check
