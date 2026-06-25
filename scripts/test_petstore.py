@@ -14,6 +14,14 @@ if len(sys.argv) < 3:
 version = sys.argv[1]
 json_file = sys.argv[2]
 
+if not os.path.exists(json_file):
+    print(f"{json_file} not found. Attempting to download...")
+    if version == "v2":
+        subprocess.run(["curl", "-sL", "https://petstore.swagger.io/v2/swagger.json", "-o", json_file], check=True)
+    elif version == "v3":
+        subprocess.run(["curl", "-sL", "https://raw.githubusercontent.com/swagger-api/swagger-petstore/master/src/main/resources/openapi.yaml", "-o", "petstore_raw.yaml"], check=True)
+        subprocess.run(["npx", "swagger-cli", "bundle", "petstore_raw.yaml", "-t", "json"], stdout=open(json_file, "w"), check=True)
+
 client_dir = f"../cdd-java-client-{version}"
 
 if os.path.exists(client_dir):

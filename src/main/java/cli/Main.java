@@ -3,7 +3,7 @@ package cli;
 /**
  * CLI Entrypoint.
  */
-@cli.Generated
+
 public class Main {
 
 	/**
