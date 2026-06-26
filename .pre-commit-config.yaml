@@ -12,58 +12,58 @@ repos:
     hooks:
       - id: make-install-deps
         name: Make Install Deps
-        entry: make install_deps
+        entry: python3 ./scripts/run_with_fallback.py make install_deps
         language: system
         pass_filenames: false
       - id: maven-spotless-check
         name: Maven Spotless Check
-        entry: mvn spotless:check
+        entry: python3 ./scripts/run_with_fallback.py mvn spotless:check
         language: system
         types_or: [java, xml]
         pass_filenames: false
       - id: make-build
         name: Make Build
-        entry: make build
+        entry: python3 ./scripts/run_with_fallback.py make build
         language: system
         pass_filenames: false
       - id: make-test
         name: Make Test
-        entry: make test
+        entry: python3 ./scripts/run_with_fallback.py make test
         language: system
         pass_filenames: false
       - id: maven-checkstyle
         name: Maven Checkstyle
-        entry: mvn checkstyle:check
+        entry: python3 ./scripts/run_with_fallback.py mvn checkstyle:check
         language: system
         types_or: [java]
         pass_filenames: false
       - id: make-build-wasm
         name: Make Build WASM
-        entry: make build_wasm
+        entry: python3 ./scripts/run_with_fallback.py make build_wasm
         language: system
         pass_filenames: false
       - id: update-badges
         name: Update Badges
-        entry: python3 scripts/update_badges.py
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/update_badges.py
         language: system
         pass_filenames: false
       - id: swagger-2-petstore-test
         name: Swagger 2.0 Petstore Test
-        entry: python3 scripts/test_petstore.py v2 ../petstore.json
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/test_petstore.py v2 ../petstore.json
         language: system
         pass_filenames: false
       - id: openapi-3-petstore-test
         name: OpenAPI 3.2.0 Petstore Test
-        entry: python3 scripts/test_petstore.py v3 ../petstore_oas3.json
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/test_petstore.py v3 ../petstore_oas3.json
         language: system
         pass_filenames: false
       - id: swagger-2-server-test
         name: Swagger 2.0 Server Test
-        entry: python3 scripts/test_generated_server.py v2 ../petstore.json
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/test_generated_server.py v2 ../petstore.json
         language: system
         pass_filenames: false
       - id: openapi-3-server-test
         name: OpenAPI 3.2.0 Server Test
-        entry: python3 scripts/test_generated_server.py v3 ../petstore_oas3.json
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/test_generated_server.py v3 ../petstore_oas3.json
         language: system
         pass_filenames: false

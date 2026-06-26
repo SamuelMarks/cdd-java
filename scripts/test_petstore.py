@@ -7,6 +7,11 @@ import subprocess
 import time
 import socket
 
+def run_cmd(cmd, **kwargs):
+    if os.name == 'nt' and not kwargs.get('shell') and isinstance(cmd, list):
+        cmd[0] = shutil.which(cmd[0]) or cmd[0]
+    return subprocess.run(cmd, **kwargs)
+
 if len(sys.argv) < 3:
     print("Usage: test_petstore.py <version> <json_file>")
     sys.exit(1)
@@ -17,10 +22,10 @@ json_file = sys.argv[2]
 if not os.path.exists(json_file):
     print(f"{json_file} not found. Attempting to download...")
     if version == "v2":
-        subprocess.run(["curl", "-sL", "https://petstore.swagger.io/v2/swagger.json", "-o", json_file], check=True)
+        run_cmd(["curl", "-sL", "https://petstore.swagger.io/v2/swagger.json", "-o", json_file], check=True)
     elif version == "v3":
-        subprocess.run(["curl", "-sL", "https://raw.githubusercontent.com/swagger-api/swagger-petstore/master/src/main/resources/openapi.yaml", "-o", "petstore_raw.yaml"], check=True)
-        subprocess.run(["npx", "swagger-cli", "bundle", "petstore_raw.yaml", "-t", "json"], stdout=open(json_file, "w"), check=True)
+        run_cmd(["curl", "-sL", "https://raw.githubusercontent.com/swagger-api/swagger-petstore/master/src/main/resources/openapi.yaml", "-o", "petstore_raw.yaml"], check=True)
+        run_cmd(["npx", "swagger-cli", "bundle", "petstore_raw.yaml", "-t", "json"], stdout=open(json_file, "w"), check=True)
 
 client_dir = f"../cdd-java-client-{version}"
 
@@ -40,14 +45,11 @@ if not jar_files:
 jar_file = jar_files[0]
 
 try:
-    subprocess.run(["java", "-jar", jar_file, "from_openapi", "to_sdk", "-i", json_file, "--tests", "-o", client_dir], check=True)
+    run_cmd(["java", "-jar", jar_file, "from_openapi", "to_sdk", "-i", json_file, "--tests", "-o", client_dir], check=True)
 except subprocess.CalledProcessError:
     sys.exit(1)
 
 server_started_by_me = 0
-
-def run_cmd(cmd, **kwargs):
-    return subprocess.run(cmd, **kwargs)
 
 def kill_port_8080():
     if os.name == 'nt':
@@ -94,7 +96,8 @@ if not os.path.exists(jetty_runner):
     run_cmd(["mvn", "package", "-DskipTests"], cwd=petstore_dir, shell=(os.name == 'nt'), check=True)
 
 war_file = os.path.join(petstore_dir, "target", "swagger-petstore-1.0.27.war")
-server_proc = subprocess.Popen(["java", "-jar", jetty_runner, war_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+java_bin = shutil.which("java") or "java"
+server_proc = subprocess.Popen([java_bin, "-jar", jetty_runner, war_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 server_started_by_me = 1
 
 for _ in range(10):
