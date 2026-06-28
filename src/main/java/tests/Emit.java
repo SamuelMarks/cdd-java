@@ -151,13 +151,34 @@ public class Emit {
 				.append(method).append(" ").append(rawPathPrefix).append(path)
 				.append(" HTTP/1.1\\n\", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND); } catch (Exception e) {}\n");
 		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(");
-		for (int i = 0; i < paramCount; i++) {
-			if (i > 0)
+
+		boolean first = true;
+		for (Parameter p : allParams) {
+			if (p.name == null)
+				continue;
+			String safeName = p.name.replaceAll("[^a-zA-Z0-9_]", "");
+			if (safeName.isEmpty())
+				continue;
+
+			if (!first)
 				sb.append(", ");
-			sb.append("\"0\"");
+			first = false;
+
+			if ("body".equals(p.in)) {
+				if (method.equals("POST") && path.endsWith("/createWithArray")) {
+					sb.append("\"[{}]\"");
+				} else if (method.equals("POST") && path.endsWith("/createWithList")) {
+					sb.append("\"[{}]\"");
+				} else {
+					sb.append("\"{}\"");
+				}
+			} else {
+				sb.append("\"0\"");
+			}
 		}
+
 		if (hasBody) {
-			if (paramCount > 0)
+			if (!first)
 				sb.append(", ");
 			if (method.equals("POST") && path.endsWith("/createWithArray")) {
 				sb.append("\"[{}]\"");

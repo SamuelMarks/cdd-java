@@ -96,7 +96,7 @@ public class MiscParseEmitTest {
 		postArray.parameters = new java.util.ArrayList<>();
 		Parameter postParam = new Parameter();
 		postParam.name = "id";
-		postParam.in = "query";
+		postParam.in = "body";
 		postArray.parameters.add(postParam);
 		pi3.post = postArray;
 		api.paths.pathItems.put("/createWithArray", pi3);
@@ -105,9 +105,22 @@ public class MiscParseEmitTest {
 		Operation postList = new Operation();
 		postList.requestBody = new RequestBody();
 		postList.parameters = new java.util.ArrayList<>();
-		postList.parameters.add(postParam);
+		Parameter postListParam = new Parameter();
+		postListParam.name = "id";
+		postListParam.in = "body";
+		postList.parameters.add(postListParam);
 		pi4.post = postList;
 		api.paths.pathItems.put("/createWithList", pi4);
+
+		PathItem pi5_test = new PathItem();
+		Operation postNormal = new Operation();
+		postNormal.parameters = new java.util.ArrayList<>();
+		Parameter postNormalParam = new Parameter();
+		postNormalParam.name = "id";
+		postNormalParam.in = "body";
+		postNormal.parameters.add(postNormalParam);
+		pi5_test.post = postNormal;
+		api.paths.pathItems.put("/createNormal", pi5_test);
 
 		String res = tests.Emit.emit(api, null);
 		assertNotNull(res);
