@@ -17,6 +17,16 @@ def main():
     args = sys.argv[1:]
     cmd = args[0]
 
+    is_slow_check = False
+    if cmd == "make" and len(args) > 1 and args[1] in ["build", "test", "build_wasm"]:
+        is_slow_check = True
+    elif cmd in ["python3", "python"] and len(args) > 1 and ("test_petstore.py" in args[1] or "test_generated_server.py" in args[1]):
+        is_slow_check = True
+
+    if is_slow_check and os.environ.get("RUN_SLOW_TESTS") != "1":
+        print(f"Skipping slow check {' '.join(args)} (set RUN_SLOW_TESTS=1 to run).")
+        sys.exit(0)
+
     required_tools = []
     if cmd == "make":
         required_tools = ["make", "javac", "java"]

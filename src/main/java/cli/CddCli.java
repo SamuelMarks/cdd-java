@@ -75,16 +75,42 @@ public @Generated class CddCli {
 	/**
 	 * Generates code from an OpenAPI specification.
 	 *
-	 * @param args
-	 *            Command-line arguments.
+	 * @param subCommand
+	 *            Subcommand (e.g. to_sdk)
+	 * @param input
+	 *            Input file
+	 * @param outputDir
+	 *            Output directory
+	 * @param noGithubActions
+	 *            Disable Github Actions
+	 * @param noInstallablePackage
+	 *            Disable installable package
+	 * @param generateTests
+	 *            Generate tests
 	 * @return Exit code (0 for success).
 	 */
-	public static int generateFromOpenApi(String[] args) {
-		String[] fullArgs = new String[args.length + 1];
-		fullArgs[0] = "from_openapi";
-		System.arraycopy(args, 0, fullArgs, 1, args.length);
+	public static int generateFromOpenApi(String subCommand, String input, String outputDir, boolean noGithubActions,
+			boolean noInstallablePackage, boolean generateTests) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("from_openapi");
+		if (subCommand != null && !subCommand.isEmpty())
+			argsList.add(subCommand);
+		if (input != null) {
+			argsList.add("-i");
+			argsList.add(input);
+		}
+		if (outputDir != null) {
+			argsList.add("-o");
+			argsList.add(outputDir);
+		}
+		if (noGithubActions)
+			argsList.add("--no-github-actions");
+		if (noInstallablePackage)
+			argsList.add("--no-installable-package");
+		if (generateTests)
+			argsList.add("--tests");
 		try {
-			return run(fullArgs);
+			return run(argsList.toArray(new String[0]));
 		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			return 1;
@@ -94,16 +120,25 @@ public @Generated class CddCli {
 	/**
 	 * Generates an OpenAPI specification from source code.
 	 *
-	 * @param args
-	 *            Command-line arguments.
+	 * @param input
+	 *            Input code path
+	 * @param output
+	 *            Output spec path
 	 * @return Exit code (0 for success).
 	 */
-	public static int generateToOpenApi(String[] args) {
-		String[] fullArgs = new String[args.length + 1];
-		fullArgs[0] = "to_openapi";
-		System.arraycopy(args, 0, fullArgs, 1, args.length);
+	public static int generateToOpenApi(String input, String output) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("to_openapi");
+		if (input != null) {
+			argsList.add("-i");
+			argsList.add(input);
+		}
+		if (output != null) {
+			argsList.add("-o");
+			argsList.add(output);
+		}
 		try {
-			return run(fullArgs);
+			return run(argsList.toArray(new String[0]));
 		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			return 1;
@@ -113,16 +148,33 @@ public @Generated class CddCli {
 	/**
 	 * Generates JSON documentation with code snippets for an OpenAPI specification.
 	 *
-	 * @param args
-	 *            Command-line arguments.
+	 * @param input
+	 *            Input spec path
+	 * @param output
+	 *            Output docs path
+	 * @param noImports
+	 *            Disable imports
+	 * @param noWrapping
+	 *            Disable wrapping
 	 * @return Exit code (0 for success).
 	 */
-	public static int generateDocsJson(String[] args) {
-		String[] fullArgs = new String[args.length + 1];
-		fullArgs[0] = "to_docs_json";
-		System.arraycopy(args, 0, fullArgs, 1, args.length);
+	public static int generateDocsJson(String input, String output, boolean noImports, boolean noWrapping) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("to_docs_json");
+		if (input != null) {
+			argsList.add("-i");
+			argsList.add(input);
+		}
+		if (output != null) {
+			argsList.add("-o");
+			argsList.add(output);
+		}
+		if (noImports)
+			argsList.add("--no-imports");
+		if (noWrapping)
+			argsList.add("--no-wrapping");
 		try {
-			return run(fullArgs);
+			return run(argsList.toArray(new String[0]));
 		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			return 1;
@@ -132,20 +184,80 @@ public @Generated class CddCli {
 	/**
 	 * Exposes CLI interface as a JSON-RPC server.
 	 *
-	 * @param args
-	 *            Command-line arguments.
+	 * @param port
+	 *            Port
+	 * @param listen
+	 *            Listen address
+	 * @param wasi
+	 *            WASI flag
 	 * @return Exit code (0 for success).
 	 */
-	public static int serveJsonRpc(String[] args) {
-		String[] fullArgs = new String[args.length + 1];
-		fullArgs[0] = "serve_json_rpc";
-		System.arraycopy(args, 0, fullArgs, 1, args.length);
+	public static int serveJsonRpc(String port, String listen, boolean wasi) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("serve_json_rpc");
+		if (port != null) {
+			argsList.add("-p");
+			argsList.add(port);
+		}
+		if (listen != null) {
+			argsList.add("-l");
+			argsList.add(listen);
+		}
+		if (wasi)
+			argsList.add("--wasi");
 		try {
-			return run(fullArgs);
+			return run(argsList.toArray(new String[0]));
 		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			return 1;
 		}
+	}
+
+	/**
+	 * Synchronize database schema to models and OpenAPI specifications.
+	 *
+	 * @param inputDir
+	 *            Input directory
+	 * @param truth
+	 *            Truth type
+	 * @return Exit code (0 for success).
+	 */
+	public static int sync(String inputDir, String outputDir, String truth) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("sync");
+		if (inputDir != null) {
+			argsList.add("-i");
+			argsList.add(inputDir);
+		}
+		if (outputDir != null) {
+			argsList.add("-o");
+			argsList.add(outputDir);
+		}
+		if (truth != null) {
+			argsList.add("--truth");
+			argsList.add(truth);
+		}
+		try {
+			return run(argsList.toArray(new String[0]));
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			return 1;
+		}
+	}
+
+	/**
+	 * Start MCP server.
+	 *
+	 * @param port
+	 *            Port
+	 * @param listen
+	 *            Listen address
+	 * @param wasi
+	 *            WASI flag
+	 * @return Exit code (0 for success).
+	 */
+	public static int mcp(String port, String listen, boolean wasi) {
+		return serveJsonRpc(port, listen, wasi);
 	}
 
 	/**
@@ -185,7 +297,6 @@ public @Generated class CddCli {
 				System.out.println(
 						"  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
 				System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
-				System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
 				return 0;
 			}
 			// Default for backward compatibility
@@ -195,8 +306,7 @@ public @Generated class CddCli {
 				subCommand = args[1];
 				subCmdIdx = 2;
 			}
-			if (!subCommand.equals("to_sdk_cli") && !subCommand.equals("to_sdk") && !subCommand.equals("to_server")
-					&& !subCommand.equals("to_orm")) {
+			if (!subCommand.equals("to_sdk_cli") && !subCommand.equals("to_sdk") && !subCommand.equals("to_server")) {
 				System.err.println("Unknown from_openapi subcommand: " + subCommand);
 				throw new Exception("Exit 1");
 			}
@@ -313,10 +423,6 @@ public @Generated class CddCli {
 						writeFile(new File(outDir, "src/test/java/" + e.getKey()), e.getValue());
 					}
 					System.out.println("Generated Modular Server in " + outDir.getAbsolutePath());
-				} else if (subCommand.equals("to_orm")) {
-					String code = orm.Emit.emit(api, null);
-					writeFile(new File(outDir, "OrmEntities.java"), code);
-					System.out.println("Generated ORM Entities in " + outDir.getAbsolutePath());
 				}
 			}
 		} else if (command.equals("to_openapi")) {
@@ -388,14 +494,16 @@ public @Generated class CddCli {
 			if (hasFlag(args, "-h", "--help", null)) {
 				System.out.println("cdd-java sync");
 				System.out.println("Usage:");
-				System.out.println("  cdd-java sync -d <dir>");
+				System.out.println("  cdd-java sync -i <dir> [-o <dir>] [--truth <type>]");
 				return 0;
 			}
-			String dirPath = getArg(args, "-d", "-d", "CDD_DIR");
+			String dirPath = getArg(args, "-i", "--input", "CDD_INPUT");
 			if (dirPath == null) {
-				System.err.println("Missing -d <dir>");
+				System.err.println("Missing -i <dir>");
 				throw new Exception("Exit 1");
 			}
+			String outputDir = getArg(args, "-o", "--output", "CDD_OUTPUT");
+			String truth = getArg(args, "--truth", "--truth", "CDD_TRUTH");
 			File dir = resolveFile(dirPath);
 			OpenAPI fullApi = extractOpenAPI(dir);
 			List<File> javaFiles = new ArrayList<>();
@@ -419,9 +527,17 @@ public @Generated class CddCli {
 					newSource = cli.Emit.emitCli(fullApi);
 					newSource = functions.Emit.emit(fullApi, source);
 				}
-				if (!newSource.equals(source)) {
-					writeFile(jf, newSource);
-					System.out.println("Updated: " + jf.getAbsolutePath());
+				File targetFile = jf;
+				if (outputDir != null) {
+					String relativePath = jf.getAbsolutePath().substring(dir.getAbsolutePath().length());
+					if (relativePath.startsWith(File.separator)) {
+						relativePath = relativePath.substring(1);
+					}
+					targetFile = new File(resolveFile(outputDir), relativePath);
+				}
+				if (!newSource.equals(source) || outputDir != null) {
+					writeFile(targetFile, newSource);
+					System.out.println("Updated: " + targetFile.getAbsolutePath());
 				}
 			}
 			System.out.println("Sync complete.");
@@ -514,9 +630,15 @@ public @Generated class CddCli {
 					for (java.util.Map.Entry<String, String> e : mocks.Emit.emitModular(api).entrySet()) {
 						outFiles.put(e.getKey(), e.getValue());
 					}
-				} else if (subCommand.equals("to_orm")) {
-					outFiles.put("OrmEntities.java", orm.Emit.emit(api, null));
 				}
+			} else if (command.equals("to_openapi")) {
+				OpenAPI api = extractOpenAPI(new File("."));
+				String spec = openapi.Emit.toString(api);
+				outFiles.put("spec.json", spec);
+			} else if (command.equals("sync")) {
+				OpenAPI api = extractOpenAPI(new File("."));
+				String spec = openapi.Emit.toString(api);
+				outFiles.put("spec.json", spec);
 			} else if (command.equals("to_docs_json")) {
 				boolean noImports = hasFlag(cmdArgs, "--no-imports", "--no-imports", null);
 				boolean noWrapping = hasFlag(cmdArgs, "--no-wrapping", "--no-wrapping", null);
@@ -655,9 +777,15 @@ public @Generated class CddCli {
 						JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
 						String uri = params.has("uri") ? params.getString("uri") : "";
 						if ("cdd://ast/openapi".equals(uri)) {
-							// Return empty ast for testing purposes
-							response = "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":\"{}\"}]},\"id\":"
-									+ idStr + "}";
+							String astText = "{}";
+							try {
+								OpenAPI api = extractOpenAPI(new File("."));
+								astText = openapi.Emit.toString(api);
+							} catch (Exception e) {
+								astText = "{}";
+							}
+							response = "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":"
+									+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
 						} else {
 							response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Resource not found\"},\"id\":"
 									+ idStr + "}";
@@ -697,10 +825,14 @@ public @Generated class CddCli {
 					} else if ("notifications/progress".equals(method) || "progress".equals(method)) {
 						continue;
 					} else {
+						if (idObj == null)
+							continue;
 						response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":"
 								+ idStr + "}";
 					}
 				} else {
+					if (idObj == null)
+						continue;
 					response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"},\"id\":null}";
 				}
 			} catch (Exception e) {
@@ -828,8 +960,8 @@ public @Generated class CddCli {
 		System.out.println("  serve_json_rpc  Expose CLI interface as a JSON-RPC server.");
 		System.out.println("  sync            Synchronize database schema to models and OpenAPI specifications.");
 		System.out.println("\nOptions:");
-		System.out.println("  --help, -h      Show this help message");
-		System.out.println("  --version, -v   Show version information");
+		System.out.println("  --help, -h      Show this help message.");
+		System.out.println("  --version, -v   Show version information.");
 		System.out.println("\nExamples:");
 		System.out.println("  cdd-java serve_json_rpc [--port 8080] [--listen 127.0.0.1] [--wasi]");
 		System.out.println(
@@ -837,9 +969,8 @@ public @Generated class CddCli {
 		System.out.println(
 				"  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
 		System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
-		System.out.println("  cdd-java from_openapi to_orm -i <spec.json> [-o <target_directory>]");
 		System.out.println("  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]");
 		System.out.println("  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]");
-		System.out.println("  cdd-java sync -d <dir>");
+		System.out.println("  cdd-java sync -i <dir> [-o <dir>] [--truth <type>]");
 	}
 }

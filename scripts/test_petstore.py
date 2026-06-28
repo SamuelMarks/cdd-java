@@ -51,87 +51,42 @@ except subprocess.CalledProcessError:
 
 server_started_by_me = 0
 
-def kill_port_8080():
-    if os.name == 'nt':
-        try:
-            output = subprocess.check_output('netstat -ano | findstr :8080', shell=True).decode()
-            for line in output.splitlines():
-                parts = line.strip().split()
-                if len(parts) >= 5 and parts[3] == "LISTENING":
-                    pid = parts[4]
-                    subprocess.run(f'taskkill /F /PID {pid}', shell=True, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-    else:
-        try:
-            pids = subprocess.check_output("lsof -i :8080 | awk 'NR>1 {print $2}'", shell=True).decode().split()
-            for pid in pids:
-                subprocess.run(["kill", "-9", pid], stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-
 def check_port(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
-try:
-    run_cmd(["docker", "rm", "-f", "petstore-server", "prism-mock"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-except Exception:
-    pass
+server_started_by_me = 0
 
-kill_port_8080()
-time.sleep(1)
+if check_port(8080):
+    print("Mock server is already running on port 8080, reusing it...")
+else:
+    print("Mock server not running. Starting swaggerapi/petstore via Docker...")
+    if not shutil.which("docker"):
+        print("Docker not found and mock server not running. Failing.")
+        sys.exit(1)
 
-print("Starting JVM official petstore server...")
-tmp_dir = os.environ.get("TEMP", "/tmp") if os.name == 'nt' else "/tmp"
-petstore_dir = os.path.join(tmp_dir, "swagger-petstore")
+    # Try to clean up any leftover container
+    try:
+        run_cmd(["docker", "rm", "-f", "petstore-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
 
-if not os.path.exists(os.path.join(petstore_dir, "pom.xml")):
-    if os.path.exists(petstore_dir):
-        shutil.rmtree(petstore_dir)
-    run_cmd(["git", "clone", "https://github.com/swagger-api/swagger-petstore.git", petstore_dir], check=True)
+    run_cmd(["docker", "run", "--rm", "-d", "-p", "8080:8080", "--name", "petstore-server", "swaggerapi/petstore"], check=True)
+    server_started_by_me = 1
 
-jetty_runner = os.path.join(petstore_dir, "target", "lib", "jetty-runner.jar")
-if not os.path.exists(jetty_runner):
-    run_cmd(["mvn", "package", "-DskipTests"], cwd=petstore_dir, shell=(os.name == 'nt'), check=True)
-
-war_file = os.path.join(petstore_dir, "target", "swagger-petstore-1.0.27.war")
-java_bin = shutil.which("java") or "java"
-server_proc = subprocess.Popen([java_bin, "-jar", jetty_runner, war_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-server_started_by_me = 1
-
-for _ in range(10):
-    if check_port(8080):
-        break
-    time.sleep(1)
+    # Wait for it to become available
+    for _ in range(30):
+        if check_port(8080):
+            break
+        time.sleep(1)
 
 test_status = run_cmd(["mvn", "clean", "test"], cwd=client_dir, shell=(os.name == 'nt')).returncode
 
 if test_status != 0:
-    print("JVM server tests failed! Falling back to non-JVM docker version...")
-    server_proc.kill()
-    server_started_by_me = 2
-    time.sleep(2)
-    kill_port_8080()
-    time.sleep(1)
-
-    if shutil.which("docker"):
-        abs_json = os.path.abspath(json_file)
-        if os.name == 'nt':
-            abs_json = abs_json.replace('\\', '/')
-            if abs_json.startswith(('C:', 'D:', 'E:', 'F:')):
-                abs_json = '/' + abs_json[0].lower() + abs_json[2:]
-        run_cmd(["docker", "run", "--init", "--rm", "-d", "-p", "8080:4010", "-v", f"{abs_json}:/spec.json", "--name", "prism-mock", "stoplight/prism:4", "mock", "-h", "0.0.0.0", "/spec.json"])
-        time.sleep(5)
-        test_status = run_cmd(["mvn", "clean", "test"], cwd=client_dir, shell=(os.name == 'nt')).returncode
-        if test_status != 0:
-            print("Fallback docker tests failed.")
-            sys.exit(1)
-    else:
-        print("Docker not found for fallback. Failing.")
-        sys.exit(1)
+    print("Client tests failed!")
+    if server_started_by_me == 1:
+        run_cmd(["docker", "rm", "-f", "petstore-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    sys.exit(1)
 
 if server_started_by_me == 1:
-    server_proc.kill()
-elif server_started_by_me == 2:
-    run_cmd(["docker", "rm", "-f", "prism-mock"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    run_cmd(["docker", "rm", "-f", "petstore-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

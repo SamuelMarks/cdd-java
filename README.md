@@ -118,44 +118,45 @@ A true ecosystem requires standardized tooling. Once a developer learns the CDD 
 
 ### Core Subcommands
 
-#### `from_openapi to_sdk_cli`
-Generate a client SDK and a corresponding command-line interface (CLI) from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
-
-#### `from_openapi to_sdk`
-Generate a client SDK from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
-
-#### `from_openapi to_server`
-Generate server boilerplate, models, and routing logic from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
+#### `from_openapi`
+```
+cdd-java from_openapi
+Usage:
+  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]
+  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]
+  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]
+```
 
 #### `to_openapi`
-Parse the existing codebase and extract an authoritative OpenAPI specification.
-- `--input, -i <path>` (or `-f <path>`): Path to the source code directory or file to parse.
+```
+cdd-java to_openapi
+Usage:
+  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]
+```
 
 #### `to_docs_json`
-Convert an OpenAPI specification into a localized, documentation-optimized JSON format.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
-- `--no-imports`: Disable import statements in the generated documentation.
-- `--no-wrapping`: Disable line wrapping in the generated documentation.
+```
+cdd-java to_docs_json
+Usage:
+  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]
+```
 
 #### `serve_json_rpc`
-Launch a JSON-RPC server for editor and tool integrations.
-- `--port <port>` (or `-p`): Port to listen on (e.g., `8080`).
-- `--listen <address>` (or `-l`): Address to bind to (e.g., `0.0.0.0`).
-
-#### `from_openapi to_orm`
-Generate ORM entities from an OpenAPI specification.
-- `--input, -i <spec>`: Path to the OpenAPI specification file.
+```
+cdd-java serve_json_rpc
+Usage:
+  cdd-java serve_json_rpc [-p|--port <port>] [-l|--listen <address>] [--wasi]
+```
 
 #### `sync`
-Synchronize database schema to models and OpenAPI specifications.
-- `-d <dir>`: Directory containing the code to synchronize.
+```
+cdd-java sync
+Usage:
+  cdd-java sync -d <dir>
+```
 
 ### Detail Features Beyond Common Subset
 
-- **ORM Generation (`from_openapi to_orm`)**: Generates Hibernate ORM entities from the OpenAPI spec.
 - **Two-way Syncing (`sync`)**: Syncs codebase updates across models, ORM entities, routes, tests, and CLI logic.
 - **WASI Compatibility**: The JSON-RPC server (`serve_json_rpc`) supports a `--wasi` flag, making it compatible with WASI stdio constraints.
 - **In-Memory Tooling Integration**: Implements `process_in_memory` via JSON-RPC, enabling in-memory code generation (SDK, Server, ORM) without making intermediate filesystem changes—ideal for editor plugins.

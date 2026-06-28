@@ -164,9 +164,6 @@ public class CliMainTest {
 						+ "\"}}"});
 		runMain(new String[]{"process_in_memory",
 				"{\"command\":[\"from_openapi\", \"to_server\"],\"files\":{\"spec.json\":\"" + escapedSpec + "\"}}"});
-		runMain(new String[]{"process_in_memory",
-				"{\"command\":[\"from_openapi\", \"to_orm\", \"--no-github-actions\", \"--no-installable-package\"],\"files\":{\"spec.json\":\""
-						+ escapedSpec + "\"}}"});
 	}
 
 	@Test
@@ -191,8 +188,6 @@ public class CliMainTest {
 				"--tests"});
 		runMain(new String[]{"from_openapi", "to_server", "-i", specFile.getAbsolutePath(), "-o",
 				outDir.getAbsolutePath()});
-		runMain(new String[]{"from_openapi", "to_orm", "-i", specFile.getAbsolutePath(), "-o", outDir.getAbsolutePath(),
-				"--no-github-actions", "--no-installable-package"});
 		runMain(new String[]{"from_openapi", "to_sdk", "--input-dir", tempDir.getAbsolutePath(), "-o",
 				outDir.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "-i", specFile.getAbsolutePath(), "-o", outDir.getAbsolutePath()});
@@ -318,6 +313,26 @@ public class CliMainTest {
 	}
 
 	@Test
+	public void testProgrammaticSdkMethods() throws Exception {
+		File tempDir = Files.createTempDirectory("cdd_test_prog_sdk").toFile();
+		File specFile = new File("src/test/resources/minimal-spec.json");
+
+		cli.CddCli.generateFromOpenApi("to_sdk", specFile.getAbsolutePath(), tempDir.getAbsolutePath(), true, true,
+				true);
+		cli.CddCli.generateFromOpenApi(null, null, null, false, false, false);
+		cli.CddCli.generateToOpenApi("src/main/java", new File(tempDir, "spec.json").getAbsolutePath());
+		cli.CddCli.generateToOpenApi(null, null);
+		cli.CddCli.generateDocsJson(specFile.getAbsolutePath(), new File(tempDir, "docs.json").getAbsolutePath(), true,
+				true);
+		cli.CddCli.generateDocsJson(null, null, false, false);
+
+		System.setIn(new ByteArrayInputStream("".getBytes("UTF-8")));
+		cli.CddCli.serveJsonRpc("8081", "127.0.0.1", false);
+		cli.CddCli.serveJsonRpc(null, null, true);
+		cli.CddCli.mcp("8081", "127.0.0.1", false);
+	}
+
+	@Test
 	public void testSync() throws Exception {
 		File tempDir = Files.createTempDirectory("cdd_test_sync").toFile();
 
@@ -332,7 +347,11 @@ public class CliMainTest {
 
 		runMain(new String[]{"sync", "-h"});
 		runMain(new String[]{"sync"});
-		runMain(new String[]{"sync", "-d", tempDir.getAbsolutePath()});
+		runMain(new String[]{"sync", "-i", tempDir.getAbsolutePath()});
+
+		// Test programmatic SDK methods for sync
+		cli.CddCli.sync(tempDir.getAbsolutePath(), null, "code");
+		cli.CddCli.sync(null, null, null);
 	}
 
 	@Test
