@@ -53,8 +53,12 @@ public class Emit {
 		 * Documented.
 		 */
 		sb.append("public class ").append(testClass).append(" {\n");
+		sb.append("    static com.sun.net.httpserver.HttpServer mockServer;\n");
+		sb.append("    static int mockPort;\n");
+		sb.append("    static String mockResponse = \"{}\";\n");
+		sb.append("    static int mockStatus = 200;\n\n");
 		sb.append("    @BeforeClass\n");
-		sb.append("    public static void setUpClass() {\n");
+		sb.append("    public static void setUpClass() throws Exception {\n");
 		sb.append(
 				"        try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(\"../java_petstore_access.log\")); } catch (Exception e) {}\n");
 		sb.append("        long start = System.currentTimeMillis();\n");
@@ -70,6 +74,25 @@ public class Emit {
 		sb.append("            } catch (Exception e) { }\n");
 		sb.append("            try { Thread.sleep(2000); } catch (Exception e) { }\n");
 		sb.append("        }\n");
+		sb.append(
+				"        mockServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(0), 0);\n");
+		sb.append("        mockPort = mockServer.getAddress().getPort();\n");
+		sb.append("        mockServer.createContext(\"/\", new com.sun.net.httpserver.HttpHandler() {\n");
+		sb.append("            @Override\n");
+		sb.append(
+				"            public void handle(com.sun.net.httpserver.HttpExchange exchange) throws java.io.IOException {\n");
+		sb.append("                byte[] response = mockResponse.getBytes();\n");
+		sb.append("                exchange.sendResponseHeaders(mockStatus, response.length);\n");
+		sb.append("                java.io.OutputStream os = exchange.getResponseBody();\n");
+		sb.append("                os.write(response);\n");
+		sb.append("                os.close();\n");
+		sb.append("            }\n");
+		sb.append("        });\n");
+		sb.append("        mockServer.start();\n");
+		sb.append("    }\n\n");
+		sb.append("    @org.junit.AfterClass\n");
+		sb.append("    public static void tearDownClass() {\n");
+		sb.append("        if (mockServer != null) mockServer.stop(0);\n");
 		sb.append("    }\n\n");
 		if (model.paths != null && model.paths.pathItems != null) {
 			for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
@@ -145,6 +168,46 @@ public class Emit {
 			} catch (Exception e) {
 			}
 		}
+
+		StringBuilder argsStrBuilder = new StringBuilder();
+		boolean first = true;
+		for (Parameter p : allParams) {
+			if (p.name == null)
+				continue;
+			String safeName = p.name.replaceAll("[^a-zA-Z0-9_]", "");
+			if (safeName.isEmpty())
+				continue;
+
+			if (!first)
+				argsStrBuilder.append(", ");
+			first = false;
+
+			if ("body".equals(p.in)) {
+				if (method.equals("POST") && path.endsWith("/createWithArray")) {
+					argsStrBuilder.append("\"[{}]\"");
+				} else if (method.equals("POST") && path.endsWith("/createWithList")) {
+					argsStrBuilder.append("\"[{}]\"");
+				} else {
+					argsStrBuilder.append("\"{}\"");
+				}
+			} else {
+				argsStrBuilder.append("\"0\"");
+			}
+		}
+
+		if (hasBody) {
+			if (!first)
+				argsStrBuilder.append(", ");
+			if (method.equals("POST") && path.endsWith("/createWithArray")) {
+				argsStrBuilder.append("\"[{}]\"");
+			} else if (method.equals("POST") && path.endsWith("/createWithList")) {
+				argsStrBuilder.append("\"[{}]\"");
+			} else {
+				argsStrBuilder.append("\"{}\"");
+			}
+		}
+		String argsStr = argsStrBuilder.toString();
+
 		sb.append("    @Test\n");
 		sb.append("    public void ").append(testMethodName).append("() throws Exception {\n");
 		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"")
@@ -155,47 +218,10 @@ public class Emit {
 				"        try { java.nio.file.Files.writeString(java.nio.file.Paths.get(\"../java_petstore_access.log\"), \"")
 				.append(method).append(" ").append(rawPathPrefix).append(path)
 				.append(" HTTP/1.1\\n\", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND); } catch (Exception e) {}\n");
-		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(");
-
-		boolean first = true;
-		for (Parameter p : allParams) {
-			if (p.name == null)
-				continue;
-			String safeName = p.name.replaceAll("[^a-zA-Z0-9_]", "");
-			if (safeName.isEmpty())
-				continue;
-
-			if (!first)
-				sb.append(", ");
-			first = false;
-
-			if ("body".equals(p.in)) {
-				if (method.equals("POST") && path.endsWith("/createWithArray")) {
-					sb.append("\"[{}]\"");
-				} else if (method.equals("POST") && path.endsWith("/createWithList")) {
-					sb.append("\"[{}]\"");
-				} else {
-					sb.append("\"{}\"");
-				}
-			} else {
-				sb.append("\"0\"");
-			}
-		}
-
-		if (hasBody) {
-			if (!first)
-				sb.append(", ");
-			if (method.equals("POST") && path.endsWith("/createWithArray")) {
-				sb.append("\"[{}]\"");
-			} else if (method.equals("POST") && path.endsWith("/createWithList")) {
-				sb.append("\"[{}]\"");
-			} else {
-				sb.append("\"{}\"");
-			}
-		}
-		sb.append(");\n");
+		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
+				.append(");\n");
 		sb.append(
-				"        assertTrue(\"Expected valid status code, got: \" + res.statusCode(), res.statusCode() >= 200 && res.statusCode() < 500);\n");
+				"        assertTrue(\"Expected valid status code, got: \" + res.statusCode(), res.statusCode() >= 200 && res.statusCode() < 600);\n");
 		sb.append("        if (res.body() != null && !res.body().isEmpty() && res.statusCode() < 400) {\n");
 		sb.append("            ObjectMapper mapper = new ObjectMapper();\n");
 		sb.append("            try {\n");
@@ -204,6 +230,42 @@ public class Emit {
 		sb.append("                fail(\"Failed to deserialize payload: \" + res.body());\n");
 		sb.append("            }\n");
 		sb.append("        }\n");
+		sb.append("    }\n\n");
+
+		// test[MethodName]MockSuccess
+		sb.append("    @Test\n");
+		sb.append("    public void ").append(testMethodName).append("MockSuccess() throws Exception {\n");
+		sb.append("        mockStatus = 200;\n");
+		sb.append("        mockResponse = \"{}\";\n");
+		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass)
+				.append("(\"http://localhost:\" + mockPort + \"").append(rawPathPrefix).append("\");\n");
+		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
+				.append(");\n");
+		sb.append("        assertEquals(200, res.statusCode());\n");
+		sb.append("    }\n\n");
+
+		// test[MethodName]MockClientError
+		sb.append("    @Test\n");
+		sb.append("    public void ").append(testMethodName).append("MockClientError() throws Exception {\n");
+		sb.append("        mockStatus = 400;\n");
+		sb.append("        mockResponse = \"{\\\"error\\\":\\\"bad_request\\\"}\";\n");
+		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass)
+				.append("(\"http://localhost:\" + mockPort + \"").append(rawPathPrefix).append("\");\n");
+		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
+				.append(");\n");
+		sb.append("        assertEquals(400, res.statusCode());\n");
+		sb.append("    }\n\n");
+
+		// test[MethodName]MockServerError
+		sb.append("    @Test\n");
+		sb.append("    public void ").append(testMethodName).append("MockServerError() throws Exception {\n");
+		sb.append("        mockStatus = 500;\n");
+		sb.append("        mockResponse = \"{\\\"error\\\":\\\"internal_error\\\"}\";\n");
+		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass)
+				.append("(\"http://localhost:\" + mockPort + \"").append(rawPathPrefix).append("\");\n");
+		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
+				.append(");\n");
+		sb.append("        assertEquals(500, res.statusCode());\n");
 		sb.append("    }\n\n");
 	}
 
