@@ -39,21 +39,8 @@ if not os.path.exists(json_file):
                 "-sL",
                 "https://raw.githubusercontent.com/swagger-api/swagger-petstore/master/src/main/resources/openapi.yaml",
                 "-o",
-                "petstore_raw.yaml",
+                json_file,
             ],
-            check=True,
-        )
-        run_cmd(
-            [
-                "npx",
-                "--yes",
-                "swagger-cli",
-                "bundle",
-                "petstore_raw.yaml",
-                "-t",
-                "json",
-            ],
-            stdout=open(json_file, "w"),
             check=True,
         )
 

@@ -77,6 +77,7 @@ public class ExhaustiveCliRoutesTest {
 
 	@Test
 	public void testCliMainReflection() throws Exception {
+		System.setProperty("cdd.test", "true");
 		Method processInMemory = cli.CddCli.class.getDeclaredMethod("processInMemory", String.class);
 		processInMemory.setAccessible(true);
 		try {

@@ -68,7 +68,7 @@ def main():
         if inspect_result.returncode != 0:
             print("Building fallback Docker image...")
             dockerfile = """FROM maven:3.9-eclipse-temurin-17
-RUN apt-get update && apt-get install -y python3 python3-pip curl nodejs npm make && npm install -g swagger-cli && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y python3 python3-pip curl nodejs npm make && rm -rf /var/lib/apt/lists/*
 """
             build_process = subprocess.Popen(
                 [docker_cmd, "build", "-t", image_name, "-"], stdin=subprocess.PIPE

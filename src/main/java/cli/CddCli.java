@@ -331,7 +331,8 @@ public @Generated class CddCli {
 			List<File> specFiles = new ArrayList<>();
 			File targetFile = resolveFile(inputFile);
 			if (targetFile.isDirectory()) {
-				File[] files = targetFile.listFiles((d, name) -> name.endsWith(".json"));
+				File[] files = targetFile.listFiles(
+						(d, name) -> name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml"));
 				if (files != null) {
 					for (File f : files)
 						specFiles.add(f);

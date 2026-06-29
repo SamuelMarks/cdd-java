@@ -29,8 +29,51 @@ public class Parse {
 	 *             If parsing fails.
 	 */
 	public static OpenAPI fromString(String content) throws IOException {
+		return fromString(content, new File(".").toURI().toString());
+	}
+
+	/**
+	 * Parse OpenAPI description from string with a base URI for resolving
+	 * references.
+	 *
+	 * @param content
+	 *            The JSON/YAML string.
+	 * @param baseUri
+	 *            The base URI.
+	 * @return OpenAPI object.
+	 * @throws IOException
+	 *             If parsing fails.
+	 */
+	public static OpenAPI fromString(String content, String baseUri) throws IOException {
 		try {
-			JSONObject root = new JSONObject(content);
+			String trimmed = content.trim();
+			JSONObject root;
+			if (trimmed.startsWith("{")) {
+				root = new JSONObject(trimmed);
+			} else {
+				org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
+				java.util.Map<String, Object> map = yaml.load(content);
+				root = new JSONObject(map);
+			}
+			RefResolver resolver = new RefResolver();
+			resolver.bundle(root, baseUri);
+			return fromJson(root);
+		} catch (Exception e) {
+			throw new IOException("Failed to parse OpenAPI: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Parse OpenAPI description from JSONObject.
+	 *
+	 * @param root
+	 *            The root JSONObject.
+	 * @return OpenAPI object.
+	 * @throws IOException
+	 *             If parsing fails.
+	 */
+	public static OpenAPI fromJson(JSONObject root) throws IOException {
+		try {
 			OpenAPI api = new OpenAPI();
 			if (root.has("openapi"))
 				api.openapi = root.getString("openapi");
@@ -273,7 +316,7 @@ public class Parse {
 		try (FileInputStream fis = new FileInputStream(file)) {
 			byte[] data = new byte[(int) file.length()];
 			fis.read(data);
-			return fromString(new String(data, "UTF-8"));
+			return fromString(new String(data, "UTF-8"), file.toURI().toString());
 		}
 	}
 }
