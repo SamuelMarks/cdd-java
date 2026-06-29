@@ -80,7 +80,7 @@ jobs:
         npm install
         npm run build
         cp ../target/wasm/cdd-java.js ./dist/cdd-java.js
-        cp ../target/wasm/cdd-java.js.wasm ./dist/cdd-java.js.wasm
+        cp ../target/wasm/cdd-java.wasm ./dist/cdd-java.wasm
 
     - name: Publish NPM Package
       run: |

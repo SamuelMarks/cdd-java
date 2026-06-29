@@ -12,7 +12,7 @@
       "default": "./dist/browser.js"
     },
     "./cdd-java.js": "./dist/cdd-java.js",
-    "./cdd-java.js.wasm": "./dist/cdd-java.js.wasm"
+    "./cdd-java.wasm": "./dist/cdd-java.wasm"
   },
   "scripts": {
     "build": "mkdir -p dist && cp src/index.js dist/index.js && cp src/browser.js dist/browser.js",

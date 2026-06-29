@@ -6,7 +6,7 @@ const os = require('os');
 class CddJava {
     constructor() {
         this.wasmDir = path.join(__dirname, '..', 'dist');
-        this.wasmPath = path.join(this.wasmDir, 'cdd-java.js.wasm');
+        this.wasmPath = path.join(this.wasmDir, 'cdd-java.wasm');
     }
 
     run(args, files = {}) {

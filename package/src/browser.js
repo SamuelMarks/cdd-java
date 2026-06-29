@@ -1,5 +1,5 @@
 export class CddJavaBrowser {
-    constructor(wasmPath = './cdd-java.js.wasm', jsUrl = null) {
+    constructor(wasmPath = './cdd-java.wasm', jsUrl = null) {
         this.wasmPath = wasmPath;
         this.jsUrl = jsUrl;
         this.GraalVM = null;
