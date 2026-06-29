@@ -21,7 +21,7 @@ jobs:
     - name: Test Generated Petstore Clients
       run: |
         curl -sL "https://raw.githubusercontent.com/swagger-api/swagger-petstore/master/src/main/resources/openapi.yaml" > petstore_raw.yaml
-        npx swagger-cli bundle petstore_raw.yaml -t json > petstore_oas3.json
+        npx --yes swagger-cli bundle petstore_raw.yaml -t json > petstore_oas3.json
         curl -sL "https://petstore.swagger.io/v2/swagger.json" > petstore.json
         python3 scripts/test_petstore.py v2 petstore.json
         python3 scripts/test_petstore.py v3 petstore_oas3.json
