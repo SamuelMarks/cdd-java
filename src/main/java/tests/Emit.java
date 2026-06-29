@@ -135,10 +135,15 @@ public class Emit {
 		boolean hasBody = (op.requestBody != null);
 		String literalBaseUrl = "http://localhost:8080/v2";
 		String rawPathPrefix = "/v2";
-		try {
-			rawPathPrefix = model.servers.get(0).url.substring(model.servers.get(0).url.indexOf("/api"));
+		if (model.basePath != null && !model.basePath.isEmpty()) {
+			rawPathPrefix = model.basePath;
 			literalBaseUrl = "http://localhost:8080" + rawPathPrefix;
-		} catch (Exception e) {
+		} else {
+			try {
+				rawPathPrefix = model.servers.get(0).url.substring(model.servers.get(0).url.indexOf("/api"));
+				literalBaseUrl = "http://localhost:8080" + rawPathPrefix;
+			} catch (Exception e) {
+			}
 		}
 		sb.append("    @Test\n");
 		sb.append("    public void ").append(testMethodName).append("() throws Exception {\n");

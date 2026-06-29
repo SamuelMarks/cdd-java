@@ -11,6 +11,17 @@ import static org.junit.Assert.*;
 public class OpenapiParseEmitTest {
 
 	@Test
+	public void testParseServers() throws Exception {
+		String json = "{\n" + "  \"servers\": [\n" + "    {\n" + "      \"url\": \"https://api.example.com/v1\",\n"
+				+ "      \"description\": \"Main production server\"\n" + "    }\n" + "  ]\n" + "}";
+		OpenAPI api = Parse.fromString(json);
+		assertNotNull(api.servers);
+		assertEquals(1, api.servers.size());
+		assertEquals("https://api.example.com/v1", api.servers.get(0).url);
+		assertEquals("Main production server", api.servers.get(0).description);
+	}
+
+	@Test
 	public void testParseConstructors() {
 		assertNotNull(new Parse());
 		assertNotNull(new Emit());

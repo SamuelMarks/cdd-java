@@ -58,6 +58,19 @@ public class Parse {
 				for (int i = 0; i < arr.length(); i++)
 					api.produces.add(arr.getString(i));
 			}
+			if (root.has("servers")) {
+				api.servers = new ArrayList<>();
+				JSONArray arr = root.getJSONArray("servers");
+				for (int i = 0; i < arr.length(); i++) {
+					JSONObject sObj = arr.getJSONObject(i);
+					Server s = new Server();
+					if (sObj.has("url"))
+						s.url = sObj.getString("url");
+					if (sObj.has("description"))
+						s.description = sObj.getString("description");
+					api.servers.add(s);
+				}
+			}
 			if (root.has("info")) {
 				JSONObject infoObj = root.getJSONObject("info");
 				api.info = new Info();

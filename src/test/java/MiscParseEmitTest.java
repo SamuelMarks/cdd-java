@@ -151,6 +151,37 @@ public class MiscParseEmitTest {
 		api4.paths.pathItems.put("/abc", pi4_1);
 		tests.Emit.emit(api4, null);
 
+		// basePath present
+		OpenAPI apiBasePath = new OpenAPI();
+		apiBasePath.info = new Info();
+		apiBasePath.info.title = "BasePath API";
+		apiBasePath.basePath = "/v1";
+		apiBasePath.paths = new Paths();
+		apiBasePath.paths.pathItems = new java.util.HashMap<>();
+		PathItem piBasePath = new PathItem();
+		Operation opBasePath = new Operation();
+		opBasePath.operationId = "basePathOp";
+		piBasePath.get = opBasePath;
+		apiBasePath.paths.pathItems.put("/base", piBasePath);
+		tests.Emit.emit(apiBasePath, null);
+
+		// servers present but URL missing "/api"
+		OpenAPI apiNoApiUrl = new OpenAPI();
+		apiNoApiUrl.info = new Info();
+		apiNoApiUrl.info.title = "No Api Url API";
+		apiNoApiUrl.servers = new java.util.ArrayList<>();
+		openapi.Server sNoApi = new openapi.Server();
+		sNoApi.url = "http://x/v3";
+		apiNoApiUrl.servers.add(sNoApi);
+		apiNoApiUrl.paths = new Paths();
+		apiNoApiUrl.paths.pathItems = new java.util.HashMap<>();
+		PathItem piNoApi = new PathItem();
+		Operation opNoApi = new Operation();
+		opNoApi.operationId = "noApiOp";
+		piNoApi.get = opNoApi;
+		apiNoApiUrl.paths.pathItems.put("/noapi", piNoApi);
+		tests.Emit.emit(apiNoApiUrl, null);
+
 		// parameter with empty safeName
 		OpenAPI api5 = new OpenAPI();
 		api5.paths = new Paths();
