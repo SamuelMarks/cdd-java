@@ -5,74 +5,84 @@ import static org.junit.Assert.*;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
-import java.lang.reflect.Field;
+import java.util.HashMap;
 import org.json.JSONObject;
 
 import cli.Main;
 import cli.CddCli;
 
+/**
+ * Comprehensive unit and integration tests for {@link Main} and {@link CddCli}.
+ */
 public class CliMainTest {
 
+	/** Captured standard output stream. */
 	private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+	/** Captured standard error stream. */
 	private final ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+	/** Original standard output stream. */
 	private final PrintStream originalOut = System.out;
+	/** Original standard error stream. */
 	private final PrintStream originalErr = System.err;
+	/** Original standard input stream. */
 	private final InputStream originalIn = System.in;
+	/** In-memory environment variable overrides for {@link CddCli#envProvider}. */
+	private final Map<String, String> mockEnv = new HashMap<>();
 
+	/**
+	 * Redirects standard streams and resets environment variable overrides before
+	 * each test.
+	 */
 	@Before
 	public void setUpStreams() {
 		System.setOut(new PrintStream(outContent));
 		System.setErr(new PrintStream(errContent));
+		mockEnv.clear();
+		CddCli.envProvider = key -> mockEnv.containsKey(key) ? mockEnv.get(key) : System.getenv(key);
 	}
 
+	/**
+	 * Restores standard streams, environment provider, and stops any active HTTP
+	 * server after each test.
+	 */
 	@After
 	public void restoreStreams() {
 		System.setOut(originalOut);
 		System.setErr(originalErr);
 		System.setIn(originalIn);
-	}
-
-	@SuppressWarnings("unchecked")
-	private void setEnv(String key, String value) {
-		try {
-			Map<String, String> env = System.getenv();
-			Class<?> cl = env.getClass();
-			Field field = cl.getDeclaredField("m");
-			field.setAccessible(true);
-			Map<String, String> writableEnv = (Map<String, String>) field.get(env);
-			if (value == null) {
-				writableEnv.remove(key);
-			} else {
-				writableEnv.put(key, value);
-			}
-		} catch (Exception e) {
-			try {
-				Class<?> processEnvironmentClass = Class.forName("java.lang.ProcessEnvironment");
-				Field theEnvironmentField = processEnvironmentClass.getDeclaredField("theEnvironment");
-				theEnvironmentField.setAccessible(true);
-				Map<String, String> env = (Map<String, String>) theEnvironmentField.get(null);
-				if (value == null) {
-					env.remove(key);
-				} else {
-					env.put(key, value);
-				}
-				Field theCaseInsensitiveEnvironmentField = processEnvironmentClass
-						.getDeclaredField("theCaseInsensitiveEnvironment");
-				theCaseInsensitiveEnvironmentField.setAccessible(true);
-				Map<String, String> cienv = (Map<String, String>) theCaseInsensitiveEnvironmentField.get(null);
-				if (value == null) {
-					cienv.remove(key);
-				} else {
-					cienv.put(key, value);
-				}
-			} catch (Exception e2) {
-				// Ignore
-			}
+		CddCli.envProvider = System::getenv;
+		if (CddCli.activeHttpServer != null) {
+			CddCli.activeHttpServer.stop(0);
+			CddCli.activeHttpServer = null;
 		}
 	}
 
+	/**
+	 * Sets or removes an environment variable override for {@link CddCli}.
+	 *
+	 * @param key
+	 *            The environment variable name.
+	 * @param value
+	 *            The environment variable value, or {@code null} to remove.
+	 */
+	private void setEnv(String key, String value) {
+		if (value == null) {
+			mockEnv.remove(key);
+		} else {
+			mockEnv.put(key, value);
+		}
+	}
+
+	/**
+	 * Invokes {@link Main#main} while suppressing expected {@code Exit 1} runtime
+	 * exceptions in test mode.
+	 *
+	 * @param args
+	 *            The CLI arguments.
+	 * @throws Exception
+	 *             If an unexpected exception occurs.
+	 */
 	private void runMain(String[] args) throws Exception {
 		try {
 			Main.main(args);
@@ -83,9 +93,17 @@ public class CliMainTest {
 		}
 	}
 
+	/**
+	 * Verifies constructors, WASI entry points, and help/version flags.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testBasic() throws Exception {
-		new Main();
+		assertNotNull(new Main());
+		assertNotNull(new CddCli());
+		assertNotNull(new classes.McpEmitter());
 		CddCli._start();
 		CddCli._start(new String[]{"-h"});
 		runMain(new String[]{});
@@ -95,11 +113,23 @@ public class CliMainTest {
 		runMain(new String[]{"-v"});
 	}
 
+	/**
+	 * Verifies handling of unknown top-level CLI subcommands.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testUnknownCommand() throws Exception {
 		runMain(new String[]{"unknown_command"});
 	}
 
+	/**
+	 * Verifies virtual root path resolution under {@code CDD_WASI_VIRTUAL_ROOT}.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testWasiVirtualRoot() throws Exception {
 		File wasiDir = Files.createTempDirectory("wasi").toFile();
@@ -117,22 +147,46 @@ public class CliMainTest {
 			String outPath = "/out";
 
 			runMain(new String[]{"from_openapi", "to_sdk", "-i", inPath, "-o", outPath});
+			runMain(new String[]{"from_openapi", "to_sdk", "-i", "src/test/resources/minimal-spec.json", "-o",
+					"target/wasi_rel_out"});
+			runMain(new String[]{"from_openapi", "to_sdk_cli", "-i", specFile.getAbsolutePath(), "-o",
+					new File(wasiDir, "out_cli").getAbsolutePath()});
+			runMain(new String[]{"from_openapi", "to_sdk", "--tests", "-i", specFile.getAbsolutePath(), "-o", "/out"});
 		} finally {
 			setEnv("CDD_WASI_VIRTUAL_ROOT", null);
 		}
 	}
 
+	/**
+	 * Verifies {@code process_in_memory} error handling when JSON payload is
+	 * missing.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProcessInMemoryMissingPayload() throws Exception {
 		runMain(new String[]{"process_in_memory"});
 	}
 
+	/**
+	 * Verifies {@code process_in_memory} error response on malformed JSON input.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProcessInMemoryInvalidJson() throws Exception {
 		runMain(new String[]{"process_in_memory", "invalid_json"});
 		assertTrue(outContent.toString().contains("\"success\":false"));
 	}
 
+	/**
+	 * Verifies {@code process_in_memory} execution of {@code to_docs_json}.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProcessInMemoryDocsJson() throws Exception {
 		String spec = "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"Api\",\"version\":\"1\"},\"paths\":{}}";
@@ -142,6 +196,12 @@ public class CliMainTest {
 		assertTrue(outContent.toString().contains("\"success\":true"));
 	}
 
+	/**
+	 * Verifies {@code process_in_memory} error response on unsupported subcommands.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProcessInMemoryUnsupportedCommand() throws Exception {
 		String spec = "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"Api\",\"version\":\"1\"},\"paths\":{}}";
@@ -151,6 +211,13 @@ public class CliMainTest {
 		assertTrue(outContent.toString().contains("\"success\":false"));
 	}
 
+	/**
+	 * Verifies {@code process_in_memory} across {@code from_openapi},
+	 * {@code to_openapi}, and {@code sync} commands.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProcessInMemoryFromOpenapi() throws Exception {
 		String spec = "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"Api Title\",\"version\":\"1\"},\"paths\":{}}";
@@ -160,18 +227,50 @@ public class CliMainTest {
 				"{\"command\":[\"from_openapi\", \"to_sdk_cli\", \"--tests\"],\"files\":{\"spec.json\":\"" + escapedSpec
 						+ "\"}}"});
 		runMain(new String[]{"process_in_memory",
-				"{\"command\":[\"from_openapi\", \"to_sdk\", \"--tests\"],\"files\":{\"spec.json\":\"" + escapedSpec
-						+ "\"}}"});
+				"{\"command\":[\"from_openapi\", \"to_sdk_cli\"],\"files\":{\"spec.json\":\"" + escapedSpec + "\"}}"});
 		runMain(new String[]{"process_in_memory",
-				"{\"command\":[\"from_openapi\", \"to_server\"],\"files\":{\"spec.json\":\"" + escapedSpec + "\"}}"});
+				"{\"command\":[\"from_openapi\", \"to_sdk\", \"--tests\", \"--no-github-actions\", \"--no-installable-package\"],\"files\":{\"spec.json\":\""
+						+ escapedSpec + "\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_openapi\", \"--tests\"],\"files\":{\"spec.json\":\"{\\\"openapi\\\":\\\"3.0.0\\\",\\\"info\\\":{\\\"title\\\":\\\"\\\"}}\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_openapi\"],\"files\":{\"spec.json\":\"{\\\"openapi\\\":\\\"3.0.0\\\"}\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_openapi\", \"to_sdk\", \"--tests\"],\"files\":{\"spec.json\":\"{\\\"openapi\\\":\\\"3.0.0\\\"}\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_openapi\", \"to_sdk\", \"--tests\"],\"files\":{\"spec.json\":\"{\\\"openapi\\\":\\\"3.0.0\\\",\\\"info\\\":{}}\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_openapi\", \"to_server\"],\"files\":{\"spec.json\":\"{\\\"openapi\\\":\\\"3.0.0\\\",\\\"paths\\\":{\\\"/p\\\":{\\\"get\\\":{\\\"responses\\\":{\\\"200\\\":{\\\"description\\\":\\\"ok\\\"}}}}},\\\"components\\\":{\\\"schemas\\\":{\\\"S\\\":{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"id\\\":{\\\"type\\\":\\\"string\\\"}}}}}}\"}}"});
+		File wsDir = Files.createTempDirectory("cdd_ws_test").toFile();
+		Files.writeString(new File(wsDir, "Sample.java").toPath(), "public class Sample { public void hello() {} }");
+		File prevWs = CddCli.workspaceDir;
+		CddCli.workspaceDir = wsDir;
+		try {
+			runMain(new String[]{"process_in_memory", "{\"command\":[\"to_openapi\"]}"});
+			runMain(new String[]{"process_in_memory", "{\"command\":[\"sync\"]}"});
+		} finally {
+			CddCli.workspaceDir = prevWs;
+		}
 	}
 
+	/**
+	 * Verifies {@code from_openapi} CLI subcommands across JSON, YAML, and
+	 * directory inputs.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testFromOpenapi() throws Exception {
 		File tempDir = Files.createTempDirectory("cdd_test").toFile();
 		File specFile = new File(tempDir, "spec.json");
 		Files.writeString(specFile.toPath(),
 				"{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"\",\"version\":\"1\"},\"paths\":{}}");
+		File noTitleSpec = new File(tempDir, "spec2.yaml");
+		Files.writeString(noTitleSpec.toPath(), "openapi: 3.0.0\npaths: {}\n");
+		File ymlSpec = new File(tempDir, "spec3.yml");
+		Files.writeString(ymlSpec.toPath(), "openapi: 3.0.0\ninfo:\n  version: '1'\npaths: {}\n");
+		Files.writeString(new File(tempDir, "ignore.txt").toPath(), "not a spec");
 		File outDir = new File(tempDir, "out");
 
 		runMain(new String[]{"from_openapi", "-h"});
@@ -184,8 +283,16 @@ public class CliMainTest {
 		runMain(new String[]{"from_openapi", "to_sdk"});
 		runMain(new String[]{"from_openapi", "to_sdk_cli", "-i", specFile.getAbsolutePath(), "-o",
 				outDir.getAbsolutePath(), "--tests"});
+		runMain(new String[]{"from_openapi", "to_sdk_cli", "-i", specFile.getAbsolutePath(), "-o",
+				outDir.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "to_sdk", "-i", specFile.getAbsolutePath(), "-o", outDir.getAbsolutePath(),
 				"--tests"});
+		runMain(new String[]{"from_openapi", "to_sdk", "-i", noTitleSpec.getAbsolutePath(), "-o",
+				outDir.getAbsolutePath(), "--tests"});
+		runMain(new String[]{"from_openapi", "to_sdk", "-i", ymlSpec.getAbsolutePath(), "-o", outDir.getAbsolutePath(),
+				"--tests"});
+		runMain(new String[]{"from_openapi", "to_sdk", "-i", ymlSpec.getAbsolutePath(), "-o",
+				outDir.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "to_server", "-i", specFile.getAbsolutePath(), "-o",
 				outDir.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "to_sdk", "--input-dir", tempDir.getAbsolutePath(), "-o",
@@ -193,6 +300,13 @@ public class CliMainTest {
 		runMain(new String[]{"from_openapi", "-i", specFile.getAbsolutePath(), "-o", outDir.getAbsolutePath()});
 	}
 
+	/**
+	 * Verifies {@code to_openapi} extraction from client, mock, test, and DTO
+	 * classes.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testToOpenApiCoverage() throws Exception {
 		File tempDir = Files.createTempDirectory("cdd-to-openapi").toFile();
@@ -217,6 +331,12 @@ public class CliMainTest {
 		assertTrue(outFile.exists());
 	}
 
+	/**
+	 * Verifies additional {@link CddCli#processInMemory} payload branches.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProcessInMemoryCoverage() throws Exception {
 		org.json.JSONObject args = new org.json.JSONObject();
@@ -251,6 +371,13 @@ public class CliMainTest {
 		cli.CddCli.processInMemory(args.toString());
 	}
 
+	/**
+	 * Verifies {@code to_openapi} CLI subcommand with explicit and default output
+	 * paths.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testToOpenapi() throws Exception {
 		File outFile = Files.createTempFile("spec", ".json").toFile();
@@ -267,6 +394,12 @@ public class CliMainTest {
 		}
 	}
 
+	/**
+	 * Verifies {@code to_docs_json} CLI subcommand.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testToDocsJson() throws Exception {
 		File tempDir = Files.createTempDirectory("cdd_test_to_docs").toFile();
@@ -289,71 +422,166 @@ public class CliMainTest {
 		}
 	}
 
+	/**
+	 * Verifies STDIO and HTTP JSON-RPC 2.0 / MCP server modes in
+	 * {@link CddCli#serveJsonRpc}.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testServeJsonRpc() throws Exception {
 		runMain(new String[]{"serve_json_rpc", "-h"});
 
 		String input = "\n" + "{\"jsonrpc\":\"2.0\",\"method\":\"version\",\"id\":1}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"id\":2}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"initialized\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":21}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"cancelled\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"progress\"}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":3}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/list\",\"id\":31}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"cdd://ast/openapi\"},\"id\":32}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"unknown\"},\"id\":33}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"id\":34}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"cdd_generate\",\"arguments\":{\"command\":[\"to_openapi\",\"-h\"]}},\"id\":4}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"cdd_generate\"},\"id\":41}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown_tool\"},\"id\":5}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":6}\n"
-				+ "{\"jsonrpc\":\"2.0\",\"method\":\"unknown\",\"id\":\"abc\"}\n" + "{\"method\":\"invalid\"}\n"
-				+ "invalid_json\n";
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"unknown\",\"id\":\"abc\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"unknown\"}\n" + "{\"jsonrpc\":\"2.0\",\"id\":null}\n"
+				+ "{\"jsonrpc\":\"1.0\",\"id\":98}\n" + "{\"jsonrpc\":\"1.0\"}\n"
+				+ "{\"method\":\"invalid\",\"id\":99}\n" + "{\"method\":\"invalid\"}\n" + "invalid_json\n";
 
 		System.setIn(new ByteArrayInputStream(input.getBytes("UTF-8")));
-		runMain(new String[]{"serve_json_rpc"});
+		File wsDir = Files.createTempDirectory("cdd_rpc_ws").toFile();
+		Files.writeString(new File(wsDir, "Sample.java").toPath(), "public class Sample { public void hello() {} }");
+		File prevWs = CddCli.workspaceDir;
+		CddCli.workspaceDir = wsDir;
+		try {
+			runMain(new String[]{"serve_json_rpc", "--wasi"});
+		} finally {
+			CddCli.workspaceDir = prevWs;
+		}
 
 		String out = outContent.toString();
 		assertTrue(out.contains("\"result\":\"0.0.3\""));
+		assertTrue(out.contains("-32700"));
+		assertTrue(out.contains("-32600"));
+		assertTrue(out.contains("-32601"));
+		assertTrue(out.contains("-32602"));
+
+		// Test HTTP server mode and replacing existing server
+		System.setIn(new ByteArrayInputStream("".getBytes("UTF-8")));
+		runMain(new String[]{"serve_json_rpc", "-p", "0", "-l", "127.0.0.1"});
+		assertNotNull(CddCli.activeHttpServer);
+		runMain(new String[]{"serve_json_rpc", "-p", "0", "-l", "127.0.0.1"});
+		assertNotNull(CddCli.activeHttpServer);
+		int port = CddCli.activeHttpServer.getAddress().getPort();
+		java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+		java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/"))
+				.POST(java.net.http.HttpRequest.BodyPublishers
+						.ofString("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}"))
+				.build();
+		java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+		assertEquals(200, resp.statusCode());
+		assertTrue(resp.body().contains("\"result\":{}"));
+
+		java.net.http.HttpRequest notifReq = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/"))
+				.POST(java.net.http.HttpRequest.BodyPublishers
+						.ofString("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\"}"))
+				.build();
+		java.net.http.HttpResponse<String> notifResp = client.send(notifReq,
+				java.net.http.HttpResponse.BodyHandlers.ofString());
+		assertEquals(204, notifResp.statusCode());
+		CddCli.activeHttpServer.stop(0);
+		CddCli.activeHttpServer = null;
 	}
 
+	/**
+	 * Verifies programmatic SDK methods on {@link CddCli}.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testProgrammaticSdkMethods() throws Exception {
 		File tempDir = Files.createTempDirectory("cdd_test_prog_sdk").toFile();
 		File specFile = new File("src/test/resources/minimal-spec.json");
 
-		cli.CddCli.generateFromOpenApi("to_sdk", specFile.getAbsolutePath(), tempDir.getAbsolutePath(), true, true,
-				true);
-		cli.CddCli.generateFromOpenApi(null, null, null, false, false, false);
-		cli.CddCli.generateToOpenApi("src/main/java", new File(tempDir, "spec.json").getAbsolutePath());
-		cli.CddCli.generateToOpenApi(null, null);
-		cli.CddCli.generateDocsJson(specFile.getAbsolutePath(), new File(tempDir, "docs.json").getAbsolutePath(), true,
-				true);
-		cli.CddCli.generateDocsJson(null, null, false, false);
+		assertEquals(0, cli.CddCli.generateFromOpenApi("to_sdk", specFile.getAbsolutePath(), tempDir.getAbsolutePath(),
+				true, true, true));
+		assertEquals(0, cli.CddCli.generateFromOpenApi("", specFile.getAbsolutePath(), tempDir.getAbsolutePath(), false,
+				false, false));
+		assertEquals(1, cli.CddCli.generateFromOpenApi(null, null, null, false, false, false));
+		assertEquals(0,
+				cli.CddCli.generateToOpenApi("src/main/java", new File(tempDir, "spec.json").getAbsolutePath()));
+		assertEquals(1, cli.CddCli.generateToOpenApi(null, null));
+		assertEquals(0, cli.CddCli.generateDocsJson(specFile.getAbsolutePath(),
+				new File(tempDir, "docs.json").getAbsolutePath(), true, true));
+		assertEquals(1, cli.CddCli.generateDocsJson(null, null, false, false));
 
+		System.setIn(
+				new ByteArrayInputStream("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}\n".getBytes("UTF-8")));
+		assertEquals(0, cli.CddCli.serveJsonRpc("0", "127.0.0.1", false));
+		assertEquals(1, cli.CddCli.serveJsonRpc("invalid_port", "127.0.0.1", false));
 		System.setIn(new ByteArrayInputStream("".getBytes("UTF-8")));
-		cli.CddCli.serveJsonRpc("8081", "127.0.0.1", false);
-		cli.CddCli.serveJsonRpc(null, null, true);
-		cli.CddCli.mcp("8081", "127.0.0.1", false);
+		assertEquals(0, cli.CddCli.serveJsonRpc(null, null, true));
+		System.setIn(
+				new ByteArrayInputStream("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}\n".getBytes("UTF-8")));
+		assertEquals(0, cli.CddCli.mcp("0", "127.0.0.1", false));
 	}
 
+	/**
+	 * Verifies {@code sync} CLI command and {@link CddCli#sync} across truth modes.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testSync() throws Exception {
 		File tempDir = Files.createTempDirectory("cdd_test_sync").toFile();
+		File outSyncDir = Files.createTempDirectory("cdd_test_sync_out").toFile();
 
-		// Copy a single source file to a mocked sync folder structure
 		String code = "package test;\npublic class Routes {\n public void handle() {}\n}\n";
-		String[] subDirs = {"classes", "orm", "routes", "mocks", "tests", "functions", "cli"};
+		String[] subDirs = {"classes", "orm", "routes", "mocks", "tests", "functions", "cli", "other"};
 		for (String sub : subDirs) {
 			File d = new File(tempDir, sub);
 			d.mkdirs();
 			Files.writeString(new File(d, "Test.java").toPath(), code);
 		}
+		Files.writeString(new File(tempDir, "README.txt").toPath(), "ignore me");
 
 		runMain(new String[]{"sync", "-h"});
 		runMain(new String[]{"sync"});
 		runMain(new String[]{"sync", "-i", tempDir.getAbsolutePath()});
+		runMain(new String[]{"sync", "-i", tempDir.getAbsolutePath()});
 
-		// Test programmatic SDK methods for sync
-		cli.CddCli.sync(tempDir.getAbsolutePath(), null, "code");
-		cli.CddCli.sync(null, null, null);
+		File singleFile = new File(tempDir, "classes/Test.java");
+		assertEquals(0, cli.CddCli.sync(singleFile.getAbsolutePath(), singleFile.getAbsolutePath(), "code"));
+		Files.writeString(singleFile.toPath(), "package test;\npublic class Routes {}\n");
+		assertEquals(0, cli.CddCli.sync(singleFile.getAbsolutePath(), null, "code"));
+		assertEquals(0, cli.CddCli.sync(new File(tempDir, "nonexistent_dir").getAbsolutePath(), null, "code"));
+		assertEquals(0, cli.CddCli.sync(tempDir.getAbsolutePath(), outSyncDir.getAbsolutePath(), "orm"));
+		assertEquals(0, cli.CddCli.sync(tempDir.getAbsolutePath(), null, "classes"));
+		assertEquals(0, cli.CddCli.sync(tempDir.getAbsolutePath(), null, "openapi"));
+		Files.writeString(new File(tempDir, "openapi.json").toPath(),
+				"{\"openapi\":\"3.2.0\",\"info\":{\"title\":\"T\",\"version\":\"1\"}}");
+		assertEquals(0, cli.CddCli.sync(tempDir.getAbsolutePath(), null, "openapi"));
+		assertEquals(1, cli.CddCli.sync(null, null, null));
 	}
 
+	/**
+	 * Verifies environment variable fallbacks for CLI flags and arguments.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
 	@Test
 	public void testEnvVarFlags() throws Exception {
 		setEnv("CDD_WASI", "1");
@@ -372,11 +600,13 @@ public class CliMainTest {
 
 			runMain(new String[]{"from_openapi", "to_sdk"});
 
+			setEnv("CDD_WASI", "false");
 			setEnv("CDD_NO_GITHUB_ACTIONS", "1");
 			setEnv("CDD_NO_INSTALLABLE_PACKAGE", "1");
 			setEnv("CDD_TESTS", "1");
 			runMain(new String[]{"from_openapi", "to_sdk"});
 
+			setEnv("CDD_WASI", "true");
 			setEnv("CDD_NO_GITHUB_ACTIONS", "false");
 			setEnv("CDD_NO_INSTALLABLE_PACKAGE", "false");
 			setEnv("CDD_TESTS", "false");

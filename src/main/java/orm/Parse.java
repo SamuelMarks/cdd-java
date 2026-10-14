@@ -60,18 +60,28 @@ public class Parse {
 				});
 
 				Map<String, Object> properties = new HashMap<>();
+				java.util.List<String> requiredList = new java.util.ArrayList<>();
 				for (FieldDeclaration fieldDecl : classDecl.getFields()) {
 					for (VariableDeclarator varDecl : fieldDecl.getVariables()) {
 						Type type = varDecl.getType();
 						String name = varDecl.getNameAsString();
+						boolean isNullable = true;
 
 						for (AnnotationExpr ann : fieldDecl.getAnnotations()) {
-							if (ann.getNameAsString().equals("Column")) {
-								if (ann instanceof NormalAnnotationExpr) {
-									for (MemberValuePair mvp : ((NormalAnnotationExpr) ann).getPairs()) {
-										if (mvp.getNameAsString().equals("name")) {
-											name = mvp.getValue().toString().replace("\"", "");
+							String annName = ann.getNameAsString();
+							if ((annName.equals("Column") || annName.equals("JoinColumn"))
+									&& ann instanceof NormalAnnotationExpr) {
+								for (MemberValuePair mvp : ((NormalAnnotationExpr) ann).getPairs()) {
+									if (mvp.getNameAsString().equals("name")) {
+										String colName = mvp.getValue().toString().replace("\"", "");
+										if (annName.equals("JoinColumn") && colName.endsWith("_id")) {
+											name = colName.substring(0, colName.length() - 3);
+										} else {
+											name = colName;
 										}
+									} else if (mvp.getNameAsString().equals("nullable")
+											&& "false".equals(mvp.getValue().toString())) {
+										isNullable = false;
 									}
 								}
 							}
@@ -83,96 +93,45 @@ public class Parse {
 						if (fieldDecl.getAnnotationByName("Id").isPresent()) {
 							propSchema.addExtension("x-primary-key", true);
 						}
+						if (fieldDecl.getAnnotationByName("GeneratedValue").isPresent()) {
+							propSchema.addExtension("x-generated-value", true);
+						}
+						if (fieldDecl.getAnnotationByName("ManyToOne").isPresent()) {
+							propSchema.addExtension("x-relationship", "many-to-one");
+						}
+						if (fieldDecl.getAnnotationByName("OneToMany").isPresent()) {
+							propSchema.addExtension("x-relationship", "one-to-many");
+						}
+						if (!isNullable) {
+							requiredList.add(name);
+						}
 
 						properties.put(name, propSchema);
 					}
 				}
 				schema.properties = properties;
+				if (!requiredList.isEmpty()) {
+					schema.required = requiredList;
+				}
 				api.components.schemas.put(className, schema);
 			}
 		} catch (Exception e) {
+			java.util.logging.Logger.getLogger(Parse.class.getName())
+					.fine("Skipping unparseable ORM source: " + e.getMessage());
 		}
 		return api;
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Maps a Java AST {@link Type} from an ORM entity into its corresponding
+	 * OpenAPI {@link Schema}.
 	 *
 	 * @param type
-	 *            param doc
+	 *            The JavaParser AST {@link Type}.
 	 * @param propSchema
-	 *            param doc
+	 *            The target OpenAPI {@link Schema} to populate.
 	 */
 	private static void resolveType(Type type, Schema propSchema) {
-		if (type.isClassOrInterfaceType()) {
-			ClassOrInterfaceType ciType = type.asClassOrInterfaceType();
-			String name = ciType.getNameAsString();
-			if (name.equals("String")) {
-				propSchema.type = "string";
-			} else if (name.equals("Integer")) {
-				propSchema.type = "integer";
-			} else if (name.equals("Long")) {
-				propSchema.type = "integer";
-				propSchema.format = "int64";
-			} else if (name.equals("Double") || name.equals("Float")) {
-				propSchema.type = "number";
-				if (name.equals("Float"))
-					propSchema.format = "float";
-			} else if (name.equals("Boolean")) {
-				propSchema.type = "boolean";
-			} else if (name.equals("UUID")) {
-				propSchema.type = "string";
-				propSchema.format = "uuid";
-			} else if (name.equals("LocalDate")) {
-				propSchema.type = "string";
-				propSchema.format = "date";
-			} else if (name.equals("OffsetDateTime") || name.equals("ZonedDateTime")) {
-				propSchema.type = "string";
-				propSchema.format = "date-time";
-			} else if (name.equals("List") || name.equals("ArrayList") || name.equals("Set")) {
-				propSchema.type = "array";
-				Schema items = new Schema();
-				if (ciType.getTypeArguments().isPresent() && !ciType.getTypeArguments().get().isEmpty()) {
-					resolveType(ciType.getTypeArguments().get().get(0), items);
-				} else {
-					items.type = "string";
-				}
-				propSchema.items = items;
-			} else if (name.equals("Map") || name.equals("HashMap")) {
-				propSchema.type = "object";
-				if (ciType.getTypeArguments().isPresent() && ciType.getTypeArguments().get().size() > 1) {
-					Schema addProps = new Schema();
-					resolveType(ciType.getTypeArguments().get().get(1), addProps);
-					propSchema.additionalProperties = addProps;
-				}
-			} else {
-				propSchema.$ref = "#/components/schemas/" + name;
-			}
-		} else if (type.isArrayType()) {
-			String elemType = type.asArrayType().getComponentType().toString();
-			if (elemType.equals("byte")) {
-				propSchema.type = "string";
-				propSchema.format = "binary";
-			} else {
-				propSchema.type = "array";
-				Schema items = new Schema();
-				resolveType(type.asArrayType().getComponentType(), items);
-				propSchema.items = items;
-			}
-		} else if (type.isPrimitiveType()) {
-			String pType = type.asPrimitiveType().toString();
-			if (pType.equals("int")) {
-				propSchema.type = "integer";
-			} else if (pType.equals("long")) {
-				propSchema.type = "integer";
-				propSchema.format = "int64";
-			} else if (pType.equals("double") || pType.equals("float")) {
-				propSchema.type = "number";
-			} else if (pType.equals("boolean")) {
-				propSchema.type = "boolean";
-			}
-		} else {
-			propSchema.type = "object";
-		}
+		openapi.TypeMapper.toSchema(type, propSchema, true);
 	}
 }

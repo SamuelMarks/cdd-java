@@ -3,8 +3,15 @@ import static org.junit.Assert.*;
 
 import openapi.*;
 
+/**
+ * Unit tests for {@code tests}, {@code docstrings}, {@code mocks},
+ * {@code functions}, and {@link openapi.TypeMapper}.
+ */
 public class MiscParseEmitTest {
 
+	/**
+	 * Verifies {@link tests.Parse#parse}.
+	 */
 	@Test
 	public void testTestsParse() {
 		tests.Parse parser = new tests.Parse();
@@ -28,6 +35,13 @@ public class MiscParseEmitTest {
 		assertEquals(0, api3.paths.pathItems.size());
 	}
 
+	/**
+	 * Verifies {@link tests.Emit#emit} across all HTTP verbs and parameter
+	 * configurations.
+	 *
+	 * @throws Exception
+	 *             If emission or reflection fails.
+	 */
 	@Test
 	public void testTestsEmit() throws Exception {
 		tests.Emit emitter = new tests.Emit();
@@ -58,6 +72,10 @@ public class MiscParseEmitTest {
 		Operation opDelete = new Operation();
 		opDelete.operationId = "deleteOp";
 		pi.delete = opDelete;
+
+		Operation opPatch = new Operation();
+		opPatch.operationId = "patchOp";
+		pi.patch = opPatch;
 
 		api.paths.pathItems.put("/test", pi);
 
@@ -128,6 +146,19 @@ public class MiscParseEmitTest {
 		assertTrue(res.contains("testPostOp"));
 		assertTrue(res.contains("testPuttest"));
 		assertTrue(res.contains("testDeleteOp"));
+		assertTrue(res.contains("testPatchOp"));
+
+		OpenAPI roundTripTests = tests.Parse.parse(res);
+		assertNotNull(roundTripTests.paths.pathItems.get("/test"));
+		assertNotNull(roundTripTests.paths.pathItems.get("/test").get);
+		assertNotNull(roundTripTests.paths.pathItems.get("/test").post);
+		assertNotNull(roundTripTests.paths.pathItems.get("/test").put);
+		assertNotNull(roundTripTests.paths.pathItems.get("/test").delete);
+		assertNotNull(roundTripTests.paths.pathItems.get("/test").patch);
+		OpenAPI rootPathTest = tests.Parse.parse(
+				"public class RootIntegrationTest { public void t() { String s = \"GET /v2 HTTP/1.1\"; } public void t2(); }");
+		assertNotNull(rootPathTest.paths.pathItems.get("/"));
+		assertEquals("t", rootPathTest.paths.pathItems.get("/").get.operationId);
 
 		// empty info title
 		OpenAPI api2 = new OpenAPI();
@@ -163,7 +194,28 @@ public class MiscParseEmitTest {
 		opBasePath.operationId = "basePathOp";
 		piBasePath.get = opBasePath;
 		apiBasePath.paths.pathItems.put("/base", piBasePath);
-		tests.Emit.emit(apiBasePath, null);
+		String baseOut = tests.Emit.emit(apiBasePath, null);
+		assertTrue(baseOut.contains("http://localhost:8080/v1"));
+
+		// basePath empty string
+		apiBasePath.basePath = "";
+		String emptyBaseOut = tests.Emit.emit(apiBasePath, null);
+		assertTrue(emptyBaseOut.contains("http://localhost:8080/v2"));
+
+		// PUT with body parameter and requestBody on /createWithArray
+		PathItem piPutBody = new PathItem();
+		Operation putBodyOp = new Operation();
+		putBodyOp.operationId = "putWithBody";
+		putBodyOp.requestBody = new RequestBody();
+		putBodyOp.parameters = new java.util.ArrayList<>();
+		Parameter putBodyParam = new Parameter();
+		putBodyParam.name = "bodyParam";
+		putBodyParam.in = "body";
+		putBodyOp.parameters.add(putBodyParam);
+		piPutBody.put = putBodyOp;
+		apiBasePath.paths.pathItems.put("/createWithArray", piPutBody);
+		String putBodyOut = tests.Emit.emit(apiBasePath, null);
+		assertTrue(putBodyOut.contains("testPutWithBody"));
 
 		// servers present but URL missing "/api"
 		OpenAPI apiNoApiUrl = new OpenAPI();
@@ -213,12 +265,22 @@ public class MiscParseEmitTest {
 		assertFalse(noHaveField);
 	}
 
+	/**
+	 * Verifies {@link docstrings.Parse#parse}.
+	 */
 	@Test
 	public void testDocstringsParse() {
 		docstrings.Parse p = new docstrings.Parse();
 		assertNotNull(docstrings.Parse.parse("any"));
 	}
 
+	/**
+	 * Verifies {@link docstrings.Emit#emitDocsJson} with and without imports and
+	 * wrapping.
+	 *
+	 * @throws Exception
+	 *             If JSON serialization fails.
+	 */
 	@Test
 	public void testDocstringsEmit() throws Exception {
 		docstrings.Emit e = new docstrings.Emit();
@@ -272,6 +334,9 @@ public class MiscParseEmitTest {
 		docstrings.Emit.emitDocsJson(emptyApi, false, false);
 	}
 
+	/**
+	 * Verifies {@link mocks.Parse#parse}.
+	 */
 	@Test
 	public void testMocksParse() {
 		mocks.Parse p = new mocks.Parse();
@@ -299,6 +364,9 @@ public class MiscParseEmitTest {
 				.parse("class Mock { void test() { createContext(\"/test\"); something.createContext(\"/test\"); } }");
 	}
 
+	/**
+	 * Verifies {@link mocks.Emit#emit}.
+	 */
 	@Test
 	public void testMocksEmit() {
 		mocks.Emit e = new mocks.Emit();
@@ -344,12 +412,51 @@ public class MiscParseEmitTest {
 		mocks.Emit.emit(api3, null);
 	}
 
+	/**
+	 * Verifies {@link functions.Parse#parse}, {@link docstrings.Parse#parse}, and
+	 * {@link openapi.TypeMapper} utilities.
+	 */
 	@Test
 	public void testFunctionsParse() {
 		functions.Parse p = new functions.Parse();
+		assertNotNull(p);
+		assertNotNull(functions.Parse.parse(null));
 		assertNotNull(functions.Parse.parse("test"));
+		OpenAPI parsed = functions.Parse.parse("public class Helper { public void doWork() {} }");
+		assertNotNull(parsed.paths);
+		assertNotNull(parsed.paths.pathItems.get("/doWork"));
+		assertEquals("doWork", parsed.paths.pathItems.get("/doWork").get.operationId);
+
+		assertEquals("", openapi.TypeMapper.escape(null));
+		assertEquals("a\\\"b\\nc\\rd\\\\e", openapi.TypeMapper.escape("a\"b\nc\rd\\e"));
+		assertEquals("", openapi.TypeMapper.sanitizeIdentifier(null));
+		assertEquals("abc_123", openapi.TypeMapper.sanitizeIdentifier("a-b$c_123!"));
+		assertEquals("", openapi.TypeMapper.sanitizeAlphanumeric(null));
+		assertEquals("abc123", openapi.TypeMapper.sanitizeAlphanumeric("a-b_c 123!"));
+		Schema wildcardSchema = new Schema();
+		openapi.TypeMapper.toSchema(new com.github.javaparser.ast.type.WildcardType(), wildcardSchema, false);
+		assertNull(wildcardSchema.type);
+
+		assertNull(docstrings.Parse.parse(null).paths);
+		assertNull(docstrings.Parse.parse("not json").paths);
+		assertNull(docstrings.Parse.parse("{\"other\": 1}").paths);
+		String docsJson = "{\"endpoints\": [" + "{\"path\": \"/p1\", \"method\": \"GET\", \"operationId\": \"opGet\"},"
+				+ "{\"path\": \"/p1\", \"method\": \"POST\"}," + "{\"path\": \"/p1\", \"method\": \"PUT\"},"
+				+ "{\"path\": \"/p1\", \"method\": \"DELETE\"}," + "{\"path\": \"/p1\", \"method\": \"PATCH\"}" + "]}";
+		OpenAPI parsedDocs = docstrings.Parse.parse(docsJson);
+		assertNotNull(parsedDocs.paths);
+		PathItem docPi = parsedDocs.paths.pathItems.get("/p1");
+		assertNotNull(docPi);
+		assertEquals("opGet", docPi.get.operationId);
+		assertNotNull(docPi.post);
+		assertNotNull(docPi.put);
+		assertNotNull(docPi.delete);
+		assertNotNull(docPi.patch);
 	}
 
+	/**
+	 * Verifies {@link functions.Emit#emit}.
+	 */
 	@Test
 	public void testFunctionsEmit() {
 		functions.Emit e = new functions.Emit();
@@ -364,6 +471,13 @@ public class MiscParseEmitTest {
 		assertTrue(out3.contains("Helper Functions Generated"));
 	}
 
+	/**
+	 * Verifies {@link tests.Emit#emit} when parameter name or location fields are
+	 * missing.
+	 *
+	 * @throws Exception
+	 *             If emission fails.
+	 */
 	@Test
 	public void testMissingParamFields() throws Exception {
 		openapi.OpenAPI api = new openapi.OpenAPI();
@@ -421,6 +535,12 @@ public class MiscParseEmitTest {
 		tests.Emit.emit(api, null);
 	}
 
+	/**
+	 * Verifies additional class resolution branches in {@link mocks.Emit#emit}.
+	 *
+	 * @throws Exception
+	 *             If emission fails.
+	 */
 	@Test
 	public void testMocksEmitBranches() throws Exception {
 		openapi.OpenAPI api = new openapi.OpenAPI();

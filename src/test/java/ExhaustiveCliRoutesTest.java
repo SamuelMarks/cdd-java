@@ -6,8 +6,16 @@ import java.io.*;
 import java.nio.file.*;
 import java.lang.reflect.*;
 
+/**
+ * Exhaustive unit tests for CLI and Routes parse/emit edge cases and CLI entry
+ * points.
+ */
 public class ExhaustiveCliRoutesTest {
 
+	/**
+	 * Verifies {@link cli.Emit#emitCli} with empty OpenAPI component and operation
+	 * objects.
+	 */
 	@Test
 	public void testCliEmitEmptyObjects() {
 		OpenAPI api = new OpenAPI();
@@ -53,6 +61,10 @@ public class ExhaustiveCliRoutesTest {
 		assertNotNull(out);
 	}
 
+	/**
+	 * Verifies {@link cli.Parse#parse} when encoding keys must be initialized on
+	 * the fly.
+	 */
 	@Test
 	public void testCliParseMissingKeys() {
 		String cliOutput = "private static void printHelp() {\n"
@@ -75,6 +87,13 @@ public class ExhaustiveCliRoutesTest {
 		assertNotNull(api);
 	}
 
+	/**
+	 * Verifies internal helper methods and CLI flags on {@link cli.CddCli} and
+	 * {@link cli.Main}.
+	 *
+	 * @throws Exception
+	 *             If reflective invocation fails.
+	 */
 	@Test
 	public void testCliMainReflection() throws Exception {
 		System.setProperty("cdd.test", "true");
@@ -131,6 +150,10 @@ public class ExhaustiveCliRoutesTest {
 		assertNotNull(resolveFile.invoke(null, "/absolute/path"));
 	}
 
+	/**
+	 * Verifies {@link routes.Parse#parse} and {@link routes.Emit#emit} on response
+	 * headers, content, and links.
+	 */
 	@Test
 	public void testRoutesParseEmit() {
 		String code = "class Routes {\n" + "  /**\n" + "   * @responseHeader 404 x-err desc\n"

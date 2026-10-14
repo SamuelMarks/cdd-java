@@ -14,7 +14,6 @@ import java.util.Map;
 /**
  * Emitter for server routes.
  */
-@cli.Generated
 public class Emit {
 
 	/**
@@ -61,27 +60,12 @@ public class Emit {
 
 			String javalinPath = path.replaceAll("\\{([^}]+)\\}", "<$1>");
 
-			// Link routes to DAO operations
-			String operationId = null;
-			if (pi.get != null)
-				operationId = pi.get.operationId;
-			else if (pi.post != null)
-				operationId = pi.post.operationId;
-			else if (pi.put != null)
-				operationId = pi.put.operationId;
-			else if (pi.patch != null)
-				operationId = pi.patch.operationId;
-			else if (pi.delete != null)
-				operationId = pi.delete.operationId;
-
 			String singularName = resourceName.endsWith("s")
 					? resourceName.substring(0, resourceName.length() - 1)
 					: resourceName;
 
 			if (singularName.equals("Store")) {
 				singularName = "Order";
-			} else if (singularName.equals("User")) {
-				singularName = "User"; // Keep user
 			}
 
 			if (pi.get != null) {
@@ -134,6 +118,14 @@ public class Emit {
 		return files;
 	}
 
+	/**
+	 * Extracts a PascalCase resource name from an OpenAPI URL path template.
+	 *
+	 * @param path
+	 *            The URL path template.
+	 * @return The extracted resource name, or {@code "Root"} if no static segments
+	 *         exist.
+	 */
 	private static String getResourceName(String path) {
 		String[] parts = path.split("/");
 		for (String p : parts) {

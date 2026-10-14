@@ -12,7 +12,6 @@ import java.util.Map;
 /**
  * Emitter for server main.
  */
-@cli.Generated
 public class Emit {
 
 	/**

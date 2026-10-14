@@ -1,7 +1,6 @@
 package cli;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.BufferedReader;
@@ -11,13 +10,30 @@ import java.util.ArrayList;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.function.Function;
 import openapi.OpenAPI;
 
 /**
  * CLI Entrypoint.
  */
-public @Generated class CddCli {
+public class CddCli {
+
+	/**
+	 * Environment variable lookup function, defaulting to
+	 * {@link System#getenv(String)}.
+	 */
+	public static Function<String, String> envProvider = System::getenv;
+
+	/**
+	 * Active HTTP JSON-RPC server instance when running in non-WASI HTTP mode.
+	 */
+	public static com.sun.net.httpserver.HttpServer activeHttpServer = null;
+
+	/**
+	 * Default directory used when scanning the current workspace in memory or via
+	 * MCP.
+	 */
+	public static File workspaceDir = new File("src/main/java");
 
 	/**
 	 * Default constructor.
@@ -26,10 +42,14 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * resolveFile doc
+	 * Resolves a file path against the WASI virtual root if configured.
+	 *
+	 * @param path
+	 *            The file path to resolve.
+	 * @return The resolved {@link File} instance.
 	 */
 	private static File resolveFile(String path) {
-		String vfsRoot = System.getenv("CDD_WASI_VIRTUAL_ROOT");
+		String vfsRoot = envProvider.apply("CDD_WASI_VIRTUAL_ROOT");
 		if (vfsRoot != null && path.startsWith("/")) {
 			return new File(vfsRoot, path.substring(1));
 		}
@@ -37,57 +57,43 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * Entrypoint.
+	 * WASI and CLI entrypoint accepting arguments.
 	 *
 	 * @param args
-	 *            arguments
+	 *            The command-line arguments.
 	 * @throws Exception
-	 *             on error
+	 *             If command execution fails.
 	 */
 	public static void _start(String[] args) throws Exception {
 		run(args);
 	}
 
 	/**
-	 * Start.
+	 * Default WASI entrypoint taking no arguments.
 	 *
 	 * @throws Exception
-	 *             if an error occurs
-	 */
-	/**
-	 * Method.
-	 *
-	 * @throws Exception
-	 *             if an error occurs
+	 *             If command execution fails.
 	 */
 	public static void _start() throws Exception {
 		run(new String[0]);
 	}
 
 	/**
-	 * Main method.
-	 *
-	 * @param args
-	 *            The command line arguments.
-	 * @throws Exception
-	 *             if an error occurs
-	 */
-	/**
 	 * Generates code from an OpenAPI specification.
 	 *
 	 * @param subCommand
-	 *            Subcommand (e.g. to_sdk)
+	 *            Subcommand (e.g. to_sdk, to_sdk_cli, to_server).
 	 * @param input
-	 *            Input file
+	 *            Input OpenAPI specification file or directory path.
 	 * @param outputDir
-	 *            Output directory
+	 *            Target output directory path.
 	 * @param noGithubActions
-	 *            Disable Github Actions
+	 *            Whether to disable GitHub Actions workflow generation.
 	 * @param noInstallablePackage
-	 *            Disable installable package
+	 *            Whether to disable installable package (pom.xml) generation.
 	 * @param generateTests
-	 *            Generate tests
-	 * @return Exit code (0 for success).
+	 *            Whether to generate integration tests and mock servers.
+	 * @return Exit code (0 for success, 1 for error).
 	 */
 	public static int generateFromOpenApi(String subCommand, String input, String outputDir, boolean noGithubActions,
 			boolean noInstallablePackage, boolean generateTests) {
@@ -214,13 +220,16 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * Synchronize database schema to models and OpenAPI specifications.
+	 * Synchronizes database schema, models, and OpenAPI specifications in a
+	 * directory.
 	 *
 	 * @param inputDir
-	 *            Input directory
+	 *            Input source directory path.
+	 * @param outputDir
+	 *            Output directory path (or null to update in place).
 	 * @param truth
-	 *            Truth type
-	 * @return Exit code (0 for success).
+	 *            Source of truth type.
+	 * @return Exit code (0 for success, 1 for error).
 	 */
 	public static int sync(String inputDir, String outputDir, String truth) {
 		List<String> argsList = new ArrayList<>();
@@ -246,28 +255,28 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * Start MCP server.
+	 * Starts the Model Context Protocol (MCP) JSON-RPC server.
 	 *
 	 * @param port
-	 *            Port
+	 *            Port number to listen on.
 	 * @param listen
-	 *            Listen address
+	 *            Host address to bind to.
 	 * @param wasi
-	 *            WASI flag
-	 * @return Exit code (0 for success).
+	 *            Whether to run over STDIO in WASI mode.
+	 * @return Exit code (0 for success, 1 for error).
 	 */
 	public static int mcp(String port, String listen, boolean wasi) {
 		return serveJsonRpc(port, listen, wasi);
 	}
 
 	/**
-	 * run doc
+	 * Parses and executes CLI subcommands from raw command-line arguments.
 	 *
 	 * @param args
 	 *            Command-line arguments.
 	 * @return Exit code (0 for success).
 	 * @throws Exception
-	 *             if an error occurs.
+	 *             If an invalid command or execution error occurs.
 	 */
 	public static int run(String[] args) throws Exception {
 		if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
@@ -333,10 +342,8 @@ public @Generated class CddCli {
 			if (targetFile.isDirectory()) {
 				File[] files = targetFile.listFiles(
 						(d, name) -> name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml"));
-				if (files != null) {
-					for (File f : files)
-						specFiles.add(f);
-				}
+				for (File f : files)
+					specFiles.add(f);
 			} else {
 				specFiles.add(targetFile);
 			}
@@ -370,23 +377,18 @@ public @Generated class CddCli {
 					writeFile(new File(srcMainJava, "Sdk.java"), code);
 					System.out.println("Generated SDK in " + outDir.getAbsolutePath());
 					if (generateTests) {
+						String title = (api.info != null && api.info.title != null)
+								? api.info.title.replaceAll("[^a-zA-Z0-9]", "")
+								: "Api";
+						if (title.isEmpty())
+							title = "Api";
 						String testCode = tests.Emit.emit(api, null);
-						String title1 = (api.info != null && api.info.title != null)
-								? api.info.title.replaceAll("[^a-zA-Z0-9]", "")
-								: "Api";
-						if (title1.isEmpty())
-							title1 = "Api";
-						writeFile(new File(srcTestJava, title1 + "IntegrationTest.java"), testCode);
+						writeFile(new File(srcTestJava, title + "IntegrationTest.java"), testCode);
 						String mockCode = mocks.Emit.emit(api, null);
-						String title2 = (api.info != null && api.info.title != null)
-								? api.info.title.replaceAll("[^a-zA-Z0-9]", "")
-								: "Api";
-						if (title2.isEmpty())
-							title2 = "Api";
-						writeFile(new File(srcTestJava, title2 + "MockServer.java"), mockCode);
+						writeFile(new File(srcTestJava, title + "MockServer.java"), mockCode);
 						System.out.println("Generated Composable Tests & Mocks in " + outDir.getAbsolutePath());
 					}
-				} else if (subCommand.equals("to_server")) {
+				} else {
 					java.util.Map<String, String> modelsCode = classes.Emit.emitModular(api);
 					for (java.util.Map.Entry<String, String> e : modelsCode.entrySet()) {
 						writeFile(new File(outDir, "src/main/java/" + e.getKey()), e.getValue());
@@ -413,11 +415,7 @@ public @Generated class CddCli {
 					}
 					java.util.Map<String, String> sTests = servertests.Emit.emitModular(api);
 					for (java.util.Map.Entry<String, String> e : sTests.entrySet()) {
-						if (e.getKey().startsWith("../main/")) {
-							writeFile(new File(outDir, "src/" + e.getKey().substring(3)), e.getValue());
-						} else {
-							writeFile(new File(outDir, "src/test/java/" + e.getKey()), e.getValue());
-						}
+						writeFile(new File(outDir, "src/test/java/" + e.getKey()), e.getValue());
 					}
 					java.util.Map<String, String> sMocks = mocks.Emit.emitModular(api);
 					for (java.util.Map.Entry<String, String> e : sMocks.entrySet()) {
@@ -482,14 +480,10 @@ public @Generated class CddCli {
 			String listen = getArg(args, "-l", "--listen", "CDD_LISTEN");
 			if (listen == null)
 				listen = "127.0.0.1";
-			// If --wasi is present, continue with STDIO
 			if (wasi) {
 				startStdioJsonRpcServer();
 			} else {
-				// For now, standard server behaves same as WASI due to Java's lack of built-in
-				// lightweight HTTP server,
-				// but we parse the flags for consistency.
-				startStdioJsonRpcServer();
+				startHttpJsonRpcServer(listen, Integer.parseInt(portStr));
 			}
 		} else if (command.equals("sync")) {
 			if (hasFlag(args, "-h", "--help", null)) {
@@ -506,7 +500,7 @@ public @Generated class CddCli {
 			String outputDir = getArg(args, "-o", "--output", "CDD_OUTPUT");
 			String truth = getArg(args, "--truth", "--truth", "CDD_TRUTH");
 			File dir = resolveFile(dirPath);
-			OpenAPI fullApi = extractOpenAPI(dir);
+			OpenAPI fullApi = extractOpenAPI(dir, truth);
 			List<File> javaFiles = new ArrayList<>();
 			findJavaFiles(dir, javaFiles);
 			for (File jf : javaFiles) {
@@ -524,9 +518,9 @@ public @Generated class CddCli {
 				} else if (absPath.contains("/tests/")) {
 					newSource = tests.Emit.emit(fullApi, source);
 				} else if (absPath.contains("/functions/")) {
+					newSource = functions.Emit.emit(fullApi, source);
 				} else if (absPath.contains("/cli/")) {
 					newSource = cli.Emit.emitCli(fullApi);
-					newSource = functions.Emit.emit(fullApi, source);
 				}
 				File targetFile = jf;
 				if (outputDir != null) {
@@ -593,20 +587,15 @@ public @Generated class CddCli {
 				} else if (subCommand.equals("to_sdk")) {
 					outFiles.put("src/main/java/Sdk.java", classes.Emit.emit(api, null));
 					if (generateTests) {
-						String title3 = (api.info != null && api.info.title != null)
+						String title = (api.info != null && api.info.title != null)
 								? api.info.title.replaceAll("[^a-zA-Z0-9]", "")
 								: "Api";
-						if (title3.isEmpty())
-							title3 = "Api";
-						outFiles.put("src/test/java/" + title3 + "IntegrationTest.java", tests.Emit.emit(api, null));
-						String title4 = (api.info != null && api.info.title != null)
-								? api.info.title.replaceAll("[^a-zA-Z0-9]", "")
-								: "Api";
-						if (title4.isEmpty())
-							title4 = "Api";
-						outFiles.put("src/test/java/" + title4 + "MockServer.java", mocks.Emit.emit(api, null));
+						if (title.isEmpty())
+							title = "Api";
+						outFiles.put("src/test/java/" + title + "IntegrationTest.java", tests.Emit.emit(api, null));
+						outFiles.put("src/test/java/" + title + "MockServer.java", mocks.Emit.emit(api, null));
 					}
-				} else if (subCommand.equals("to_server")) {
+				} else {
 					for (java.util.Map.Entry<String, String> e : classes.Emit.emitModular(api).entrySet()) {
 						outFiles.put(e.getKey(), e.getValue());
 					}
@@ -632,12 +621,8 @@ public @Generated class CddCli {
 						outFiles.put(e.getKey(), e.getValue());
 					}
 				}
-			} else if (command.equals("to_openapi")) {
-				OpenAPI api = extractOpenAPI(new File("."));
-				String spec = openapi.Emit.toString(api);
-				outFiles.put("spec.json", spec);
-			} else if (command.equals("sync")) {
-				OpenAPI api = extractOpenAPI(new File("."));
+			} else if (command.equals("to_openapi") || command.equals("sync")) {
+				OpenAPI api = extractOpenAPI(workspaceDir);
 				String spec = openapi.Emit.toString(api);
 				outFiles.put("spec.json", spec);
 			} else if (command.equals("to_docs_json")) {
@@ -659,7 +644,7 @@ public @Generated class CddCli {
 		} catch (Exception e) {
 			JSONObject err = new JSONObject();
 			err.put("success", false);
-			err.put("error", e.getMessage() != null ? e.getMessage() : e.toString());
+			err.put("error", String.valueOf(e.getMessage()));
 			System.out.println("CDD_IN_MEMORY_START");
 			System.out.println(err.toString());
 			System.out.println("CDD_IN_MEMORY_END");
@@ -667,29 +652,42 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * writeFile doc
+	 * Writes string content to a UTF-8 file, creating parent directories if
+	 * necessary.
+	 *
+	 * @param file
+	 *            The target file to write.
+	 * @param content
+	 *            The UTF-8 string content to write.
+	 * @throws IOException
+	 *             If writing fails.
 	 */
 	private static void writeFile(File file, String content) throws IOException {
-		if (file.getParentFile() != null)
-			file.getParentFile().mkdirs();
+		File absParent = file.getAbsoluteFile().getParentFile();
+		absParent.mkdirs();
 		try (FileOutputStream fos = new FileOutputStream(file)) {
 			fos.write(content.getBytes("UTF-8"));
 		}
 	}
 
 	/**
-	 * readFile doc
+	 * Reads the entire contents of a file as a UTF-8 string.
+	 *
+	 * @param file
+	 *            The file to read.
+	 * @return The file contents as a UTF-8 string.
+	 * @throws IOException
+	 *             If reading fails.
 	 */
 	private static String readFile(File file) throws IOException {
-		try (FileInputStream fis = new FileInputStream(file)) {
-			byte[] data = new byte[(int) file.length()];
-			fis.read(data);
-			return new String(data, "UTF-8");
-		}
+		return java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
 	}
 
 	/**
-	 * getScaffoldingPom doc
+	 * Generates the default Maven {@code pom.xml} scaffolding content for generated
+	 * projects.
+	 *
+	 * @return The XML content for {@code pom.xml}.
 	 */
 	private static String getScaffoldingPom() {
 		return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" "
@@ -720,21 +718,35 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * generateScaffolding doc
+	 * Writes the Maven {@code pom.xml} scaffolding file into the specified
+	 * directory.
+	 *
+	 * @param dir
+	 *            The target project directory.
+	 * @throws IOException
+	 *             If writing {@code pom.xml} fails.
 	 */
 	private static void generateScaffolding(File dir) throws IOException {
 		writeFile(new File(dir, "pom.xml"), getScaffoldingPom());
 	}
 
 	/**
-	 * getGithubActionsCi doc
+	 * Generates the default GitHub Actions CI workflow YAML content.
+	 *
+	 * @return The YAML content for {@code .github/workflows/ci.yml}.
 	 */
 	private static String getGithubActionsCi() {
 		return "name: CI\non: [push, pull_request]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v6\n    - name: Set up JDK\n      uses: actions/setup-java@v3\n      with:\n        java-version: '11'\n        distribution: 'temurin'\n    - name: Build with Maven\n      run: mvn clean install\n";
 	}
 
 	/**
-	 * generateGithubActions doc
+	 * Writes the GitHub Actions CI workflow into {@code .github/workflows/ci.yml}
+	 * inside the target directory.
+	 *
+	 * @param dir
+	 *            The target project directory.
+	 * @throws IOException
+	 *             If writing the workflow file fails.
 	 */
 	private static void generateGithubActions(File dir) throws IOException {
 		File ghDir = new File(dir, ".github/workflows");
@@ -743,7 +755,49 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * startStdioJsonRpcServer doc
+	 * Starts an HTTP JSON-RPC 2.0 / MCP server on the specified host and port, also
+	 * processing any lines buffered on standard input.
+	 *
+	 * @param listen
+	 *            The host address to bind to.
+	 * @param port
+	 *            The TCP port to listen on (0 for an ephemeral port).
+	 * @throws Exception
+	 *             If starting or running the server fails.
+	 */
+	private static void startHttpJsonRpcServer(String listen, int port) throws Exception {
+		if (activeHttpServer != null) {
+			activeHttpServer.stop(0);
+			activeHttpServer = null;
+		}
+		com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer
+				.create(new java.net.InetSocketAddress(listen, port), 0);
+		server.createContext("/", exchange -> {
+			byte[] reqBytes = exchange.getRequestBody().readAllBytes();
+			String reqBody = new String(reqBytes, java.nio.charset.StandardCharsets.UTF_8).trim();
+			String resp = handleJsonRpcRequest(reqBody);
+			if (resp != null) {
+				byte[] respBytes = resp.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+				exchange.getResponseHeaders().set("Content-Type", "application/json");
+				exchange.sendResponseHeaders(200, respBytes.length);
+				try (java.io.OutputStream os = exchange.getResponseBody()) {
+					os.write(respBytes);
+				}
+			} else {
+				exchange.sendResponseHeaders(204, -1);
+			}
+		});
+		server.start();
+		activeHttpServer = server;
+		startStdioJsonRpcServer();
+	}
+
+	/**
+	 * Starts the JSON-RPC 2.0 / MCP server loop over standard input and standard
+	 * output.
+	 *
+	 * @throws Exception
+	 *             If reading from standard input fails.
 	 */
 	private static void startStdioJsonRpcServer() throws Exception {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
@@ -752,108 +806,139 @@ public @Generated class CddCli {
 			line = line.trim();
 			if (line.isEmpty())
 				continue;
-			String response;
-			try {
-				JSONObject req = new JSONObject(line);
-				Object idObj = req.has("id") && !req.isNull("id") ? req.get("id") : null;
-				String idStr = idObj != null ? idObj.toString() : "null";
-				if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
-					String method = req.has("method") ? req.getString("method") : "";
-					if ("initialize".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.3\"}},\"id\":"
-								+ idStr + "}";
-					} else if ("notifications/initialized".equals(method) || "initialized".equals(method)) {
-						continue;
-					} else if ("ping".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":{},\"id\":" + idStr + "}";
-					} else if ("$/cancelRequest".equals(method) || "cancelled".equals(method)) {
-						continue;
-					} else if ("tools/list".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[{\"name\":\"cdd_generate\",\"description\":\"Generate code from OpenAPI or sync code\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"files\":{\"type\":\"object\"}},\"required\":[\"command\"]}}]},\"id\":"
-								+ idStr + "}";
-					} else if ("resources/list".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/openapi\",\"name\":\"OpenAPI AST\",\"mimeType\":\"application/json\"}]},\"id\":"
-								+ idStr + "}";
-					} else if ("resources/read".equals(method)) {
-						JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
-						String uri = params.has("uri") ? params.getString("uri") : "";
-						if ("cdd://ast/openapi".equals(uri)) {
-							String astText = "{}";
-							try {
-								OpenAPI api = extractOpenAPI(new File("."));
-								astText = openapi.Emit.toString(api);
-							} catch (Exception e) {
-								astText = "{}";
-							}
-							response = "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":"
-									+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
-						} else {
-							response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Resource not found\"},\"id\":"
-									+ idStr + "}";
-						}
-					} else if ("tools/call".equals(method)) {
-						JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
-						String toolName = params.has("name") ? params.getString("name") : "";
-						if ("cdd_generate".equals(toolName)) {
-							JSONObject args = params.has("arguments")
-									? params.getJSONObject("arguments")
-									: new JSONObject();
-							java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-							java.io.PrintStream ps = new java.io.PrintStream(baos);
-							java.io.PrintStream oldOut = System.out;
-							System.setOut(ps);
-							try {
-								processInMemory(args.toString());
-							} finally {
-								System.setOut(oldOut);
-							}
-							String output = baos.toString("UTF-8");
-							JSONObject content = new JSONObject();
-							content.put("type", "text");
-							content.put("text", output);
-							JSONArray contentArr = new JSONArray();
-							contentArr.put(content);
-							JSONObject resultObj = new JSONObject();
-							resultObj.put("content", contentArr);
-							response = "{\"jsonrpc\":\"2.0\",\"result\":" + resultObj.toString() + ",\"id\":" + idStr
-									+ "}";
-						} else {
-							response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Tool not found\"},\"id\":"
-									+ idStr + "}";
-						}
-					} else if ("version".equals(method)) {
-						response = "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.3\",\"id\":" + idStr + "}";
-					} else if ("notifications/progress".equals(method) || "progress".equals(method)) {
-						continue;
-					} else {
-						if (idObj == null)
-							continue;
-						response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":"
-								+ idStr + "}";
-					}
-				} else {
-					if (idObj == null)
-						continue;
-					response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"},\"id\":null}";
-				}
-			} catch (Exception e) {
-				response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error\"},\"id\":null}";
+			String response = handleJsonRpcRequest(line);
+			if (response != null) {
+				System.out.println(response);
+				System.out.flush();
 			}
-			System.out.println(response);
-			System.out.flush();
 		}
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Processes a single JSON-RPC 2.0 request line and returns the serialized
+	 * JSON-RPC response string, or {@code null} for notifications that require no
+	 * response.
+	 *
+	 * @param line
+	 *            The raw JSON-RPC 2.0 request string.
+	 * @return The JSON-RPC 2.0 response string, or {@code null} for notifications.
+	 */
+	public static String handleJsonRpcRequest(String line) {
+		try {
+			JSONObject req = new JSONObject(line);
+			Object idObj = req.has("id") && !req.isNull("id") ? req.get("id") : null;
+			String idStr = idObj != null ? JSONObject.valueToString(idObj) : "null";
+			if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
+				String method = req.optString("method", "");
+				if ("initialize".equals(method)) {
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.3\"}},\"id\":"
+							+ idStr + "}";
+				} else if ("notifications/initialized".equals(method) || "initialized".equals(method)
+						|| "$/cancelRequest".equals(method) || "cancelled".equals(method)
+						|| "notifications/progress".equals(method) || "progress".equals(method)) {
+					return null;
+				} else if ("ping".equals(method)) {
+					return "{\"jsonrpc\":\"2.0\",\"result\":{},\"id\":" + idStr + "}";
+				} else if ("tools/list".equals(method)) {
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[{\"name\":\"cdd_generate\",\"description\":\"Generate code from OpenAPI or sync code\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"files\":{\"type\":\"object\"}},\"required\":[\"command\"]}}]},\"id\":"
+							+ idStr + "}";
+				} else if ("resources/list".equals(method)) {
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/openapi\",\"name\":\"OpenAPI AST\",\"mimeType\":\"application/json\"}]},\"id\":"
+							+ idStr + "}";
+				} else if ("resources/read".equals(method)) {
+					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
+					String uri = params.optString("uri", "");
+					if ("cdd://ast/openapi".equals(uri)) {
+						OpenAPI api = extractOpenAPI(workspaceDir);
+						String astText = openapi.Emit.toString(api);
+						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":"
+								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
+					} else {
+						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Resource not found\"},\"id\":"
+								+ idStr + "}";
+					}
+				} else if ("tools/call".equals(method)) {
+					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
+					String toolName = params.optString("name", "");
+					if ("cdd_generate".equals(toolName)) {
+						JSONObject args = params.has("arguments")
+								? params.getJSONObject("arguments")
+								: new JSONObject();
+						java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+						java.io.PrintStream ps = new java.io.PrintStream(baos);
+						java.io.PrintStream oldOut = System.out;
+						System.setOut(ps);
+						try {
+							processInMemory(args.toString());
+						} finally {
+							System.setOut(oldOut);
+						}
+						String output = baos.toString("UTF-8");
+						JSONObject content = new JSONObject();
+						content.put("type", "text");
+						content.put("text", output);
+						JSONArray contentArr = new JSONArray();
+						contentArr.put(content);
+						JSONObject resultObj = new JSONObject();
+						resultObj.put("content", contentArr);
+						return "{\"jsonrpc\":\"2.0\",\"result\":" + resultObj.toString() + ",\"id\":" + idStr + "}";
+					} else {
+						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Tool not found\"},\"id\":"
+								+ idStr + "}";
+					}
+				} else if ("version".equals(method)) {
+					return "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.3\",\"id\":" + idStr + "}";
+				} else {
+					if (idObj == null)
+						return null;
+					return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":"
+							+ idStr + "}";
+				}
+			} else {
+				if (idObj == null)
+					return null;
+				return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"},\"id\":null}";
+			}
+		} catch (Exception e) {
+			return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error\"},\"id\":null}";
+		}
+	}
+
+	/**
+	 * Extracts an aggregated OpenAPI specification by parsing all Java files in a
+	 * directory or file path.
 	 *
 	 * @param dir
-	 *            param doc
-	 * @throws java.lang.Exception
-	 *             exception doc
-	 * @return return doc
+	 *            The root directory or single Java file to scan.
+	 * @return The extracted {@link OpenAPI} model.
+	 * @throws Exception
+	 *             If reading or parsing files fails.
 	 */
 	private static OpenAPI extractOpenAPI(File dir) throws Exception {
+		return extractOpenAPI(dir, null);
+	}
+
+	/**
+	 * Extracts an aggregated OpenAPI specification by parsing source files in a
+	 * directory or file path, optionally prioritizing a source of truth.
+	 *
+	 * @param dir
+	 *            The root directory or single file to scan.
+	 * @param truth
+	 *            Optional source of truth filter (e.g. {@code "openapi"},
+	 *            {@code "orm"}, {@code "classes"}, {@code "routes"}, or
+	 *            {@code null} for all).
+	 * @return The extracted {@link OpenAPI} model.
+	 * @throws Exception
+	 *             If reading or parsing files fails.
+	 */
+	private static OpenAPI extractOpenAPI(File dir, String truth) throws Exception {
+		if ("openapi".equalsIgnoreCase(truth)) {
+			File specFile = new File(dir, "openapi.json");
+			if (specFile.exists()) {
+				return openapi.Parse.fromFile(specFile);
+			}
+		}
 		List<File> javaFiles = new ArrayList<>();
 		findJavaFiles(dir, javaFiles);
 		OpenAPI fullApi = new OpenAPI();
@@ -867,41 +952,53 @@ public @Generated class CddCli {
 		fullApi.components.schemas = new java.util.HashMap<>();
 		for (File jf : javaFiles) {
 			String source = readFile(jf);
-			OpenAPI apiPaths = routes.Parse.parse(source);
-			if (apiPaths.paths != null && apiPaths.paths.pathItems != null)
+			if (!"orm".equalsIgnoreCase(truth) && !"classes".equalsIgnoreCase(truth)) {
+				OpenAPI apiPaths = routes.Parse.parse(source);
 				fullApi.paths.pathItems.putAll(apiPaths.paths.pathItems);
-			OpenAPI mockPaths = mocks.Parse.parse(source);
-			if (mockPaths.paths != null && mockPaths.paths.pathItems != null) {
+				OpenAPI mockPaths = mocks.Parse.parse(source);
 				for (java.util.Map.Entry<String, openapi.PathItem> entry : mockPaths.paths.pathItems.entrySet()) {
 					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
 				}
-			}
-			OpenAPI apiClasses = classes.Parse.parse(source);
-			if (apiClasses.components != null && apiClasses.components.schemas != null) {
-				fullApi.components.schemas.putAll(apiClasses.components.schemas);
-			}
-			OpenAPI ormClasses = orm.Parse.parse(source);
-			if (ormClasses.components != null && ormClasses.components.schemas != null) {
-				fullApi.components.schemas.putAll(ormClasses.components.schemas);
-			}
-			OpenAPI testsPaths = tests.Parse.parse(source);
-			OpenAPI cliPaths = cli.Parse.parse(source);
-			if (cliPaths.paths != null && cliPaths.paths.pathItems != null) {
-				for (java.util.Map.Entry<String, openapi.PathItem> entry : cliPaths.paths.pathItems.entrySet()) {
-					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
+				OpenAPI cliPaths = cli.Parse.parse(source);
+				if (cliPaths.paths != null) {
+					for (java.util.Map.Entry<String, openapi.PathItem> entry : cliPaths.paths.pathItems.entrySet()) {
+						fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
+					}
 				}
-			}
-			if (testsPaths.paths != null && testsPaths.paths.pathItems != null) {
+				OpenAPI testsPaths = tests.Parse.parse(source);
 				for (java.util.Map.Entry<String, openapi.PathItem> entry : testsPaths.paths.pathItems.entrySet()) {
 					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
 				}
+				OpenAPI fnPaths = functions.Parse.parse(source);
+				for (java.util.Map.Entry<String, openapi.PathItem> entry : fnPaths.paths.pathItems.entrySet()) {
+					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
+				}
+			}
+			if (!"orm".equalsIgnoreCase(truth)) {
+				OpenAPI apiClasses = classes.Parse.parse(source);
+				fullApi.components.schemas.putAll(apiClasses.components.schemas);
+			}
+			if (!"classes".equalsIgnoreCase(truth)) {
+				OpenAPI ormClasses = orm.Parse.parse(source);
+				fullApi.components.schemas.putAll(ormClasses.components.schemas);
 			}
 		}
 		return fullApi;
 	}
 
 	/**
-	 * getArg doc
+	 * Retrieves a command-line option value by short flag, long flag, or fallback
+	 * environment variable.
+	 *
+	 * @param args
+	 *            The command-line arguments array.
+	 * @param shortFlag
+	 *            The short flag (e.g. {@code -i}).
+	 * @param longFlag
+	 *            The long flag (e.g. {@code --input}).
+	 * @param envVar
+	 *            The fallback environment variable name, or {@code null}.
+	 * @return The resolved argument value, or {@code null} if not present.
 	 */
 	private static String getArg(String[] args, String shortFlag, String longFlag, String envVar) {
 		for (int i = 0; i < args.length - 1; i++) {
@@ -910,14 +1007,24 @@ public @Generated class CddCli {
 			}
 		}
 		if (envVar != null) {
-			String env = System.getenv(envVar);
-			return env;
+			return envProvider.apply(envVar);
 		}
 		return null;
 	}
 
 	/**
-	 * hasFlag doc
+	 * Checks whether a boolean flag is enabled via command-line arguments or
+	 * environment variable.
+	 *
+	 * @param args
+	 *            The command-line arguments array.
+	 * @param shortFlag
+	 *            The short flag (e.g. {@code -h}).
+	 * @param longFlag
+	 *            The long flag (e.g. {@code --help}).
+	 * @param envVar
+	 *            The fallback environment variable name, or {@code null}.
+	 * @return {@code true} if the flag is set; {@code false} otherwise.
 	 */
 	private static boolean hasFlag(String[] args, String shortFlag, String longFlag, String envVar) {
 		for (String arg : args) {
@@ -925,21 +1032,29 @@ public @Generated class CddCli {
 				return true;
 		}
 		if (envVar != null) {
-			String env = System.getenv(envVar);
+			String env = envProvider.apply(envVar);
 			return "true".equalsIgnoreCase(env) || "1".equals(env);
 		}
 		return false;
 	}
 
 	/**
-	 * findJavaFiles doc
+	 * Recursively collects all {@code .java} files within a directory or single
+	 * file.
+	 *
+	 * @param dir
+	 *            The root directory or file to inspect.
+	 * @param result
+	 *            The list to populate with discovered Java files.
 	 */
 	private static void findJavaFiles(File dir, List<File> result) {
-		if (dir.isFile() && dir.getName().endsWith(".java")) {
-			result.add(dir);
-		} else if (dir.isDirectory()) {
+		if (dir.isFile()) {
+			if (dir.getName().endsWith(".java")) {
+				result.add(dir);
+			}
+		} else {
 			File[] files = dir.listFiles();
-			{
+			if (files != null) {
 				for (File f : files)
 					findJavaFiles(f, result);
 			}
@@ -947,7 +1062,7 @@ public @Generated class CddCli {
 	}
 
 	/**
-	 * printHelp doc
+	 * Prints the CLI usage and help text to standard output.
 	 */
 	private static void printHelp() {
 		System.out.println("cdd-java CLI");

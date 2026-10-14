@@ -25,14 +25,45 @@ public class RefResolver {
 	public Map<String, String> cache = new HashMap<>();
 
 	/**
+	 * Valid OpenAPI component categories for reference bundling.
+	 */
+	public static final java.util.Set<String> VALID_COMPONENT_CATEGORIES = new java.util.HashSet<>(
+			java.util.Arrays.asList("schemas", "responses", "parameters", "examples", "requestBodies", "headers",
+					"securitySchemes", "links", "callbacks", "pathItems", "mediaTypes"));
+
+	/**
 	 * Fetched JSON objects mapped by URI string.
 	 */
 	public Map<String, JSONObject> jsonCache = new HashMap<>();
 
 	/**
+	 * Cache mapping canonical resolved URI+fragment strings to bundled component
+	 * names.
+	 */
+	public Map<String, String> bundledKeyCache = new HashMap<>();
+
+	/**
 	 * Counter for naming conflicts.
 	 */
 	private int nameCounter = 1;
+
+	/**
+	 * Shared HTTP client for fetching remote OpenAPI references.
+	 */
+	private static volatile HttpClient httpClient;
+
+	/**
+	 * Returns the shared {@link HttpClient} instance, initializing it lazily on
+	 * first HTTP/HTTPS request.
+	 *
+	 * @return The shared {@link HttpClient} instance.
+	 */
+	private static HttpClient getHttpClient() {
+		if (httpClient == null) {
+			httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
+		}
+		return httpClient;
+	}
 
 	/**
 	 * Default constructor.
@@ -55,21 +86,24 @@ public class RefResolver {
 		try {
 			URI uri = new URI(baseUri).resolve(ref);
 			// Strip fragment for fetching
-			String uriStr = new URI(uri.getScheme(), uri.getSchemeSpecificPart(), null).toString();
+			URI noFragmentUri = new URI(uri.getScheme(), uri.getSchemeSpecificPart(), null);
+			String uriStr = noFragmentUri.toString();
 			if (cache.containsKey(uriStr)) {
 				return cache.get(uriStr);
 			}
 			String content;
-			if (uri.getScheme() != null && (uri.getScheme().equals("http") || uri.getScheme().equals("https"))) {
-				HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
-				HttpRequest req = HttpRequest.newBuilder(new URI(uriStr)).GET().build();
-				HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+			String scheme = noFragmentUri.getScheme();
+			if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+				HttpRequest req = HttpRequest.newBuilder(noFragmentUri).GET().build();
+				HttpResponse<String> res = getHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
 				if (res.statusCode() >= 400) {
 					throw new IOException("Failed to fetch " + uriStr + ": HTTP " + res.statusCode());
 				}
 				content = res.body();
 			} else {
-				Path path = Paths.get(uri.getPath());
+				Path path = "file".equalsIgnoreCase(scheme)
+						? Paths.get(noFragmentUri)
+						: Paths.get(noFragmentUri.getPath());
 				content = Files.readString(path);
 			}
 			cache.put(uriStr, content);
@@ -124,27 +158,56 @@ public class RefResolver {
 	 *             If bundling fails.
 	 */
 	public void bundle(JSONObject root, String baseUri) throws IOException {
-		if (!root.has("components")) {
-			root.put("components", new JSONObject());
-		}
-		JSONObject components = root.getJSONObject("components");
-		if (!components.has("schemas")) {
-			components.put("schemas", new JSONObject());
-		}
 		traverseAndBundle(root, baseUri, root);
 	}
 
+	/**
+	 * Recursively traverses a JSON node and bundles external {@code $ref} targets
+	 * into the appropriate {@code components/*} section.
+	 *
+	 * @param current
+	 *            The current {@link JSONObject} or {@link JSONArray} node being
+	 *            traversed.
+	 * @param currentBaseUri
+	 *            The base URI of the document containing {@code current}.
+	 * @param rootDocument
+	 *            The root OpenAPI {@link JSONObject} receiving bundled components.
+	 * @throws IOException
+	 *             If fetching or resolving an external reference fails.
+	 */
 	private void traverseAndBundle(Object current, String currentBaseUri, JSONObject rootDocument) throws IOException {
 		if (current instanceof JSONObject) {
 			JSONObject obj = (JSONObject) current;
 			if (obj.has("$ref")) {
 				String ref = obj.getString("$ref");
 				if (!ref.startsWith("#")) {
-					// External reference
 					try {
 						URI resolvedUri = new URI(currentBaseUri).resolve(ref);
 						String fetchUri = new URI(resolvedUri.getScheme(), resolvedUri.getSchemeSpecificPart(), null)
 								.toString();
+						String fragment = resolvedUri.getFragment();
+						String canonicalKey = fetchUri + (fragment != null ? "#" + fragment : "");
+
+						String category = determineComponentCategory(fragment);
+						if (!rootDocument.has("components")) {
+							rootDocument.put("components", new JSONObject());
+						}
+						JSONObject components = rootDocument.getJSONObject("components");
+						if (!components.has(category)) {
+							components.put(category, new JSONObject());
+						}
+						JSONObject targetBucket = components.getJSONObject(category);
+
+						if (bundledKeyCache.containsKey(canonicalKey)) {
+							obj.put("$ref", "#/components/" + category + "/" + bundledKeyCache.get(canonicalKey));
+							return;
+						}
+
+						String componentName = extractNameFromRef(ref);
+						while (targetBucket.has(componentName)) {
+							componentName = componentName + "_" + (nameCounter++);
+						}
+						bundledKeyCache.put(canonicalKey, componentName);
 
 						JSONObject fetchedObj;
 						if (jsonCache.containsKey(fetchUri)) {
@@ -160,31 +223,23 @@ public class RefResolver {
 								fetchedObj = new JSONObject(map);
 							}
 							jsonCache.put(fetchUri, fetchedObj);
-							// Recursively bundle the fetched document before extracting
 							traverseAndBundle(fetchedObj, fetchUri, rootDocument);
 						}
 
-						String fragment = resolvedUri.getFragment();
 						Object resolvedComponent = fragment != null
 								? resolvePointer(fetchedObj, "/" + fragment)
 								: fetchedObj;
 
-						// Generate a safe name for the bundled component
-						String componentName = extractNameFromRef(ref);
-						JSONObject schemas = rootDocument.getJSONObject("components").getJSONObject("schemas");
-
-						while (schemas.has(componentName)) {
-							// If it's already exactly the same object, we don't need to rename
-							if (schemas.get(componentName).toString().equals(resolvedComponent.toString())) {
+						String finalName = componentName;
+						for (String existingKey : targetBucket.keySet()) {
+							if (targetBucket.get(existingKey).toString().equals(resolvedComponent.toString())) {
+								finalName = existingKey;
 								break;
 							}
-							componentName = componentName + "_" + (nameCounter++);
 						}
-
-						schemas.put(componentName, resolvedComponent);
-
-						// Rewrite the $ref to point to the local bundled component
-						obj.put("$ref", "#/components/schemas/" + componentName);
+						bundledKeyCache.put(canonicalKey, finalName);
+						targetBucket.put(finalName, resolvedComponent);
+						obj.put("$ref", "#/components/" + category + "/" + finalName);
 					} catch (Exception e) {
 						throw new IOException("Failed to bundle reference: " + ref, e);
 					}
@@ -204,6 +259,32 @@ public class RefResolver {
 		}
 	}
 
+	/**
+	 * Determines the OpenAPI {@code components} bucket name from a JSON pointer
+	 * fragment.
+	 *
+	 * @param fragment
+	 *            The URI fragment (e.g. {@code /components/parameters/Param1}), or
+	 *            {@code null}.
+	 * @return The target component category name (defaults to {@code "schemas"}).
+	 */
+	private String determineComponentCategory(String fragment) {
+		String normalized = fragment == null ? "" : (fragment.startsWith("/") ? fragment.substring(1) : fragment);
+		String[] parts = normalized.split("/");
+		if (parts.length >= 2 && "components".equals(parts[0]) && VALID_COMPONENT_CATEGORIES.contains(parts[1])) {
+			return parts[1];
+		}
+		return "schemas";
+	}
+
+	/**
+	 * Extracts a sanitized component name from a {@code $ref} URI or pointer
+	 * string.
+	 *
+	 * @param ref
+	 *            The reference string.
+	 * @return A sanitized component identifier.
+	 */
 	private String extractNameFromRef(String ref) {
 		String[] parts = ref.split("/");
 		String name = parts[parts.length - 1];

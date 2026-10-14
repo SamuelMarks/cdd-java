@@ -14,7 +14,6 @@ import java.util.Map;
 /**
  * Emits DAO interfaces and implementations for the CDD Server architecture.
  */
-@cli.Generated
 public class Emit {
 	/** Default constructor. */
 	public Emit() {
@@ -29,6 +28,34 @@ public class Emit {
 	 */
 	public static Map<String, String> emitModular(OpenAPI model) {
 		Map<String, String> files = new java.util.HashMap<>();
+
+		// Unified Error Exception
+		CompilationUnit excCu = new CompilationUnit();
+		excCu.setPackageDeclaration("exceptions");
+		ClassOrInterfaceDeclaration excClass = excCu.addClass("ServerException").setModifier(Modifier.Keyword.PUBLIC,
+				true);
+		excClass.addExtendedType("RuntimeException");
+		excClass.setJavadocComment("Comprehensive unified error exception for the server.");
+		com.github.javaparser.ast.body.ConstructorDeclaration excCtor = excClass
+				.addConstructor(Modifier.Keyword.PUBLIC);
+		excCtor.addParameter("String", "message");
+		excCtor.setJavadocComment("Constructor.\n@param message Error message.");
+		com.github.javaparser.ast.stmt.BlockStmt block = new com.github.javaparser.ast.stmt.BlockStmt();
+		block.addStatement(new com.github.javaparser.ast.stmt.ExplicitConstructorInvocationStmt(false, null,
+				new com.github.javaparser.ast.NodeList<>(new com.github.javaparser.ast.expr.NameExpr("message"))));
+		excCtor.setBody(block);
+		com.github.javaparser.ast.body.ConstructorDeclaration excCauseCtor = excClass
+				.addConstructor(Modifier.Keyword.PUBLIC);
+		excCauseCtor.addParameter("String", "message");
+		excCauseCtor.addParameter("Throwable", "cause");
+		excCauseCtor.setJavadocComment("Constructor.\n@param message Error message.\n@param cause Root cause.");
+		com.github.javaparser.ast.stmt.BlockStmt causeBlock = new com.github.javaparser.ast.stmt.BlockStmt();
+		causeBlock.addStatement(new com.github.javaparser.ast.stmt.ExplicitConstructorInvocationStmt(false, null,
+				new com.github.javaparser.ast.NodeList<>(new com.github.javaparser.ast.expr.NameExpr("message"),
+						new com.github.javaparser.ast.expr.NameExpr("cause"))));
+		excCauseCtor.setBody(causeBlock);
+		files.put("exceptions/ServerException.java", excCu.toString());
+
 		if (model.components == null || model.components.schemas == null)
 			return files;
 
@@ -130,7 +157,7 @@ public class Emit {
 		}
 
 		// 1. Generate Dao<T> interface
-		ClassOrInterfaceDeclaration genericDao = cu.getClassByName("Dao").orElse(null);
+		ClassOrInterfaceDeclaration genericDao = cu.getInterfaceByName("Dao").orElse(null);
 		if (genericDao == null) {
 			genericDao = cu.addInterface("Dao");
 			genericDao.removeModifier(Modifier.Keyword.PUBLIC);
@@ -285,20 +312,23 @@ public class Emit {
 					.addParameter(className, "entity")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
 					.setBody(StaticJavaParser.parseBlock(
-							"{ em.getTransaction().begin(); em.persist(entity); em.getTransaction().commit(); return entity; }"));
+							"{ try { em.getTransaction().begin(); em.persist(entity); em.getTransaction().commit(); return entity; } catch (Exception e) { if (em.getTransaction().isActive()) { em.getTransaction().rollback(); } throw new exceptions.ServerException(\"Failed to create "
+									+ className + "\", e); } }"));
 			concreteDao.addMethod("get", Modifier.Keyword.PUBLIC).setType(className).addParameter("Object", "id")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
 					.setBody(StaticJavaParser.parseBlock("{ return em.find(" + className + ".class, id); }"));
 			concreteDao.addMethod("update", Modifier.Keyword.PUBLIC).setType(className)
 					.addParameter(className, "entity")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser.parseBlock("{ em.getTransaction().begin(); " + className
-							+ " merged = em.merge(entity); em.getTransaction().commit(); return merged; }"));
+					.setBody(StaticJavaParser.parseBlock("{ try { em.getTransaction().begin(); " + className
+							+ " merged = em.merge(entity); em.getTransaction().commit(); return merged; } catch (Exception e) { if (em.getTransaction().isActive()) { em.getTransaction().rollback(); } throw new exceptions.ServerException(\"Failed to update "
+							+ className + "\", e); } }"));
 			concreteDao.addMethod("delete", Modifier.Keyword.PUBLIC).setType("void").addParameter("Object", "id")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser.parseBlock("{ em.getTransaction().begin(); " + className
+					.setBody(StaticJavaParser.parseBlock("{ try { em.getTransaction().begin(); " + className
 							+ " entity = em.find(" + className
-							+ ".class, id); if (entity != null) { em.remove(entity); } em.getTransaction().commit(); }"));
+							+ ".class, id); if (entity != null) { em.remove(entity); } em.getTransaction().commit(); } catch (Exception e) { if (em.getTransaction().isActive()) { em.getTransaction().rollback(); } throw new exceptions.ServerException(\"Failed to delete "
+							+ className + "\", e); } }"));
 			concreteDao.addMethod("list", Modifier.Keyword.PUBLIC).setType("List<" + className + ">")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
 					.setBody(StaticJavaParser.parseBlock("{ return em.createQuery(\"SELECT e FROM \" + \"" + className

@@ -16,7 +16,6 @@ import java.util.ArrayList;
 /**
  * Emits the Fake Data Seeder.
  */
-@cli.Generated
 public class Emit {
 	/** Default constructor. */
 	public Emit() {
@@ -162,6 +161,19 @@ public class Emit {
 		}
 	}
 
+	/**
+	 * Emits a static fake-data factory method for an entity class into the seeder
+	 * class.
+	 *
+	 * @param seederClass
+	 *            The target {@link ClassOrInterfaceDeclaration} for {@code Seeder}.
+	 * @param className
+	 *            The sanitized entity class name.
+	 * @param schemaMap
+	 *            The OpenAPI {@link Schema} definition for the entity.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 */
 	private static void emitGeneratorMethod(ClassOrInterfaceDeclaration seederClass, String className, Schema schemaMap,
 			OpenAPI model) {
 		MethodDeclaration genMethod = seederClass.addMethod("generate" + className, Modifier.Keyword.PRIVATE,
@@ -231,38 +243,17 @@ public class Emit {
 		genMethod.setBody(StaticJavaParser.parseBlock(b.toString()));
 	}
 
+	/**
+	 * Resolves an OpenAPI schema object into its corresponding Java type
+	 * representation.
+	 *
+	 * @param schemaObj
+	 *            The OpenAPI {@link Schema} or reference object.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @return The resolved Java type string.
+	 */
 	private static String resolveType(Object schemaObj, OpenAPI model) {
-		if (!(schemaObj instanceof Schema))
-			return "Object";
-		Schema schemaMap = (Schema) schemaObj;
-		if (schemaMap.$ref != null)
-			return schemaMap.$ref.substring(schemaMap.$ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
-		String schemaType = (String) schemaMap.type;
-		if ("string".equals(schemaType)) {
-			if ("date-time".equals(schemaMap.format))
-				return "java.time.OffsetDateTime";
-			if ("date".equals(schemaMap.format))
-				return "java.time.LocalDate";
-			if ("uuid".equals(schemaMap.format))
-				return "java.util.UUID";
-			if ("binary".equals(schemaMap.format))
-				return "byte[]";
-			return "String";
-		} else if ("integer".equals(schemaType)) {
-			if ("int64".equals(schemaMap.format))
-				return "Long";
-			return "Integer";
-		} else if ("number".equals(schemaType)) {
-			if ("float".equals(schemaMap.format))
-				return "Float";
-			return "Double";
-		} else if ("boolean".equals(schemaType)) {
-			return "Boolean";
-		} else if ("array".equals(schemaType)) {
-			return "List<" + resolveType(schemaMap.items, model) + ">";
-		} else if ("object".equals(schemaType) || schemaMap.additionalProperties != null) {
-			return "Map<String, Object>";
-		}
-		return "Object";
+		return openapi.TypeMapper.toJavaType(schemaObj, model, true);
 	}
 }

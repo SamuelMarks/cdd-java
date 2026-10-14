@@ -1,9 +1,21 @@
 import org.junit.Test;
+import static org.junit.Assert.*;
 import java.lang.reflect.Field;
 import java.util.*;
 import openapi.*;
 
+/**
+ * Property-based fuzzer test verifying AST emitters and parsers handle sparse
+ * and null-populated OpenAPI models cleanly.
+ */
 public class AstFuzzerTest {
+	/**
+	 * Fuzzes fields on a populated OpenAPI model and verifies route and class
+	 * emission never fails.
+	 *
+	 * @throws Exception
+	 *             If reflection or emission fails.
+	 */
 	@Test
 	public void fuzzNulls() throws Exception {
 		OpenAPI api = new OpenAPI();
@@ -54,34 +66,31 @@ public class AstFuzzerTest {
 		api.components.schemas.put("TestSchema", sch);
 
 		fuzzObject(api, () -> {
-			try {
-				routes.Emit.emit(api, null);
-			} catch (Exception e) {
-			}
+			String res = routes.Emit.emit(api, null);
+			assertNotNull(res);
 		});
 
 		fuzzObject(api, () -> {
-			try {
-				classes.Emit.emit(api, null);
-			} catch (Exception e) {
-			}
+			String res = classes.Emit.emit(api, null);
+			assertNotNull(res);
 		});
 
 		String sampleSource = "public class T {}";
-		fuzzObject(api, () -> {
-			try {
-				routes.Parse.parse(sampleSource);
-			} catch (Exception e) {
-			}
-		});
-		fuzzObject(api, () -> {
-			try {
-				classes.Parse.parse(sampleSource);
-			} catch (Exception e) {
-			}
-		});
+		assertNotNull(routes.Parse.parse(sampleSource));
+		assertNotNull(classes.Parse.parse(sampleSource));
 	}
 
+	/**
+	 * Recursively mutates fields of the target object to null, empty, or inverted
+	 * values while invoking the test assertion callback.
+	 *
+	 * @param obj
+	 *            The object instance to fuzz.
+	 * @param test
+	 *            The assertion callback to run after each mutation.
+	 * @throws Exception
+	 *             If reflective field access fails.
+	 */
 	private void fuzzObject(Object obj, Runnable test) throws Exception {
 		if (obj == null)
 			return;
@@ -99,13 +108,10 @@ public class AstFuzzerTest {
 				if (orig instanceof Map) {
 					Map<?, ?> map = (Map<?, ?>) orig;
 					if (!map.isEmpty()) {
-						try {
-							Map<?, ?> copy = new HashMap<>(map);
-							map.clear();
-							test.run();
-							((Map) map).putAll(copy);
-						} catch (UnsupportedOperationException e) {
-						}
+						Map<?, ?> copy = new HashMap<>(map);
+						map.clear();
+						test.run();
+						((Map) map).putAll(copy);
 					}
 					for (Object val : map.values()) {
 						fuzzObject(val, test);
@@ -128,8 +134,6 @@ public class AstFuzzerTest {
 					fuzzObject(orig, test);
 				}
 
-				// Extra coverage for primitives by resetting to empty strings/false where
-				// applicable
 				if (orig instanceof String) {
 					f.set(obj, "");
 					test.run();

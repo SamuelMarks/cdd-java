@@ -6,7 +6,6 @@ import java.util.Map;
 /**
  * Emits the CLI application from an OpenAPI spec.
  */
-@cli.Generated
 public class Emit {
 
 	/**
@@ -16,12 +15,14 @@ public class Emit {
 	}
 
 	/**
-	 * escape doc
+	 * Escapes backslashes, double quotes, and newlines for Java string literals.
+	 *
+	 * @param s
+	 *            The input string to escape.
+	 * @return The escaped string (or empty string if {@code s} is {@code null}).
 	 */
 	private static String escape(String s) {
-		if (s == null)
-			return "";
-		return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+		return openapi.TypeMapper.escape(s);
 	}
 
 	/**
@@ -41,17 +42,8 @@ public class Emit {
 		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n");
 		sb.append("import com.fasterxml.jackson.databind.node.ObjectNode;\n");
 		sb.append("import com.fasterxml.jackson.databind.node.ArrayNode;\n\n");
-		/**
-		 * Documented.
-		 */
 		sb.append("public class SdkCli {\n");
-		/**
-		 * Method.
-		 */
 		sb.append("    public SdkCli() {}\n\n");
-		/**
-		 * Method.
-		 */
 		sb.append("    public static void main(String[] args) {\n");
 		sb.append("        if (args.length == 0 || args[0].equals(\"--help\") || args[0].equals(\"-h\")) {\n");
 		sb.append("            printHelp();\n");
@@ -65,9 +57,27 @@ public class Emit {
 		sb.append("        System.err.println(\"Unknown command: \" + command);\n");
 		sb.append("        printHelp();\n");
 		sb.append("    }\n\n");
-		/**
-		 * Documented.
-		 */
+		emitMcpServerMethod(sb, api);
+		sb.append("    private static void printHelp() {\n");
+		sb.append("        System.out.println(\"SDK CLI\");\n");
+		emitInfoAndServers(sb, api);
+		emitComponents(sb, api);
+		emitOperations(sb, api);
+		sb.append("    }\n");
+		sb.append("}\n");
+		return sb.toString();
+	}
+
+	/**
+	 * Emits the {@code runMcpServer()} method for STDIO JSON-RPC 2.0 tool
+	 * execution.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param api
+	 *            The OpenAPI specification.
+	 */
+	private static void emitMcpServerMethod(StringBuilder sb, OpenAPI api) {
 		sb.append("    private static void runMcpServer() {\n");
 		sb.append("        try {\n");
 		sb.append(
@@ -167,8 +177,18 @@ public class Emit {
 		sb.append("            e.printStackTrace();\n");
 		sb.append("        }\n");
 		sb.append("    }\n\n");
-		sb.append("    private static void printHelp() {\n");
-		sb.append("        System.out.println(\"SDK CLI\");\n");
+	}
+
+	/**
+	 * Emits Info, Contact, License, and Server metadata lines inside
+	 * {@code printHelp()}.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param api
+	 *            The OpenAPI specification.
+	 */
+	private static void emitInfoAndServers(StringBuilder sb, OpenAPI api) {
 		if (api.info != null) {
 			if (api.info.title != null)
 				sb.append("        System.out.println(\"Info Object title: ").append(escape(api.info.title))
@@ -225,6 +245,19 @@ public class Emit {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Emits OpenAPI Components metadata (schemas, responses, parameters,
+	 * requestBodies, headers, securitySchemes, links, callbacks, pathItems,
+	 * mediaTypes) inside {@code printHelp()}.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param api
+	 *            The OpenAPI specification.
+	 */
+	private static void emitComponents(StringBuilder sb, OpenAPI api) {
 		if (api.components != null) {
 			if (api.components.schemas != null) {
 				for (java.util.Map.Entry<String, openapi.Schema> entry : api.components.schemas.entrySet()) {
@@ -461,6 +494,17 @@ public class Emit {
 				for (String k : api.components.mediaTypes.keySet())
 					sb.append("        System.out.println(\"Component mediaTypes ").append(escape(k)).append("\");\n");
 		}
+	}
+
+	/**
+	 * Emits all PathItem operations inside {@code printHelp()}.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param api
+	 *            The OpenAPI specification.
+	 */
+	private static void emitOperations(StringBuilder sb, OpenAPI api) {
 		sb.append("        System.out.println(\"Commands:\");\n");
 		if (api.paths != null && api.paths.pathItems != null) {
 			for (Map.Entry<String, PathItem> pe : api.paths.pathItems.entrySet()) {
@@ -486,13 +530,19 @@ public class Emit {
 					appendOp(sb, "query", path, pi.query);
 			}
 		}
-		sb.append("    }\n");
-		sb.append("}\n");
-		return sb.toString();
 	}
 
 	/**
-	 * appendToolSchema doc
+	 * Appends an MCP tool schema definition block for an OpenAPI operation.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param method
+	 *            The HTTP method (lowercase, e.g. {@code get}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link Operation} definition.
 	 */
 	private static void appendToolSchema(StringBuilder sb, String method, String path, Operation op) {
 		String toolName = (op.operationId != null
@@ -555,7 +605,16 @@ public class Emit {
 	}
 
 	/**
-	 * appendToolCall doc
+	 * Appends an MCP {@code tools/call} dispatch handler for an OpenAPI operation.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param method
+	 *            The HTTP method (lowercase, e.g. {@code get}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link Operation} definition.
 	 */
 	private static void appendToolCall(StringBuilder sb, String method, String path, Operation op) {
 		String toolName = (op.operationId != null
@@ -579,8 +638,19 @@ public class Emit {
 	}
 
 	/**
-	 * appendOp doc
+	 * Appends CLI help output statements describing an OpenAPI operation, its
+	 * parameters, request body, responses, headers, links, and encodings.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param method
+	 *            The HTTP method (lowercase, e.g. {@code get}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link Operation} definition.
 	 */
+	@SuppressWarnings("unchecked")
 	private static void appendOp(StringBuilder sb, String method, String path, Operation op) {
 		sb.append("        System.out.println(\"Operation: ").append(method).append(" ").append(escape(path))
 				.append("\");\n");
@@ -646,51 +716,7 @@ public class Emit {
 					: "";
 			sb.append("        System.out.println(\"    --requestBody").append(rreq).append(": ").append(escape(rdesc))
 					.append(escape(rct)).append("\");\n");
-			if (((RequestBody) op.requestBody).content != null) {
-				for (Map.Entry<String, MediaType> mEntry : ((RequestBody) op.requestBody).content.entrySet()) {
-					MediaType mt = mEntry.getValue();
-					if (mt.itemSchema != null && mt.itemSchema instanceof Map) {
-						Map<String, Object> schMap = (Map<String, Object>) mt.itemSchema;
-						if (schMap.containsKey("type")) {
-							sb.append(
-									"        System.out.println(\"      RequestBodyContentItemSchema \" + escape(mEntry.getKey()) + \" \" + escape(schMap.get(\"type\").toString()) + \"\");\n");
-						}
-					}
-					if (mt.prefixEncoding != null) {
-						for (Encoding enc : mt.prefixEncoding) {
-							if (enc.contentType != null) {
-								sb.append(
-										"        System.out.println(\"      RequestBodyContentPrefixEncoding \" + escape(mEntry.getKey()) + \" \" + escape(enc.contentType) + \"\");\n");
-							}
-						}
-					}
-					if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
-						sb.append(
-								"        System.out.println(\"      RequestBodyContentItemEncoding \" + escape(mEntry.getKey()) + \" \" + escape(mt.itemEncoding.contentType) + \"\");\n");
-					}
-					if (mt.encoding != null) {
-						for (Map.Entry<String, Encoding> encEntry : mt.encoding.entrySet()) {
-							Encoding enc = encEntry.getValue();
-							if (enc.contentType != null) {
-								sb.append(
-										"        System.out.println(\"      RequestBodyEncoding \" + escape(mEntry.getKey()) + \" \" + escape(encEntry.getKey()) + \" \" + escape(enc.contentType) + \"\");\n");
-							}
-							if (enc.prefixEncoding != null) {
-								for (Encoding pEnc : enc.prefixEncoding) {
-									if (pEnc.contentType != null) {
-										sb.append(
-												"        System.out.println(\"      RequestBodyEncodingPrefixEncoding \" + escape(mEntry.getKey()) + \" \" + escape(encEntry.getKey()) + \" \" + escape(pEnc.contentType) + \"\");\n");
-									}
-								}
-							}
-							if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
-								sb.append(
-										"        System.out.println(\"      RequestBodyEncodingItemEncoding \" + escape(mEntry.getKey()) + \" \" + escape(encEntry.getKey()) + \" \" + escape(enc.itemEncoding.contentType) + \"\");\n");
-							}
-						}
-					}
-				}
-			}
+			appendMediaTypeEncodings(sb, "RequestBody", "", ((RequestBody) op.requestBody).content);
 		}
 		if (op.responses != null && op.responses.statusCodes != null) {
 			for (Map.Entry<String, Object> reEntry : op.responses.statusCodes.entrySet()) {
@@ -702,6 +728,7 @@ public class Emit {
 				String rct = r.content != null ? " [Content-Types: " + String.join(", ", r.content.keySet()) + "]" : "";
 				sb.append("        System.out.println(\"    Returns ").append(escape(code)).append(": ")
 						.append(escape(rdesc)).append(escape(rct)).append("\");\n");
+				appendMediaTypeEncodings(sb, "Response", escape(code) + " ", r.content);
 				if (r.headers != null) {
 					for (Map.Entry<String, Object> heEntry : r.headers.entrySet()) {
 						String hName = heEntry.getKey();
@@ -749,6 +776,7 @@ public class Emit {
 			String rct = r.content != null ? " [Content-Types: " + String.join(", ", r.content.keySet()) + "]" : "";
 			sb.append("        System.out.println(\"    Returns default: ").append(escape(rdesc)).append(escape(rct))
 					.append("\");\n");
+			appendMediaTypeEncodings(sb, "Response", "default ", r.content);
 			if (r.headers != null) {
 				for (Map.Entry<String, Object> heEntry : r.headers.entrySet()) {
 					String hName = heEntry.getKey();
@@ -782,6 +810,80 @@ public class Emit {
 									.append(" ").append(escape(pe.getKey())).append(" ")
 									.append(escape(pe.getValue().toString())).append("\");\n");
 						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Appends request body or response media type item schemas and encodings so
+	 * {@link Parse} can reconstruct them losslessly.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param prefix
+	 *            Either {@code "RequestBody"} or {@code "Response"}.
+	 * @param codePrefix
+	 *            Empty string for request bodies, or {@code "<code> "} for
+	 *            responses.
+	 * @param contentMap
+	 *            The media type map to inspect.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void appendMediaTypeEncodings(StringBuilder sb, String prefix, String codePrefix,
+			Map<String, MediaType> contentMap) {
+		if (contentMap == null) {
+			return;
+		}
+		for (Map.Entry<String, MediaType> mEntry : contentMap.entrySet()) {
+			MediaType mt = mEntry.getValue();
+			if (mt.itemSchema != null && mt.itemSchema instanceof Map) {
+				Map<String, Object> schMap = (Map<String, Object>) mt.itemSchema;
+				if (schMap.containsKey("type")) {
+					sb.append("        System.out.println(\"      ").append(prefix).append("ContentItemSchema ")
+							.append(codePrefix).append(escape(mEntry.getKey())).append(" ")
+							.append(escape(schMap.get("type").toString())).append("\");\n");
+				}
+			}
+			if (mt.prefixEncoding != null) {
+				for (Encoding enc : mt.prefixEncoding) {
+					if (enc.contentType != null) {
+						sb.append("        System.out.println(\"      ").append(prefix).append("ContentPrefixEncoding ")
+								.append(codePrefix).append(escape(mEntry.getKey())).append(" ")
+								.append(escape(enc.contentType)).append("\");\n");
+					}
+				}
+			}
+			if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
+				sb.append("        System.out.println(\"      ").append(prefix).append("ContentItemEncoding ")
+						.append(codePrefix).append(escape(mEntry.getKey())).append(" ")
+						.append(escape(mt.itemEncoding.contentType)).append("\");\n");
+			}
+			if (mt.encoding != null) {
+				for (Map.Entry<String, Encoding> encEntry : mt.encoding.entrySet()) {
+					Encoding enc = encEntry.getValue();
+					if (enc.contentType != null) {
+						sb.append("        System.out.println(\"      ").append(prefix).append("Encoding ")
+								.append(codePrefix).append(escape(mEntry.getKey())).append(" ")
+								.append(escape(encEntry.getKey())).append(" ").append(escape(enc.contentType))
+								.append("\");\n");
+					}
+					if (enc.prefixEncoding != null) {
+						for (Encoding pEnc : enc.prefixEncoding) {
+							if (pEnc.contentType != null) {
+								sb.append("        System.out.println(\"      ").append(prefix)
+										.append("EncodingPrefixEncoding ").append(codePrefix)
+										.append(escape(mEntry.getKey())).append(" ").append(escape(encEntry.getKey()))
+										.append(" ").append(escape(pEnc.contentType)).append("\");\n");
+							}
+						}
+					}
+					if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
+						sb.append("        System.out.println(\"      ").append(prefix).append("EncodingItemEncoding ")
+								.append(codePrefix).append(escape(mEntry.getKey())).append(" ")
+								.append(escape(encEntry.getKey())).append(" ")
+								.append(escape(enc.itemEncoding.contentType)).append("\");\n");
 					}
 				}
 			}

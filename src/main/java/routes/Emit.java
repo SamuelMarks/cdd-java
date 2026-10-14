@@ -17,7 +17,6 @@ import openapi.Parameter;
 /**
  * Emits routes to language source (HttpClient) preserving lexical layout.
  */
-@cli.Generated
 public class Emit {
 	/** Default constructor. */
 	public Emit() {
@@ -63,9 +62,6 @@ public class Emit {
 				classDoc.append(" * @jsonSchemaDialect ").append(model.jsonSchemaDialect).append("\n");
 			classDoc.append(" */\n");
 			sb.append(classDoc.toString());
-			/**
-			 * Documented.
-			 */
 			sb.append("public class ").append(title).append("Client {\n");
 			sb.append("    private final HttpClient httpClient;\n");
 			sb.append("    private final String baseUrl;\n\n");
@@ -79,19 +75,10 @@ public class Emit {
 			isNew = true;
 		}
 		ClassOrInterfaceDeclaration classDecl = cu.getClassByName(title + "Client").orElse(null);
-		if (classDecl == null) {
-			// fallback if class name doesn't match
-			if (!isNew && false) {
-				classDecl = cu.findAll(ClassOrInterfaceDeclaration.class).get(0);
-			}
-		}
 
 		if (classDecl != null) {
 			if (!hasMember(classDecl, "mcpSse")) {
 				StringBuilder sb = new StringBuilder();
-				/**
-				 * Documented.
-				 */
 				sb.append("/**\n * SSE Endpoint Generation\n */\n");
 				sb.append(
 						"public void mcpSse(String toolName, java.util.Map<String, Object> arguments, java.util.Map<String, String> headers) {\n");
@@ -106,66 +93,24 @@ public class Emit {
 					for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 						String path = entry.getKey();
 						PathItem item = entry.getValue();
-						if (item.get != null) {
-							String tName = item.get.operationId != null
-									? item.get.operationId
-									: "GET_" + path.replaceAll("[^a-zA-Z0-9]", "_");
-							sb.append("    if (\"").append(tName).append("\".equals(toolName)) { ")
-									.append(tName.replaceAll("[^a-zA-Z0-9_]", "")).append("(");
-							boolean first = true;
-							if (item.get.parameters != null) {
-								for (Object p : item.get.parameters) {
-									if (!first)
-										sb.append(", ");
-									sb.append("arguments.get(\"").append(((Parameter) p).name)
-											.append("\") != null ? arguments.get(\"").append(((Parameter) p).name)
-											.append("\").toString() : null");
-									first = false;
-								}
-							}
-							sb.append("); }\n");
-						}
-						// Simplified coverage implementation for other methods.
-						if (item.post != null) {
-							String tName = item.post.operationId != null
-									? item.post.operationId
-									: "POST_" + path.replaceAll("[^a-zA-Z0-9]", "_");
-							sb.append("    if (\"").append(tName).append("\".equals(toolName)) { ")
-									.append(tName.replaceAll("[^a-zA-Z0-9_]", "")).append("(");
-							boolean first = true;
-							if (item.post.requestBody != null) {
-								sb.append(
-										"arguments.get(\"requestBody\") != null ? arguments.get(\"requestBody\").toString() : null");
-								first = false;
-							}
-							if (item.post.parameters != null) {
-								for (Object p : item.post.parameters) {
-									if (!first)
-										sb.append(", ");
-									sb.append("arguments.get(\"").append(((Parameter) p).name)
-											.append("\") != null ? arguments.get(\"").append(((Parameter) p).name)
-											.append("\").toString() : null");
-									first = false;
-								}
-							}
-							sb.append("); }\n");
-						}
-						if (item.put != null) {
-							String tName = item.put.operationId != null
-									? item.put.operationId
-									: "PUT_" + path.replaceAll("[^a-zA-Z0-9]", "_");
-							sb.append("    if (\"").append(tName).append("\".equals(toolName)) { ")
-									.append(tName.replaceAll("[^a-zA-Z0-9_]", "")).append("(); }\n"); // simplied call
-																										// for tests
-						}
-						if (item.delete != null) {
-							String tName = item.delete.operationId != null
-									? item.delete.operationId
-									: "DELETE_" + path.replaceAll("[^a-zA-Z0-9]", "_");
-							sb.append("    if (\"").append(tName).append("\".equals(toolName)) { ")
-									.append(tName.replaceAll("[^a-zA-Z0-9_]", "")).append("(); }\n"); // simplified call
-																										// for tests
-						}
+						if (item.get != null)
+							appendMcpSseCall(sb, "GET", path, item.get, item, model);
+						if (item.post != null)
+							appendMcpSseCall(sb, "POST", path, item.post, item, model);
+						if (item.put != null)
+							appendMcpSseCall(sb, "PUT", path, item.put, item, model);
+						if (item.delete != null)
+							appendMcpSseCall(sb, "DELETE", path, item.delete, item, model);
+						if (item.patch != null)
+							appendMcpSseCall(sb, "PATCH", path, item.patch, item, model);
+						if (item.options != null)
+							appendMcpSseCall(sb, "OPTIONS", path, item.options, item, model);
+						if (item.head != null)
+							appendMcpSseCall(sb, "HEAD", path, item.head, item, model);
+						if (item.trace != null)
+							appendMcpSseCall(sb, "TRACE", path, item.trace, item, model);
+						if (item.query != null)
+							appendMcpSseCall(sb, "QUERY", path, item.query, item, model);
 					}
 				}
 				sb.append("}\n");
@@ -187,21 +132,22 @@ public class Emit {
 						emitMethodToAST(classDecl, "DELETE", path, item.delete, item, model);
 					if (item.patch != null)
 						emitMethodToAST(classDecl, "PATCH", path, item.patch, item, model);
+					if (item.options != null)
+						emitMethodToAST(classDecl, "OPTIONS", path, item.options, item, model);
+					if (item.head != null)
+						emitMethodToAST(classDecl, "HEAD", path, item.head, item, model);
+					if (item.trace != null)
+						emitMethodToAST(classDecl, "TRACE", path, item.trace, item, model);
 					if (item.query != null)
 						emitMethodToAST(classDecl, "QUERY", path, item.query, item, model);
 
-					if (item.get != null && item.get.callbacks != null)
-						emitCallbacksToAST(classDecl, item.get.callbacks);
-					if (item.post != null && item.post.callbacks != null)
-						emitCallbacksToAST(classDecl, item.post.callbacks);
-					if (item.put != null && item.put.callbacks != null)
-						emitCallbacksToAST(classDecl, item.put.callbacks);
-					if (item.delete != null && item.delete.callbacks != null)
-						emitCallbacksToAST(classDecl, item.delete.callbacks);
-					if (item.patch != null && item.patch.callbacks != null)
-						emitCallbacksToAST(classDecl, item.patch.callbacks);
-					if (item.query != null && item.query.callbacks != null)
-						emitCallbacksToAST(classDecl, item.query.callbacks);
+					Operation[] itemOps = {item.get, item.post, item.put, item.delete, item.patch, item.options,
+							item.head, item.trace, item.query};
+					for (Operation itemOp : itemOps) {
+						if (itemOp != null && itemOp.callbacks != null) {
+							emitCallbacksToAST(classDecl, itemOp.callbacks);
+						}
+					}
 				}
 			}
 
@@ -214,32 +160,8 @@ public class Emit {
 
 					if (!hasMember(classDecl, interfaceName)) {
 						StringBuilder sb = new StringBuilder();
-						/**
-						 * Documented.
-						 */
 						sb.append("public interface ").append(interfaceName).append(" {\n");
-						if (item.post != null) {
-							sb.append("    void onPost(");
-							boolean first = true;
-							if (item.post.requestBody != null) {
-								sb.append("String body");
-								first = false;
-							}
-							if (item.parameters != null) {
-								for (Object o : item.parameters) {
-									if (o instanceof Parameter) {
-										if (!first)
-											sb.append(", ");
-										String pName = ((Parameter) o).name;
-										if (pName == null || pName.isEmpty())
-											pName = "param";
-										sb.append("String ").append(pName.replaceAll("[^a-zA-Z0-9_]", ""));
-										first = false;
-									}
-								}
-							}
-							sb.append(");\n");
-						}
+						appendOnPostMethod(sb, item);
 						sb.append("}\n");
 						classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
 					}
@@ -255,16 +177,106 @@ public class Emit {
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Appends an {@code onPost(...)} handler method signature to a webhook or
+	 * callback interface definition if {@code item.post} is present.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param item
+	 *            The {@link PathItem} containing {@code post} and shared
+	 *            {@code parameters}.
 	 */
+	private static void appendOnPostMethod(StringBuilder sb, PathItem item) {
+		if (item.post != null) {
+			sb.append("    void onPost(");
+			boolean first = true;
+			if (item.post.requestBody != null) {
+				sb.append("String body");
+				first = false;
+			}
+			if (item.parameters != null) {
+				for (Object o : item.parameters) {
+					if (!first)
+						sb.append(", ");
+					String pName = ((Parameter) o).name;
+					if (!isNonEmpty(pName))
+						pName = "param";
+					sb.append("String ").append(pName.replaceAll("[^a-zA-Z0-9_]", ""));
+					first = false;
+				}
+			}
+			sb.append(");\n");
+		}
+	}
+
 	/**
-	 * Generated JavaDoc.
+	 * Checks whether a string is non-null and non-empty.
+	 *
+	 * @param s
+	 *            The string to inspect.
+	 * @return {@code true} if non-null and non-empty.
+	 */
+	private static boolean isNonEmpty(String s) {
+		return s != null && !s.isEmpty();
+	}
+
+	/**
+	 * Appends a tool dispatch branch inside {@code mcpSse} for the given HTTP
+	 * operation, forwarding all operation parameters and request body.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param httpMethod
+	 *            The HTTP method verb (uppercase, e.g. {@code GET}, {@code PUT}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link Operation} definition.
+	 * @param item
+	 *            The parent {@link PathItem}.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 */
+	private static void appendMcpSseCall(StringBuilder sb, String httpMethod, String path, Operation op, PathItem item,
+			OpenAPI model) {
+		String tName = isNonEmpty(op.operationId)
+				? op.operationId
+				: httpMethod + "_" + path.replaceAll("[^a-zA-Z0-9]", "_");
+		String methodName = isNonEmpty(op.operationId)
+				? op.operationId.replaceAll("[^a-zA-Z0-9_]", "")
+				: (httpMethod.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", ""));
+		sb.append("    if (\"").append(tName).append("\".equals(toolName)) { ").append(methodName).append("(");
+		boolean first = true;
+		if (op.parameters != null) {
+			for (Object pObj : op.parameters) {
+				Parameter p = (Parameter) pObj;
+				if (p.name == null || p.name.replaceAll("[^a-zA-Z0-9_]", "").isEmpty())
+					continue;
+				if (!first)
+					sb.append(", ");
+				sb.append("arguments.get(\"").append(p.name).append("\") != null ? arguments.get(\"").append(p.name)
+						.append("\").toString() : null");
+				first = false;
+			}
+		}
+		if (op.requestBody != null) {
+			if (!first)
+				sb.append(", ");
+			sb.append("arguments.get(\"requestBody\") != null ? arguments.get(\"requestBody\").toString() : null");
+		}
+		sb.append("); }\n");
+	}
+
+	/**
+	 * Checks whether the given class declaration already contains a member (method
+	 * or inner type) with the specified name.
 	 *
 	 * @param classDecl
-	 *            param doc
+	 *            The {@link ClassOrInterfaceDeclaration} to inspect.
 	 * @param name
-	 *            param doc
-	 * @return return doc
+	 *            The member name to look for.
+	 * @return {@code true} if a member with the given name exists; {@code false}
+	 *         otherwise.
 	 */
 	private static boolean hasMember(ClassOrInterfaceDeclaration classDecl, String name) {
 		for (BodyDeclaration<?> member : classDecl.getMembers()) {
@@ -272,9 +284,6 @@ public class Emit {
 				if (((ClassOrInterfaceDeclaration) member).getNameAsString().equals(name))
 					return true;
 			} else if (member instanceof MethodDeclaration) {
-				/**
-				 * Generated JavaDoc.
-				 */
 				if (((MethodDeclaration) member).getNameAsString().equals(name))
 					return true;
 			}
@@ -283,81 +292,56 @@ public class Emit {
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Emits callback handler interfaces into the client class declaration for all
+	 * callbacks in an operation.
 	 *
 	 * @param classDecl
-	 *            param doc
+	 *            The target {@link ClassOrInterfaceDeclaration}.
 	 * @param callbacks
-	 *            param doc
+	 *            The map of callback names to {@link openapi.Callback} definitions.
 	 */
 	private static void emitCallbacksToAST(ClassOrInterfaceDeclaration classDecl, Map<String, Object> callbacks) {
 		for (Map.Entry<String, Object> cbEntry : callbacks.entrySet()) {
-			if (cbEntry.getValue() instanceof openapi.Callback) {
-				openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
-				String safeName = cbEntry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
-				String interfaceName = safeName + "CallbackHandler";
+			openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
+			String safeName = cbEntry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
+			String interfaceName = safeName + "CallbackHandler";
 
-				if (!hasMember(classDecl, interfaceName)) {
-					StringBuilder sb = new StringBuilder();
-					/**
-					 * Documented.
-					 */
-					sb.append("public interface ").append(interfaceName).append(" {\n");
-					if (cb.pathItems != null) {
-						for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
-							PathItem innerItem = piEntry.getValue();
-							if (innerItem.post != null) {
-								sb.append("    void onPost(");
-								boolean first = true;
-								if (innerItem.post.requestBody != null) {
-									sb.append("String body");
-									first = false;
-								}
-								if (innerItem.parameters != null) {
-									for (Object o : innerItem.parameters) {
-										if (o instanceof Parameter) {
-											if (!first)
-												sb.append(", ");
-											sb.append("String ")
-													.append(((Parameter) o).name.replaceAll("[^a-zA-Z0-9_]", ""));
-											first = false;
-										}
-									}
-								}
-								/**
-								 * Generated JavaDoc.
-								 */
-								sb.append(");\n");
-							}
-						}
+			if (!hasMember(classDecl, interfaceName)) {
+				StringBuilder sb = new StringBuilder();
+				sb.append("public interface ").append(interfaceName).append(" {\n");
+				if (cb.pathItems != null) {
+					for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
+						appendOnPostMethod(sb, piEntry.getValue());
 					}
-					sb.append("}\n");
-					classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
 				}
+				sb.append("}\n");
+				classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
 			}
 		}
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Emits an HTTP route method with full OpenAPI Javadoc metadata into the client
+	 * class AST.
 	 *
 	 * @param classDecl
-	 *            param doc
+	 *            The target {@link ClassOrInterfaceDeclaration}.
 	 * @param httpMethod
-	 *            param doc
+	 *            The HTTP method verb (uppercase, e.g. {@code GET}, {@code POST}).
 	 * @param path
-	 *            param doc
+	 *            The URL path template.
 	 * @param op
-	 *            param doc
+	 *            The {@link Operation} definition.
 	 * @param item
-	 *            path param doc
+	 *            The parent {@link openapi.PathItem} containing shared parameters
+	 *            and metadata.
 	 * @param model
-	 *            param doc
+	 *            The root {@link OpenAPI} model.
 	 */
 	private static void emitMethodToAST(ClassOrInterfaceDeclaration classDecl, String httpMethod, String path,
 			Operation op, openapi.PathItem item, OpenAPI model) {
 		String methodName = op.operationId;
-		if (methodName == null || methodName.isEmpty()) {
+		if (!isNonEmpty(methodName)) {
 			methodName = httpMethod.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
 		} else {
 			methodName = methodName.replaceAll("[^a-zA-Z0-9_]", "");
@@ -376,34 +360,31 @@ public class Emit {
 		StringBuilder docBuilder = new StringBuilder();
 
 		docBuilder.append("/**\n");
-		if (op.summary != null && !op.summary.isEmpty()) {
+		if (isNonEmpty(op.summary)) {
 			docBuilder.append(" * ").append(op.summary.replace("\n", "\n * ")).append("\n");
 		}
-		if (op.description != null && !op.description.isEmpty()) {
+		if (isNonEmpty(op.description)) {
 			docBuilder.append(" * ").append(op.description.replace("\n", "\n * ")).append("\n");
 		}
 
 		java.util.List<Parameter> allParams = new java.util.ArrayList<>();
-		if (item != null && item.parameters != null) {
+		if (item.parameters != null) {
 			for (Object po : item.parameters) {
-				if (po instanceof Parameter)
-					allParams.add((Parameter) po);
+				allParams.add((Parameter) po);
 			}
 		}
 		if (op.parameters != null) {
 			for (Object po : op.parameters) {
-				if (po instanceof Parameter) {
-					Parameter p = (Parameter) po;
-					boolean exists = false;
-					for (Parameter e : allParams) {
-						if (e.name != null && e.name.equals(p.name) && e.in != null && e.in.equals(p.in)) {
-							exists = true;
-							break;
-						}
+				Parameter p = (Parameter) po;
+				boolean exists = false;
+				for (Parameter e : allParams) {
+					if (java.util.Objects.equals(e.name, p.name) && java.util.Objects.equals(e.in, p.in)) {
+						exists = true;
+						break;
 					}
-					if (!exists)
-						allParams.add(p);
 				}
+				if (!exists)
+					allParams.add(p);
 			}
 		}
 
@@ -416,41 +397,14 @@ public class Emit {
 						if (schemeObj instanceof openapi.SecurityScheme) {
 							openapi.SecurityScheme scheme = (openapi.SecurityScheme) schemeObj;
 							if ("apiKey".equals(scheme.type) && scheme.name != null && scheme.in != null) {
-								Parameter sp = new Parameter();
-								sp.name = scheme.name;
-								sp.in = scheme.in;
-								sp.description = "Security credential for " + secName;
-								boolean exists = false;
-								for (Parameter e : allParams) {
-									if (e.name != null && e.name.equals(sp.name))
-										exists = true;
-								}
-								if (!exists)
-									allParams.add(sp);
+								addSecurityParamIfAbsent(allParams, scheme.name, scheme.in,
+										"Security credential for " + secName);
 							} else if ("http".equals(scheme.type) && "bearer".equals(scheme.scheme)) {
-								Parameter sp = new Parameter();
-								sp.name = "Authorization";
-								sp.in = "header";
-								sp.description = "Bearer token for " + secName + " (prefix with 'Bearer ')";
-								boolean exists = false;
-								for (Parameter e : allParams) {
-									if (e.name != null && e.name.equals(sp.name))
-										exists = true;
-								}
-								if (!exists)
-									allParams.add(sp);
+								addSecurityParamIfAbsent(allParams, "Authorization", "header",
+										"Bearer token for " + secName + " (prefix with 'Bearer ')");
 							} else if ("http".equals(scheme.type) && "basic".equals(scheme.scheme)) {
-								Parameter sp = new Parameter();
-								sp.name = "Authorization";
-								sp.in = "header";
-								sp.description = "Basic auth for " + secName + " (prefix with 'Basic ')";
-								boolean exists = false;
-								for (Parameter e : allParams) {
-									if (e.name != null && e.name.equals(sp.name))
-										exists = true;
-								}
-								if (!exists)
-									allParams.add(sp);
+								addSecurityParamIfAbsent(allParams, "Authorization", "header",
+										"Basic auth for " + secName + " (prefix with 'Basic ')");
 							}
 						}
 					}
@@ -491,280 +445,55 @@ public class Emit {
 
 		if (op.callbacks != null && !op.callbacks.isEmpty()) {
 			for (Map.Entry<String, Object> cbEntry : op.callbacks.entrySet()) {
-				if (cbEntry.getValue() instanceof openapi.Callback) {
-					openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
-					if (cb.pathItems != null) {
-						for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
-							PathItem innerItem = piEntry.getValue();
-							String method = "POST";
-							if (item.get != null)
-								method = "GET";
-							else if (item.put != null)
-								method = "PUT";
-							else if (item.delete != null)
-								method = "DELETE";
-							else if (item.patch != null)
-								method = "PATCH";
-							else if (item.query != null)
-								method = "QUERY";
-							docBuilder.append(" * @callback ").append(cbEntry.getKey()).append(" ")
-									.append(piEntry.getKey()).append(" ").append(method).append("\n");
-						}
+				openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
+				if (cb.pathItems != null) {
+					for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
+						String method = "POST";
+						if (item.get != null)
+							method = "GET";
+						else if (item.put != null)
+							method = "PUT";
+						else if (item.delete != null)
+							method = "DELETE";
+						else if (item.patch != null)
+							method = "PATCH";
+						else if (item.query != null)
+							method = "QUERY";
+						docBuilder.append(" * @callback ").append(cbEntry.getKey()).append(" ").append(piEntry.getKey())
+								.append(" ").append(method).append("\n");
 					}
 				}
 			}
 		}
 
-		if (item != null) {
-			if (item.ref != null && !item.ref.isEmpty()) {
-				docBuilder.append(" * @pathRef ").append(path).append(" ").append(item.ref).append("\n");
-			}
-			if (item.summary != null && !item.summary.isEmpty()) {
-				docBuilder.append(" * @pathSummary ").append(path).append(" ").append(item.summary.replace("\n", " "))
-						.append("\n");
-			}
-			if (item.description != null && !item.description.isEmpty()) {
-				docBuilder.append(" * @pathDescription ").append(path).append(" ")
-						.append(item.description.replace("\n", " ")).append("\n");
-			}
+		if (isNonEmpty(item.ref)) {
+			docBuilder.append(" * @pathRef ").append(path).append(" ").append(item.ref).append("\n");
+		}
+		if (isNonEmpty(item.summary)) {
+			docBuilder.append(" * @pathSummary ").append(path).append(" ").append(item.summary.replace("\n", " "))
+					.append("\n");
+		}
+		if (isNonEmpty(item.description)) {
+			docBuilder.append(" * @pathDescription ").append(path).append(" ")
+					.append(item.description.replace("\n", " ")).append("\n");
 		}
 
 		if (op.requestBody instanceof openapi.RequestBody) {
 			openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
-			if (rb.content != null) {
-				for (java.util.Map.Entry<String, openapi.MediaType> mEntry : rb.content.entrySet()) {
-					String mtStr = mEntry.getKey();
-					openapi.MediaType mt = mEntry.getValue();
-					docBuilder.append(" * @requestBodyContent ").append(mtStr).append("\n");
-					if (mt.schema instanceof java.util.Map) {
-						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
-						if (schMap.containsKey("type")) {
-							docBuilder.append(" * @requestBodyContentSchema ").append(mtStr).append(" ")
-									.append(schMap.get("type")).append("\n");
-						}
-					}
-					if (mt.itemSchema instanceof java.util.Map) {
-						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
-						if (schMap.containsKey("type")) {
-							docBuilder.append(" * @requestBodyContentItemSchema ").append(mtStr).append(" ")
-									.append(schMap.get("type")).append("\n");
-						}
-					}
-					if (mt.prefixEncoding != null) {
-						for (openapi.Encoding enc : mt.prefixEncoding) {
-							if (enc.contentType != null)
-								docBuilder.append(" * @requestBodyContentPrefixEncoding ").append(mtStr).append(" ")
-										.append(enc.contentType).append("\n");
-						}
-					}
-					if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
-						docBuilder.append(" * @requestBodyContentItemEncoding ").append(mtStr).append(" ")
-								.append(mt.itemEncoding.contentType).append("\n");
-					}
-					if (mt.encoding != null) {
-						for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
-							String encKey = encEntry.getKey();
-							openapi.Encoding enc = encEntry.getValue();
-							if (enc.contentType != null) {
-								docBuilder.append(" * @requestBodyEncoding ").append(mtStr).append(" ").append(encKey)
-										.append(" ").append(enc.contentType).append("\n");
-							}
-							if (enc.prefixEncoding != null) {
-								for (openapi.Encoding pEnc : enc.prefixEncoding) {
-									if (pEnc.contentType != null)
-										docBuilder.append(" * @requestBodyEncodingPrefixEncoding ").append(mtStr)
-												.append(" ").append(encKey).append(" ").append(pEnc.contentType)
-												.append("\n");
-								}
-							}
-							if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
-								docBuilder.append(" * @requestBodyEncodingItemEncoding ").append(mtStr).append(" ")
-										.append(encKey).append(" ").append(enc.itemEncoding.contentType).append("\n");
-							}
-						}
-					}
-					if (mt.example != null) {
-						docBuilder.append(" * @requestBodyContentExample ").append(mtStr).append(" ").append(mt.example)
-								.append("\n");
-					}
-					if (mt.examples != null) {
-						for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
-							if (exEntry.getValue() instanceof openapi.Example) {
-								openapi.Example ex = (openapi.Example) exEntry.getValue();
-								String exValue = ex.value != null ? ex.value.toString() : "";
-								String exSummary = ex.summary != null ? ex.summary : "";
-								String exDesc = ex.description != null ? ex.description : "";
-								docBuilder.append(" * @requestBodyContentExamples ").append(mtStr).append(" ")
-										.append(exEntry.getKey()).append(" ").append(exSummary.replace(" ", "_"))
-										.append("|").append(exDesc.replace(" ", "_")).append("|").append(exValue)
-										.append("\n");
-							}
-						}
-					}
-				}
-			}
+			appendMediaTypeJavadocTags(docBuilder, "requestBody", "", rb.content);
 		}
 
 		if (op.responses != null && op.responses.statusCodes != null) {
 			for (java.util.Map.Entry<String, Object> rEntry : op.responses.statusCodes.entrySet()) {
 				String statusCode = rEntry.getKey();
-				if (rEntry.getValue() instanceof openapi.Response) {
-					openapi.Response r = (openapi.Response) rEntry.getValue();
-					if (r.content != null) {
-						for (java.util.Map.Entry<String, openapi.MediaType> mEntry : r.content.entrySet()) {
-							String mtStr = mEntry.getKey();
-							openapi.MediaType mt = mEntry.getValue();
-							docBuilder.append(" * @responseContent ").append(statusCode).append(" ").append(mtStr)
-									.append("\n");
-							if (mt.schema instanceof java.util.Map) {
-								java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
-								if (schMap.containsKey("type")) {
-									docBuilder.append(" * @responseContentSchema ").append(statusCode).append(" ")
-											.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
-								}
-							}
-							if (mt.example != null) {
-								docBuilder.append(" * @responseContentExample ").append(statusCode).append(" ")
-										.append(mtStr).append(" ").append(mt.example).append("\n");
-							}
-							if (mt.examples != null) {
-								for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
-									if (exEntry.getValue() instanceof openapi.Example) {
-										openapi.Example ex = (openapi.Example) exEntry.getValue();
-										String exValue = ex.value != null ? ex.value.toString() : "";
-										String exSummary = ex.summary != null ? ex.summary : "";
-										String exDesc = ex.description != null ? ex.description : "";
-										docBuilder.append(" * @responseContentExamples ").append(statusCode).append(" ")
-												.append(mtStr).append(" ").append(exEntry.getKey()).append(" ")
-												.append(exSummary.replace(" ", "_")).append("|")
-												.append(exDesc.replace(" ", "_")).append("|").append(exValue)
-												.append("\n");
-									}
-								}
-							}
-						}
-					}
-				}
+				openapi.Response r = (openapi.Response) rEntry.getValue();
+				appendMediaTypeJavadocTags(docBuilder, "response", statusCode + " ", r.content);
 			}
 		}
 
 		if (op.responses != null && op.responses.defaultResponse instanceof openapi.Response) {
 			openapi.Response r = (openapi.Response) op.responses.defaultResponse;
-			String statusCode = "default";
-			if (r.content != null) {
-				for (java.util.Map.Entry<String, openapi.MediaType> mEntry : r.content.entrySet()) {
-					String mtStr = mEntry.getKey();
-					openapi.MediaType mt = mEntry.getValue();
-					docBuilder.append(" * @responseContent ").append(statusCode).append(" ").append(mtStr).append("\n");
-					if (mt.schema instanceof java.util.Map) {
-						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
-						if (schMap.containsKey("type")) {
-							docBuilder.append(" * @responseContentSchema ").append(statusCode).append(" ").append(mtStr)
-									.append(" ").append(schMap.get("type")).append("\n");
-						}
-					}
-					if (mt.itemSchema instanceof java.util.Map) {
-						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
-						if (schMap.containsKey("type")) {
-							docBuilder.append(" * @responseContentItemSchema ").append(statusCode).append(" ")
-									.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
-						}
-					}
-					if (mt.prefixEncoding != null) {
-						for (openapi.Encoding enc : mt.prefixEncoding) {
-							if (enc.contentType != null)
-								docBuilder.append(" * @responseContentPrefixEncoding ").append(statusCode).append(" ")
-										.append(mtStr).append(" ").append(enc.contentType).append("\n");
-						}
-					}
-					if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
-						docBuilder.append(" * @responseContentItemEncoding ").append(statusCode).append(" ")
-								.append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
-					}
-					if (mt.encoding != null) {
-						for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
-							String encKey = encEntry.getKey();
-							openapi.Encoding enc = encEntry.getValue();
-							if (enc.contentType != null) {
-								docBuilder.append(" * @responseEncoding ").append(statusCode).append(" ").append(mtStr)
-										.append(" ").append(encKey).append(" ").append(enc.contentType).append("\n");
-							}
-							if (enc.prefixEncoding != null) {
-								for (openapi.Encoding pEnc : enc.prefixEncoding) {
-									if (pEnc.contentType != null)
-										docBuilder.append(" * @responseEncodingPrefixEncoding ").append(statusCode)
-												.append(" ").append(mtStr).append(" ").append(encKey).append(" ")
-												.append(pEnc.contentType).append("\n");
-								}
-							}
-							if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
-								docBuilder.append(" * @responseEncodingItemEncoding ").append(statusCode).append(" ")
-										.append(mtStr).append(" ").append(encKey).append(" ")
-										.append(enc.itemEncoding.contentType).append("\n");
-							}
-						}
-					}
-					if (mt.itemSchema instanceof java.util.Map) {
-						java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
-						if (schMap.containsKey("type")) {
-							docBuilder.append(" * @responseContentItemSchema ").append(statusCode).append(" ")
-									.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
-						}
-					}
-					if (mt.prefixEncoding != null) {
-						for (openapi.Encoding enc : mt.prefixEncoding) {
-							if (enc.contentType != null)
-								docBuilder.append(" * @responseContentPrefixEncoding ").append(statusCode).append(" ")
-										.append(mtStr).append(" ").append(enc.contentType).append("\n");
-						}
-					}
-					if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
-						docBuilder.append(" * @responseContentItemEncoding ").append(statusCode).append(" ")
-								.append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
-					}
-					if (mt.encoding != null) {
-						for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
-							String encKey = encEntry.getKey();
-							openapi.Encoding enc = encEntry.getValue();
-							if (enc.contentType != null) {
-								docBuilder.append(" * @responseEncoding ").append(statusCode).append(" ").append(mtStr)
-										.append(" ").append(encKey).append(" ").append(enc.contentType).append("\n");
-							}
-							if (enc.prefixEncoding != null) {
-								for (openapi.Encoding pEnc : enc.prefixEncoding) {
-									if (pEnc.contentType != null)
-										docBuilder.append(" * @responseEncodingPrefixEncoding ").append(statusCode)
-												.append(" ").append(mtStr).append(" ").append(encKey).append(" ")
-												.append(pEnc.contentType).append("\n");
-								}
-							}
-							if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
-								docBuilder.append(" * @responseEncodingItemEncoding ").append(statusCode).append(" ")
-										.append(mtStr).append(" ").append(encKey).append(" ")
-										.append(enc.itemEncoding.contentType).append("\n");
-							}
-						}
-					}
-					if (mt.example != null) {
-						docBuilder.append(" * @responseContentExample ").append(statusCode).append(" ").append(mtStr)
-								.append(" ").append(mt.example).append("\n");
-					}
-					if (mt.examples != null) {
-						for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
-							if (exEntry.getValue() instanceof openapi.Example) {
-								openapi.Example ex = (openapi.Example) exEntry.getValue();
-								String exValue = ex.value != null ? ex.value.toString() : "";
-								String exSummary = ex.summary != null ? ex.summary : "";
-								String exDesc = ex.description != null ? ex.description : "";
-								docBuilder.append(" * @responseContentExamples ").append(statusCode).append(" ")
-										.append(mtStr).append(" ").append(exEntry.getKey()).append(" ")
-										.append(exSummary.replace(" ", "_")).append("|")
-										.append(exDesc.replace(" ", "_")).append("|").append(exValue).append("\n");
-							}
-						}
-					}
-				}
-			}
+			appendMediaTypeJavadocTags(docBuilder, "response", "default ", r.content);
 		}
 
 		docBuilder.append(" * @return HttpResponse\n");
@@ -815,7 +544,8 @@ public class Emit {
 
 		if (httpMethod.equals("GET") || httpMethod.equals("DELETE")) {
 			sb.append("    requestBuilder.").append(httpMethod).append("();\n");
-		} else if (httpMethod.equals("QUERY") || httpMethod.equals("PATCH")) {
+		} else if (httpMethod.equals("QUERY") || httpMethod.equals("PATCH") || httpMethod.equals("OPTIONS")
+				|| httpMethod.equals("HEAD") || httpMethod.equals("TRACE")) {
 			sb.append("    requestBuilder.method(\"").append(httpMethod).append("\", ").append(bodyPublisher)
 					.append(");\n");
 		} else {
@@ -826,5 +556,422 @@ public class Emit {
 		sb.append("}\n");
 
 		classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
+	}
+
+	/**
+	 * Appends Javadoc tags describing a map of {@link openapi.MediaType} entries
+	 * for either a request body or a response.
+	 *
+	 * @param docBuilder
+	 *            The target Javadoc {@link StringBuilder}.
+	 * @param tagPrefix
+	 *            Either {@code "requestBody"} or {@code "response"}.
+	 * @param statusPrefix
+	 *            Empty string for request bodies, or {@code "<statusCode> "} for
+	 *            responses.
+	 * @param contentMap
+	 *            The media type map to serialize into Javadoc tags.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void appendMediaTypeJavadocTags(StringBuilder docBuilder, String tagPrefix, String statusPrefix,
+			Map<String, openapi.MediaType> contentMap) {
+		if (contentMap == null) {
+			return;
+		}
+		for (java.util.Map.Entry<String, openapi.MediaType> mEntry : contentMap.entrySet()) {
+			String mtStr = mEntry.getKey();
+			openapi.MediaType mt = mEntry.getValue();
+			docBuilder.append(" * @").append(tagPrefix).append("Content ").append(statusPrefix).append(mtStr)
+					.append("\n");
+			if (mt.schema instanceof java.util.Map) {
+				java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
+				if (schMap.containsKey("type")) {
+					docBuilder.append(" * @").append(tagPrefix).append("ContentSchema ").append(statusPrefix)
+							.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+				}
+			}
+			if (mt.itemSchema instanceof java.util.Map) {
+				java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
+				if (schMap.containsKey("type")) {
+					docBuilder.append(" * @").append(tagPrefix).append("ContentItemSchema ").append(statusPrefix)
+							.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
+				}
+			}
+			if (mt.prefixEncoding != null) {
+				for (openapi.Encoding enc : mt.prefixEncoding) {
+					if (enc.contentType != null) {
+						docBuilder.append(" * @").append(tagPrefix).append("ContentPrefixEncoding ")
+								.append(statusPrefix).append(mtStr).append(" ").append(enc.contentType).append("\n");
+					}
+				}
+			}
+			if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
+				docBuilder.append(" * @").append(tagPrefix).append("ContentItemEncoding ").append(statusPrefix)
+						.append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
+			}
+			if (mt.encoding != null) {
+				for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
+					String encKey = encEntry.getKey();
+					openapi.Encoding enc = encEntry.getValue();
+					if (enc.contentType != null) {
+						docBuilder.append(" * @").append(tagPrefix).append("Encoding ").append(statusPrefix)
+								.append(mtStr).append(" ").append(encKey).append(" ").append(enc.contentType)
+								.append("\n");
+					}
+					if (enc.prefixEncoding != null) {
+						for (openapi.Encoding pEnc : enc.prefixEncoding) {
+							if (pEnc.contentType != null) {
+								docBuilder.append(" * @").append(tagPrefix).append("EncodingPrefixEncoding ")
+										.append(statusPrefix).append(mtStr).append(" ").append(encKey).append(" ")
+										.append(pEnc.contentType).append("\n");
+							}
+						}
+					}
+					if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
+						docBuilder.append(" * @").append(tagPrefix).append("EncodingItemEncoding ").append(statusPrefix)
+								.append(mtStr).append(" ").append(encKey).append(" ")
+								.append(enc.itemEncoding.contentType).append("\n");
+					}
+				}
+			}
+			if (mt.example != null) {
+				docBuilder.append(" * @").append(tagPrefix).append("ContentExample ").append(statusPrefix).append(mtStr)
+						.append(" ").append(mt.example).append("\n");
+			}
+			if (mt.examples != null) {
+				for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
+					openapi.Example ex = (openapi.Example) exEntry.getValue();
+					String exValue = ex.value != null ? ex.value.toString() : "";
+					String exSummary = ex.summary != null ? ex.summary : "";
+					String exDesc = ex.description != null ? ex.description : "";
+					docBuilder.append(" * @").append(tagPrefix).append("ContentExamples ").append(statusPrefix)
+							.append(mtStr).append(" ").append(exEntry.getKey()).append(" ")
+							.append(exSummary.replace(" ", "_")).append("|").append(exDesc.replace(" ", "_"))
+							.append("|").append(exValue).append("\n");
+				}
+			}
+		}
+	}
+
+	/**
+	 * Emits the SDK HTTP client class (including MCP adapter methods and tools)
+	 * into the provided compilation unit.
+	 *
+	 * @param cu
+	 *            The target {@link CompilationUnit}.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 */
+	public static void emitSdkClientClass(CompilationUnit cu, OpenAPI model) {
+		String title = (model.info != null && model.info.title != null)
+				? model.info.title.replaceAll("[^a-zA-Z0-9]", "")
+				: "Api";
+		if (title.isEmpty())
+			title = "Api";
+		String clientClass = title + "Client";
+		ClassOrInterfaceDeclaration clientDecl = cu.getClassByName(clientClass).orElse(null);
+		if (clientDecl == null) {
+			clientDecl = cu.addClass(clientClass);
+			clientDecl.setModifier(com.github.javaparser.ast.Modifier.Keyword.PUBLIC, false);
+			clientDecl.addField("String", "baseUrl", com.github.javaparser.ast.Modifier.Keyword.PRIVATE);
+			clientDecl.addField("HttpClient", "httpClient", com.github.javaparser.ast.Modifier.Keyword.PRIVATE);
+			clientDecl.addField("String", "authorizationToken", com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			clientDecl.addConstructor(com.github.javaparser.ast.Modifier.Keyword.PUBLIC)
+					.addParameter("String", "baseUrl").setBody(StaticJavaParser.parseBlock(
+							"{ this.baseUrl = baseUrl; this.httpClient = HttpClient.newHttpClient(); this.mcp = new McpAdapter(); }"));
+			ClassOrInterfaceDeclaration mcpAdapter = classes.McpEmitter.createMcpAdapter(clientDecl);
+			com.github.javaparser.ast.body.MethodDeclaration getTools = mcpAdapter.addMethod("getTools",
+					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			getTools.setType("java.util.List<Tool>");
+			StringBuilder toolsBody = new StringBuilder();
+			toolsBody.append("{\n");
+			toolsBody.append("  java.util.List<Tool> tools = new java.util.ArrayList<>();\n");
+			com.github.javaparser.ast.body.MethodDeclaration callTool = mcpAdapter.addMethod("callTool",
+					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			callTool.setType("CallToolResult");
+			callTool.addParameter("String", "name");
+			callTool.addParameter("java.util.Map<String, Object>", "arguments");
+			callTool.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
+			StringBuilder mcpBody = new StringBuilder();
+			mcpBody.append("{\n");
+			mcpBody.append("  CallToolResult result = new CallToolResult();\n");
+			mcpBody.append("  java.util.List<TextContent> contentArr = new java.util.ArrayList<>();\n");
+			mcpBody.append("  TextContent content = new TextContent();\n");
+			mcpBody.append("  content.type = \"text\";\n");
+			if (model.paths != null && model.paths.pathItems != null) {
+				for (Map.Entry<String, openapi.PathItem> entry : model.paths.pathItems.entrySet()) {
+					String path = entry.getKey();
+					openapi.PathItem pi = entry.getValue();
+					if (pi.get != null) {
+						emitSdkClientMethod(clientDecl, "GET", path, pi.get);
+						appendMcpToolCall(mcpBody, "GET", path, pi.get, clientClass);
+						appendMcpToolSchema(toolsBody, "GET", path, pi.get);
+					}
+					if (pi.post != null) {
+						emitSdkClientMethod(clientDecl, "POST", path, pi.post);
+						appendMcpToolCall(mcpBody, "POST", path, pi.post, clientClass);
+						appendMcpToolSchema(toolsBody, "POST", path, pi.post);
+					}
+					if (pi.put != null) {
+						emitSdkClientMethod(clientDecl, "PUT", path, pi.put);
+						appendMcpToolCall(mcpBody, "PUT", path, pi.put, clientClass);
+						appendMcpToolSchema(toolsBody, "PUT", path, pi.put);
+					}
+					if (pi.delete != null) {
+						emitSdkClientMethod(clientDecl, "DELETE", path, pi.delete);
+						appendMcpToolCall(mcpBody, "DELETE", path, pi.delete, clientClass);
+						appendMcpToolSchema(toolsBody, "DELETE", path, pi.delete);
+					}
+				}
+			}
+			mcpBody.append("  throw new IllegalArgumentException(\"Unknown tool: \" + name);\n");
+			mcpBody.append("}\n");
+			callTool.setBody(StaticJavaParser.parseBlock(mcpBody.toString()));
+			toolsBody.append("  return tools;\n");
+			toolsBody.append("}\n");
+			getTools.setBody(StaticJavaParser.parseBlock(toolsBody.toString()));
+			com.github.javaparser.ast.body.MethodDeclaration getResources = mcpAdapter.addMethod("getResources",
+					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			getResources.setType("java.util.List<Resource>");
+			StringBuilder resBody = new StringBuilder();
+			resBody.append("{\n");
+			resBody.append("  java.util.List<Resource> resources = new java.util.ArrayList<>();\n");
+			resBody.append("  Resource res = new Resource();\n");
+			resBody.append("  res.uri = \"cdd://openapi/spec\";\n");
+			resBody.append("  res.name = \"OpenAPI Specification\";\n");
+			resBody.append("  res.mimeType = \"application/json\";\n");
+			resBody.append("  resources.add(res);\n");
+			resBody.append("  return resources;\n");
+			resBody.append("}\n");
+			getResources.setBody(StaticJavaParser.parseBlock(resBody.toString()));
+			clientDecl.addField("McpAdapter", "mcp", com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+		}
+	}
+
+	/**
+	 * Appends an MCP tool schema definition to the generated {@code getTools}
+	 * method body.
+	 *
+	 * @param body
+	 *            The target {@link StringBuilder}.
+	 * @param method
+	 *            The HTTP method (uppercase, e.g. {@code GET}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link openapi.Operation} definition.
+	 */
+	private static void appendMcpToolSchema(StringBuilder body, String method, String path, openapi.Operation op) {
+		String toolName = op.operationId != null ? op.operationId : method + "_" + path.replaceAll("[^a-zA-Z0-9]", "_");
+		String desc = op.summary != null ? op.summary : (op.description != null ? op.description : "");
+		body.append("  {\n");
+		body.append("    Tool tool = new Tool();\n");
+		body.append("    tool.name = \"").append(escape(toolName)).append("\";\n");
+		body.append("    tool.description = \"").append(escape(desc)).append("\";\n");
+		body.append("    java.util.Map<String, Object> inputSchema = new java.util.HashMap<>();\n");
+		body.append("    inputSchema.put(\"type\", \"object\");\n");
+		body.append("    java.util.Map<String, Object> properties = new java.util.HashMap<>();\n");
+		body.append("    java.util.List<String> required = new java.util.ArrayList<>();\n");
+		if (op.parameters != null) {
+			for (Object pObj : op.parameters) {
+				openapi.Parameter p = (openapi.Parameter) pObj;
+				appendMcpProperty(body, p.name, p.description, p.required);
+			}
+		}
+		if (op.requestBody != null) {
+			openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
+			appendMcpProperty(body, "requestBody", rb.description, rb.required);
+		}
+		body.append("    inputSchema.put(\"properties\", properties);\n");
+		body.append("    inputSchema.put(\"required\", required);\n");
+		body.append("    tool.inputSchema = inputSchema;\n");
+		body.append("    tools.add(tool);\n");
+		body.append("  }\n");
+	}
+
+	/**
+	 * Appends a single property entry to an MCP tool's {@code inputSchema}.
+	 *
+	 * @param body
+	 *            The target {@link StringBuilder}.
+	 * @param name
+	 *            The property name.
+	 * @param description
+	 *            The optional property description.
+	 * @param required
+	 *            Whether the property is required.
+	 */
+	private static void appendMcpProperty(StringBuilder body, String name, String description, Boolean required) {
+		body.append("    {\n");
+		body.append("      java.util.Map<String, Object> prop = new java.util.HashMap<>();\n");
+		body.append("      prop.put(\"type\", \"string\");\n");
+		if (description != null) {
+			body.append("      prop.put(\"description\", \"").append(escape(description)).append("\");\n");
+		}
+		body.append("      properties.put(\"").append(escape(name)).append("\", prop);\n");
+		if (Boolean.TRUE.equals(required)) {
+			body.append("      required.add(\"").append(escape(name)).append("\");\n");
+		}
+		body.append("    }\n");
+	}
+
+	/**
+	 * Appends an MCP {@code callTool} dispatch branch for an OpenAPI operation.
+	 *
+	 * @param body
+	 *            The target {@link StringBuilder}.
+	 * @param method
+	 *            The HTTP method (uppercase, e.g. {@code GET}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link openapi.Operation} definition.
+	 * @param clientClassName
+	 *            The outer SDK client class name.
+	 */
+	private static void appendMcpToolCall(StringBuilder body, String method, String path, openapi.Operation op,
+			String clientClassName) {
+		String toolName = op.operationId != null ? op.operationId : method + "_" + path.replaceAll("[^a-zA-Z0-9]", "_");
+		String methodName = op.operationId != null
+				? op.operationId.replaceAll("[^a-zA-Z0-9_]", "")
+				: (method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", ""));
+		if (methodName.isEmpty())
+			methodName = "method";
+		body.append("  if (\"").append(toolName).append("\".equals(name)) {\n");
+		body.append("    HttpResponse<String> res = ").append(clientClassName).append(".this.").append(methodName)
+				.append("(");
+		boolean first = true;
+		if (op.parameters != null) {
+			int pIdx = 0;
+			for (Object po : op.parameters) {
+				openapi.Parameter p = (openapi.Parameter) po;
+				String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
+				if (pName.isEmpty())
+					pName = "param";
+				if (!first)
+					body.append(", ");
+				body.append("arguments.get(\"").append(p.name).append("\") != null ? arguments.get(\"").append(p.name)
+						.append("\").toString() : null");
+				first = false;
+				pIdx++;
+			}
+		}
+		boolean hasBody = (op.requestBody != null);
+		if (hasBody) {
+			if (!first)
+				body.append(", ");
+			body.append("arguments.get(\"requestBody\") != null ? arguments.get(\"requestBody\").toString() : null");
+		}
+		body.append(");\n");
+		body.append("    content.text = res.body();\n");
+		body.append("    contentArr.add(content);\n");
+		body.append("    result.content = contentArr;\n");
+		body.append("    return result;\n");
+		body.append("  }\n");
+	}
+
+	/**
+	 * Emits an HTTP client method on the generated SDK client class for an OpenAPI
+	 * operation.
+	 *
+	 * @param classDecl
+	 *            The target {@link ClassOrInterfaceDeclaration}.
+	 * @param method
+	 *            The HTTP method (uppercase, e.g. {@code GET}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link openapi.Operation} definition.
+	 */
+	private static void emitSdkClientMethod(ClassOrInterfaceDeclaration classDecl, String method, String path,
+			openapi.Operation op) {
+		String methodName = op.operationId != null
+				? op.operationId.replaceAll("[^a-zA-Z0-9_]", "")
+				: (method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", ""));
+		if (methodName.isEmpty())
+			methodName = "method";
+		com.github.javaparser.ast.body.MethodDeclaration md = classDecl.addMethod(methodName,
+				com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+		md.setType("HttpResponse<String>");
+		md.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
+		String resolvedPath = path;
+		if (op.parameters != null) {
+			int pIdx = 0;
+			for (Object po : op.parameters) {
+				openapi.Parameter p = (openapi.Parameter) po;
+				String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
+				if (pName.isEmpty())
+					pName = "param";
+				md.addParameter("String", pName);
+				if ("path".equals(p.in)) {
+					resolvedPath = resolvedPath.replace("{" + p.name + "}", "\" + " + pName + " + \"");
+				} else if ("query".equals(p.in)) {
+					if (!resolvedPath.contains("?")) {
+						resolvedPath += "?" + p.name + "=\" + " + pName + " + \"";
+					} else {
+						resolvedPath += "&" + p.name + "=\" + " + pName + " + \"";
+					}
+				}
+				pIdx++;
+			}
+		}
+		StringBuilder body = new StringBuilder();
+		body.append("{\n");
+		body.append("  HttpRequest.Builder builder = HttpRequest.newBuilder()\n");
+		body.append("      .uri(URI.create(this.baseUrl + \"").append(resolvedPath).append("\"));\n");
+		body.append("  builder.header(\"Accept\", \"application/json\");\n");
+		body.append("  if (this.authorizationToken != null) {\n");
+		body.append("      builder.header(\"Authorization\", this.authorizationToken);\n");
+		body.append("  }\n");
+		boolean hasBody = (op.requestBody != null);
+		if (hasBody) {
+			md.addParameter("String", "requestBody");
+			body.append("  builder.header(\"Content-Type\", \"application/json\");\n");
+			body.append("  builder.method(\"").append(method)
+					.append("\", HttpRequest.BodyPublishers.ofString(requestBody));\n");
+		} else {
+			body.append("  builder.method(\"").append(method).append("\", HttpRequest.BodyPublishers.noBody());\n");
+		}
+		body.append("  return this.httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());\n");
+		body.append("}\n");
+		md.setBody(StaticJavaParser.parseBlock(body.toString()));
+	}
+
+	/**
+	 * Adds a synthetic security credential parameter to {@code allParams} if no
+	 * parameter with the same name is already present.
+	 *
+	 * @param allParams
+	 *            The target parameter list.
+	 * @param name
+	 *            The parameter name.
+	 * @param in
+	 *            The parameter location ({@code "header"}, {@code "query"}, etc.).
+	 * @param description
+	 *            The parameter description.
+	 */
+	private static void addSecurityParamIfAbsent(java.util.List<Parameter> allParams, String name, String in,
+			String description) {
+		for (Parameter e : allParams) {
+			if (name.equals(e.name)) {
+				return;
+			}
+		}
+		Parameter sp = new Parameter();
+		sp.name = name;
+		sp.in = in;
+		sp.description = description;
+		allParams.add(sp);
+	}
+
+	/**
+	 * Escapes backslashes, double quotes, and newlines for Java string literals.
+	 *
+	 * @param s
+	 *            The input string to escape.
+	 * @return The escaped string (or empty string if {@code s} is {@code null}).
+	 */
+	private static String escape(String s) {
+		return openapi.TypeMapper.escape(s);
 	}
 }

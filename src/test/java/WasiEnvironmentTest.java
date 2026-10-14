@@ -4,8 +4,19 @@ import java.nio.file.Files;
 import java.util.Map;
 import java.util.Scanner;
 
+/**
+ * Subprocess simulation test verifying {@code CDD_WASI_VIRTUAL_ROOT} path
+ * resolution.
+ */
 public class WasiEnvironmentTest {
 
+	/**
+	 * Launches {@link cli.Main} in a separate JVM with
+	 * {@code CDD_WASI_VIRTUAL_ROOT} configured and verifies SDK generation.
+	 *
+	 * @throws Exception
+	 *             If subprocess execution fails.
+	 */
 	public static void run() throws Exception {
 		System.out.println("Running WASI Environment Simulation Test...");
 
@@ -81,6 +92,12 @@ public class WasiEnvironmentTest {
 		}
 	}
 
+	/**
+	 * Recursively deletes a directory and its contents.
+	 *
+	 * @param dir
+	 *            The directory or file to delete.
+	 */
 	private static void deleteDir(File dir) {
 		if (dir.isDirectory()) {
 			File[] files = dir.listFiles();

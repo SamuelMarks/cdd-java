@@ -67,8 +67,12 @@ def main():
         if os.path.exists(jacoco_csv):
             with open(jacoco_csv, "r") as f:
                 lines = f.readlines()[1:]
-                missed = sum(int(l.split(",")[3]) for l in lines)
-                covered = sum(int(l.split(",")[4]) for l in lines)
+                inst_missed = sum(int(l.split(",")[3]) for l in lines)
+                inst_covered = sum(int(l.split(",")[4]) for l in lines)
+                branch_missed = sum(int(l.split(",")[5]) for l in lines)
+                branch_covered = sum(int(l.split(",")[6]) for l in lines)
+                missed = inst_missed + branch_missed
+                covered = inst_covered + branch_covered
                 if missed + covered > 0:
                     test_cov = int((covered / (missed + covered)) * 100)
     except Exception as e:

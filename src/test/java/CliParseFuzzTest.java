@@ -4,7 +4,18 @@ import java.util.*;
 import cli.Parse;
 import openapi.*;
 
+/**
+ * Fuzzes {@link cli.Parse} with isolated, contextual, and malformed help output
+ * lines.
+ */
 public class CliParseFuzzTest {
+	/**
+	 * Verifies {@link cli.Parse#parse(String)} handles individual and combined CLI
+	 * help output lines cleanly.
+	 *
+	 * @throws Exception
+	 *             If parsing fails unexpectedly.
+	 */
 	@Test
 	public void fuzzParse() throws Exception {
 		OpenAPI api = new OpenAPI();

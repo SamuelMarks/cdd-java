@@ -47,9 +47,6 @@ public class Emit {
 			sb.append("/**\n * Auto-generated mock server for ").append(title).append(".\n */\n");
 			sb.append("public class ").append(title).append("MockServer {\n");
 			sb.append("    private HttpServer server;\n\n");
-			/**
-			 * Method.
-			 */
 			sb.append("    public void stop() {\n");
 			sb.append("        if (server != null) {\n");
 			sb.append("            server.stop(0);\n");
@@ -69,9 +66,6 @@ public class Emit {
 		if (classDecl != null) {
 			if (!hasMember(classDecl, "start")) {
 				StringBuilder sb = new StringBuilder();
-				/**
-				 * Method.
-				 */
 				sb.append("public void start(int port) throws IOException {\n");
 				sb.append("    server = HttpServer.create(new InetSocketAddress(port), 0);\n");
 
@@ -190,6 +184,14 @@ public class Emit {
 		return files;
 	}
 
+	/**
+	 * Extracts a PascalCase resource name from an OpenAPI URL path template.
+	 *
+	 * @param path
+	 *            The URL path template.
+	 * @return The extracted resource name, or {@code "Root"} if no static segments
+	 *         exist.
+	 */
 	private static String getResourceName(String path) {
 		String[] parts = path.split("/");
 		for (String p : parts) {
@@ -201,16 +203,15 @@ public class Emit {
 	}
 
 	/**
-	 * Generated JavaDoc.
-	 */
-	/**
-	 * Generated JavaDoc.
+	 * Checks whether the given class declaration already contains a method with the
+	 * specified name.
 	 *
 	 * @param classDecl
-	 *            param doc
+	 *            The {@link ClassOrInterfaceDeclaration} to inspect.
 	 * @param name
-	 *            param doc
-	 * @return return doc
+	 *            The method name to look for.
+	 * @return {@code true} if a method with the given name exists; {@code false}
+	 *         otherwise.
 	 */
 	private static boolean hasMember(ClassOrInterfaceDeclaration classDecl, String name) {
 		for (BodyDeclaration<?> member : classDecl.getMembers()) {

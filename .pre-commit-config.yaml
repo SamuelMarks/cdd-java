@@ -37,6 +37,12 @@ repos:
         language: system
         types_or: [java]
         pass_filenames: false
+      - id: check-missing-docs
+        name: Check Missing Docs
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/check_missing_docs.py
+        language: system
+        types_or: [java]
+        pass_filenames: false
       - id: make-build-wasm
         name: Make Build WASM
         entry: python3 ./scripts/run_with_fallback.py make build_wasm

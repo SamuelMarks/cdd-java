@@ -37,16 +37,31 @@ public class Parse {
 					continue;
 
 				for (MethodDeclaration methodDecl : classDecl.getMethods()) {
-					if (methodDecl.getNameAsString().startsWith("test_")) {
-						// Attempt to extract method name -> operationId mapping
-						String opId = methodDecl.getNameAsString().substring(5);
-						// In tests, we don't know the exact path without analyzing the client,
-						// but we register the operationId in a generic path to be merged later
+					String mName = methodDecl.getNameAsString();
+					String bodyStr = methodDecl.getBody().map(Object::toString).orElse("");
+					java.util.regex.Matcher matcher = java.util.regex.Pattern
+							.compile("\"(GET|POST|PUT|DELETE|PATCH) (/[^\\s\"]*) (/[^\\s\"]*|HTTP/1\\.1)")
+							.matcher(bodyStr);
+					if (matcher.find()) {
+						String verb = matcher.group(1);
+						String fullPath = matcher.group(2);
+						String path = fullPath.replaceFirst("^/(v[0-9]+|api/v[0-9]+)", "");
+						if (path.isEmpty())
+							path = "/";
+						PathItem item = api.paths.pathItems.computeIfAbsent(path, k -> new PathItem());
+						Operation op = new Operation();
+						op.operationId = mName.length() > 4
+								? Character.toLowerCase(mName.charAt(4)) + mName.substring(5)
+								: mName;
+						op.description = "Generated from test case " + mName;
+						assignOperation(item, verb, op);
+					} else if (mName.startsWith("test_")) {
+						String opId = mName.substring(5);
 						String dummyPath = "/" + opId;
 						PathItem item = api.paths.pathItems.computeIfAbsent(dummyPath, k -> new PathItem());
 						Operation op = new Operation();
 						op.operationId = opId;
-						op.description = "Generated from test case " + methodDecl.getNameAsString();
+						op.description = "Generated from test case " + mName;
 						if (item.get == null) {
 							item.get = op;
 						}
@@ -57,6 +72,31 @@ public class Parse {
 			// ignore
 		}
 		return api;
+	}
+
+	/**
+	 * Assigns an {@link Operation} to the matching HTTP verb slot on a
+	 * {@link PathItem}.
+	 *
+	 * @param item
+	 *            The target {@link PathItem}.
+	 * @param verb
+	 *            The uppercase HTTP verb.
+	 * @param op
+	 *            The {@link Operation} to assign.
+	 */
+	public static void assignOperation(PathItem item, String verb, Operation op) {
+		if ("POST".equals(verb)) {
+			item.post = op;
+		} else if ("PUT".equals(verb)) {
+			item.put = op;
+		} else if ("DELETE".equals(verb)) {
+			item.delete = op;
+		} else if ("PATCH".equals(verb)) {
+			item.patch = op;
+		} else {
+			item.get = op;
+		}
 	}
 
 }

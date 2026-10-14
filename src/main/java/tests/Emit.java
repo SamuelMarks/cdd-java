@@ -49,9 +49,6 @@ public class Emit {
 		sb.append("import java.net.http.HttpResponse;\n");
 		sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
 		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n\n");
-		/**
-		 * Documented.
-		 */
 		sb.append("public class ").append(testClass).append(" {\n");
 		sb.append("    static com.sun.net.httpserver.HttpServer mockServer;\n");
 		sb.append("    static int mockPort;\n");
@@ -106,6 +103,8 @@ public class Emit {
 					appendJUnitTest(sb, clientClass, "PUT", path, pi.put, pi.parameters, model);
 				if (pi.delete != null)
 					appendJUnitTest(sb, clientClass, "DELETE", path, pi.delete, pi.parameters, model);
+				if (pi.patch != null)
+					appendJUnitTest(sb, clientClass, "PATCH", path, pi.patch, pi.parameters, model);
 			}
 		}
 		sb.append("}\n");
@@ -113,7 +112,23 @@ public class Emit {
 	}
 
 	/**
-	 * appendJUnitTest doc
+	 * Appends JUnit integration and mock server test methods for a single OpenAPI
+	 * operation.
+	 *
+	 * @param sb
+	 *            The target {@link StringBuilder}.
+	 * @param clientClass
+	 *            The generated SDK client class name.
+	 * @param method
+	 *            The HTTP method verb (uppercase, e.g. {@code GET}).
+	 * @param path
+	 *            The URL path template.
+	 * @param op
+	 *            The {@link Operation} definition.
+	 * @param pathParams
+	 *            Path-level parameters inherited from the {@link PathItem}.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
 	 */
 	private static void appendJUnitTest(StringBuilder sb, String clientClass, String method, String path, Operation op,
 			List<Object> pathParams, OpenAPI model) {
@@ -270,13 +285,15 @@ public class Emit {
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Checks whether the given class declaration already contains a method with the
+	 * specified name.
 	 *
 	 * @param classDecl
-	 *            param doc
+	 *            The {@link ClassOrInterfaceDeclaration} to inspect.
 	 * @param name
-	 *            param doc
-	 * @return return doc
+	 *            The method name to look for.
+	 * @return {@code true} if a method with the given name exists; {@code false}
+	 *         otherwise.
 	 */
 	private static boolean hasMember(ClassOrInterfaceDeclaration classDecl, String name) {
 		for (BodyDeclaration<?> member : classDecl.getMembers()) {

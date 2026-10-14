@@ -1,10 +1,16 @@
 package cli;
 
+import java.util.function.Consumer;
+
 /**
  * CLI Entrypoint.
  */
-@Generated
 public class Main {
+
+	/**
+	 * Process exit handler, defaulting to {@link System#exit(int)}.
+	 */
+	public static Consumer<Integer> exitHandler = System::exit;
 
 	/**
 	 * Default constructor for Main.
@@ -13,10 +19,10 @@ public class Main {
 	}
 
 	/**
-	 * main doc
+	 * Executes the CLI application with the provided command-line arguments.
 	 *
 	 * @param args
-	 *            Command-line arguments.
+	 *            Command-line arguments passed to the CLI.
 	 */
 	public static void main(String[] args) {
 		try {
@@ -26,7 +32,7 @@ public class Main {
 			if ("true".equals(System.getProperty("cdd.test"))) {
 				throw new RuntimeException("Exit 1", e);
 			}
-			System.exit(1);
+			exitHandler.accept(1);
 		}
 	}
 }

@@ -3,7 +3,14 @@ import java.util.*;
 import openapi.*;
 import routes.Emit;
 
+/**
+ * Branch coverage unit tests for {@link routes.Emit}.
+ */
 public class RoutesEmitBranchTest {
+	/**
+	 * Verifies {@link routes.Emit#emit} across sparse, null, and multi-verb path
+	 * items and webhooks.
+	 */
 	@Test
 	public void testRoutesEmitBranches() {
 		OpenAPI api = new OpenAPI();
@@ -88,10 +95,107 @@ public class RoutesEmitBranchTest {
 
 		PathItem wh2 = new PathItem();
 		wh2.post = new Operation();
+		wh2.parameters = Arrays.asList(new Parameter(), wp);
 		api.webhooks.put("wh2", wh2);
 
 		String result = Emit.emit(api, null);
 		org.junit.Assert.assertTrue(result.contains(
 				"public void mcpSse(String toolName, java.util.Map<String, Object> arguments, java.util.Map<String, String> headers)"));
+		// Re-emit into existing result to cover !hasMember(classDecl, "mcpSse") and
+		// !hasMember(classDecl, interfaceName) false branches
+		String reResult = Emit.emit(api, result);
+		org.junit.Assert.assertNotNull(reResult);
+
+		// Cover query-only and options-only callback items, empty
+		// ref/summary/description, duplicate parameter in/name, and security scheme
+		// edge cases
+		OpenAPI edgeApi = new OpenAPI();
+		edgeApi.paths = new Paths();
+		edgeApi.paths.pathItems = new HashMap<>();
+		PathItem optionsOnlyPi = new PathItem();
+		Operation optOp = new Operation();
+		Callback optCb = new Callback();
+		optCb.pathItems = Collections.singletonMap("/cb", new PathItem());
+		optOp.callbacks = Collections.singletonMap("optCb", optCb);
+		optionsOnlyPi.options = optOp;
+		edgeApi.paths.pathItems.put("/optonly", optionsOnlyPi);
+		PathItem queryOnlyPi = new PathItem();
+		queryOnlyPi.ref = "";
+		queryOnlyPi.summary = "";
+		queryOnlyPi.description = "";
+		Parameter sharedP = new Parameter();
+		sharedP.name = "shared";
+		sharedP.in = "query";
+		queryOnlyPi.parameters = Collections.singletonList(sharedP);
+		Operation qOp = new Operation();
+		Parameter opP1 = new Parameter();
+		opP1.name = "shared";
+		opP1.in = "query";
+		Parameter opP2 = new Parameter();
+		opP2.name = "shared";
+		opP2.in = "header";
+		Parameter opP3 = new Parameter();
+		opP3.name = "other";
+		opP3.in = "query";
+		qOp.parameters = Arrays.asList(opP1, opP2, opP3);
+		Callback qCb = new Callback();
+		qCb.pathItems = Collections.singletonMap("/cb", new PathItem());
+		qOp.callbacks = Collections.singletonMap("qCb", qCb);
+
+		SecurityRequirement srNullReqs = new SecurityRequirement();
+		srNullReqs.requirements = null;
+		SecurityRequirement srEdge = new SecurityRequirement();
+		srEdge.requirements = new HashMap<>();
+		srEdge.requirements.put("apiKeyNoName", Collections.emptyList());
+		srEdge.requirements.put("apiKeyNoIn", Collections.emptyList());
+		srEdge.requirements.put("httpOther", Collections.emptyList());
+		srEdge.requirements.put("otherType", Collections.emptyList());
+		qOp.security = Arrays.asList(srNullReqs, srEdge);
+
+		// Also test secReqs != null when model.components == null, and when
+		// components.securitySchemes == null
+		queryOnlyPi.query = qOp;
+		edgeApi.paths.pathItems.put("/qonly", queryOnlyPi);
+		Emit.emit(edgeApi, null);
+		edgeApi.components = new Components();
+		edgeApi.components.securitySchemes = null;
+		Emit.emit(edgeApi, null);
+
+		edgeApi.components.securitySchemes = new HashMap<>();
+		SecurityScheme sNoName = new SecurityScheme();
+		sNoName.type = "apiKey";
+		sNoName.in = "header";
+		edgeApi.components.securitySchemes.put("apiKeyNoName", sNoName);
+		SecurityScheme sNoIn = new SecurityScheme();
+		sNoIn.type = "apiKey";
+		sNoIn.name = "X-Key";
+		edgeApi.components.securitySchemes.put("apiKeyNoIn", sNoIn);
+		SecurityScheme sHttpOther = new SecurityScheme();
+		sHttpOther.type = "http";
+		sHttpOther.scheme = "digest";
+		edgeApi.components.securitySchemes.put("httpOther", sHttpOther);
+		SecurityScheme sOtherType = new SecurityScheme();
+		sOtherType.type = "oauth2";
+		edgeApi.components.securitySchemes.put("otherType", sOtherType);
+
+		RequestBody edgeRb = new RequestBody();
+		edgeRb.content = new HashMap<>();
+		MediaType edgeMt = new MediaType();
+		edgeMt.schema = new HashMap<String, Object>();
+		edgeMt.itemSchema = new HashMap<String, Object>();
+		Encoding nullCtEnc = new Encoding();
+		edgeMt.prefixEncoding = Collections.singletonList(nullCtEnc);
+		edgeMt.itemEncoding = new Encoding();
+		Encoding mapEnc = new Encoding();
+		mapEnc.prefixEncoding = Collections.singletonList(new Encoding());
+		mapEnc.itemEncoding = new Encoding();
+		Map<String, Encoding> encMap = new HashMap<>();
+		encMap.put("e", mapEnc);
+		encMap.put("eSparse", new Encoding());
+		edgeMt.encoding = encMap;
+		edgeRb.content.put("application/json", edgeMt);
+		qOp.requestBody = edgeRb;
+
+		Emit.emit(edgeApi, null);
 	}
 }

@@ -50,6 +50,7 @@ public class Emit {
 				cu.addImport("jakarta.persistence.GenerationType");
 				cu.addImport("jakarta.persistence.OneToMany");
 				cu.addImport("jakarta.persistence.ManyToOne");
+				cu.addImport("jakarta.persistence.JoinColumn");
 				cu.addImport("java.util.List");
 				cu.addImport("java.util.Map");
 
@@ -92,6 +93,7 @@ public class Emit {
 			cu.addImport("jakarta.persistence.GenerationType");
 			cu.addImport("jakarta.persistence.OneToMany");
 			cu.addImport("jakarta.persistence.ManyToOne");
+			cu.addImport("jakarta.persistence.JoinColumn");
 			cu.addImport("java.util.List");
 			cu.addImport("java.util.Map");
 		}
@@ -116,16 +118,17 @@ public class Emit {
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Emits a Jakarta Persistence {@code @Entity} class declaration for the given
+	 * OpenAPI schema.
 	 *
 	 * @param cu
-	 *            param doc
+	 *            The target {@link CompilationUnit}.
 	 * @param className
-	 *            param doc
+	 *            The sanitized entity class name.
 	 * @param schemaMap
-	 *            param doc
+	 *            The OpenAPI {@link Schema} definition.
 	 * @param model
-	 *            param doc
+	 *            The root {@link OpenAPI} model.
 	 */
 	private static void emitEntity(CompilationUnit cu, String className, Schema schemaMap, OpenAPI model) {
 		ClassOrInterfaceDeclaration classDecl = cu.getClassByName(className).orElse(null);
@@ -156,6 +159,8 @@ public class Emit {
 				}
 
 				String type = resolveType(prop.getValue(), model);
+				boolean isRef = prop.getValue() instanceof Schema && ((Schema) prop.getValue()).$ref != null;
+				boolean isRequired = schemaMap.required != null && schemaMap.required.contains(propName);
 
 				if (!classDecl.getFieldByName(safePropName).isPresent()) {
 					FieldDeclaration fd = classDecl.addField(type, safePropName, Modifier.Keyword.PUBLIC);
@@ -168,10 +173,22 @@ public class Emit {
 						fd.addAnnotation(genAnn);
 					} else if (type.startsWith("List<")) {
 						fd.addAnnotation("OneToMany");
+					} else if (isRef) {
+						fd.addAnnotation("ManyToOne");
+						NormalAnnotationExpr joinAnn = new NormalAnnotationExpr();
+						joinAnn.setName("JoinColumn");
+						joinAnn.addPair("name", "\"" + propName + "_id\"");
+						if (isRequired) {
+							joinAnn.addPair("nullable", "false");
+						}
+						fd.addAnnotation(joinAnn);
 					} else {
 						NormalAnnotationExpr colAnn = new NormalAnnotationExpr();
 						colAnn.setName("Column");
 						colAnn.addPair("name", "\"" + propName + "\"");
+						if (isRequired) {
+							colAnn.addPair("nullable", "false");
+						}
 						fd.addAnnotation(colAnn);
 					}
 				}
@@ -180,52 +197,16 @@ public class Emit {
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Resolves an OpenAPI schema object into its corresponding Java entity field
+	 * type.
 	 *
 	 * @param schemaObj
-	 *            param doc
+	 *            The OpenAPI {@link Schema} or reference object.
 	 * @param model
-	 *            param doc
-	 * @return return doc
+	 *            The root {@link OpenAPI} model.
+	 * @return The resolved Java type string.
 	 */
 	private static String resolveType(Object schemaObj, OpenAPI model) {
-		if (!(schemaObj instanceof Schema))
-			return "Object";
-		Schema schemaMap = (Schema) schemaObj;
-		if (schemaMap.$ref != null) {
-			return schemaMap.$ref.substring(schemaMap.$ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
-		}
-		String schemaType = (String) schemaMap.type;
-		if ("string".equals(schemaType)) {
-			if ("date-time".equals(schemaMap.format))
-				return "java.time.OffsetDateTime";
-			if ("date".equals(schemaMap.format))
-				return "java.time.LocalDate";
-			if ("uuid".equals(schemaMap.format))
-				return "java.util.UUID";
-			if ("binary".equals(schemaMap.format))
-				return "byte[]";
-			return "String";
-		} else if ("integer".equals(schemaType)) {
-			if ("int64".equals(schemaMap.format))
-				return "Long";
-			return "Integer";
-		} else if ("number".equals(schemaType)) {
-			if ("float".equals(schemaMap.format))
-				return "Float";
-			return "Double";
-		} else if ("boolean".equals(schemaType)) {
-			return "Boolean";
-		} else if ("array".equals(schemaType)) {
-			String innerType = resolveType(schemaMap.items, model);
-			return "List<" + innerType + ">";
-		} else if ("object".equals(schemaType) || schemaMap.additionalProperties != null) {
-			if (schemaMap.additionalProperties instanceof Schema) {
-				String innerType = resolveType(schemaMap.additionalProperties, model);
-				return "Map<String, " + innerType + ">";
-			}
-			return "Map<String, Object>";
-		}
-		return "Object";
+		return openapi.TypeMapper.toJavaType(schemaObj, model, false);
 	}
 }

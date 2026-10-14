@@ -13,11 +13,22 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.io.OutputStream;
 
+/**
+ * Integration tests for HTTP and local file fetching in {@link RefResolver}.
+ */
 public class RefResolverTest {
 
+	/** Embedded test HTTP server. */
 	private static HttpServer server;
+	/** Bound port of the embedded test HTTP server. */
 	private static int port;
 
+	/**
+	 * Starts the embedded HTTP test server before running tests.
+	 *
+	 * @throws Exception
+	 *             If server bind fails.
+	 */
 	@BeforeClass
 	public static void setUp() throws Exception {
 		server = HttpServer.create(new InetSocketAddress(0), 0);
@@ -43,6 +54,9 @@ public class RefResolverTest {
 		port = server.getAddress().getPort();
 	}
 
+	/**
+	 * Stops the embedded HTTP test server after tests complete.
+	 */
 	@AfterClass
 	public static void tearDown() {
 		if (server != null) {
@@ -50,6 +64,12 @@ public class RefResolverTest {
 		}
 	}
 
+	/**
+	 * Verifies local file fetching and in-memory caching in {@link RefResolver}.
+	 *
+	 * @throws Exception
+	 *             If file creation or fetching fails.
+	 */
 	@Test
 	public void testFetchLocalFile() throws Exception {
 		File temp = File.createTempFile("test", ".yaml");
@@ -65,6 +85,12 @@ public class RefResolverTest {
 		assertEquals("test content", cached);
 	}
 
+	/**
+	 * Verifies HTTP 200 reference fetching in {@link RefResolver}.
+	 *
+	 * @throws Exception
+	 *             If HTTP fetching fails.
+	 */
 	@Test
 	public void testFetchHttp() throws Exception {
 		RefResolver resolver = new RefResolver();
@@ -72,6 +98,9 @@ public class RefResolverTest {
 		assertEquals("openapi: 3.0.0", content);
 	}
 
+	/**
+	 * Verifies HTTP 404 error handling in {@link RefResolver}.
+	 */
 	@Test
 	public void testFetchHttpError() {
 		RefResolver resolver = new RefResolver();

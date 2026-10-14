@@ -32,7 +32,6 @@ import java.util.Optional;
 /**
  * Parses DTOs from language source to OpenAPI representation using JavaParser.
  */
-@cli.Generated
 public class Parse {
 	/**
 	 * Default constructor.
@@ -75,10 +74,8 @@ public class Parse {
 				for (EnumConstantDeclaration constDecl : enumDecl.getEntries()) {
 					String val = constDecl.getNameAsString();
 					for (AnnotationExpr ann : constDecl.getAnnotations()) {
-						if (ann.getNameAsString().equals("JsonProperty")) {
-							if (ann instanceof SingleMemberAnnotationExpr) {
-								val = ((SingleMemberAnnotationExpr) ann).getMemberValue().toString().replace("\"", "");
-							}
+						if (ann.getNameAsString().equals("JsonProperty") && ann instanceof SingleMemberAnnotationExpr) {
+							val = ((SingleMemberAnnotationExpr) ann).getMemberValue().toString().replace("\"", "");
 						}
 					}
 					enumValues.add(val);
@@ -191,24 +188,21 @@ public class Parse {
 						refSchema.$ref = "#/components/schemas/" + extType.getNameAsString();
 						allOf.add(refSchema);
 					}
-					if (!allOf.isEmpty()) {
-						schema.allOf = allOf;
-					}
+					schema.allOf = allOf;
 				}
 
 				Map<String, Object> properties = new HashMap<>();
 				for (FieldDeclaration fieldDecl : classDecl.getFields()) {
-					if (fieldDecl.isPublic() || !fieldDecl.isPrivate()) {
+					if (!fieldDecl.isPrivate()) {
 						for (VariableDeclarator varDecl : fieldDecl.getVariables()) {
 							Type type = varDecl.getType();
 							String name = varDecl.getNameAsString();
 
 							for (AnnotationExpr ann : fieldDecl.getAnnotations()) {
-								if (ann.getNameAsString().equals("JsonProperty")) {
-									if (ann instanceof SingleMemberAnnotationExpr) {
-										name = ((SingleMemberAnnotationExpr) ann).getMemberValue().toString()
-												.replace("\"", "");
-									}
+								if (ann.getNameAsString().equals("JsonProperty")
+										&& ann instanceof SingleMemberAnnotationExpr) {
+									name = ((SingleMemberAnnotationExpr) ann).getMemberValue().toString().replace("\"",
+											"");
 								}
 							}
 
@@ -268,89 +262,22 @@ public class Parse {
 				api.components.schemas.put(className, schema);
 			}
 		} catch (Exception e) {
-			// Ignore unparseable code blocks or fragments
+			java.util.logging.Logger.getLogger(Parse.class.getName())
+					.fine("Skipping unparseable DTO source: " + e.getMessage());
 		}
 		return api;
 	}
 
 	/**
-	 * Generated JavaDoc.
+	 * Maps a Java AST {@link Type} into its corresponding OpenAPI {@link Schema}
+	 * type and format.
 	 *
 	 * @param type
-	 *            param doc
+	 *            The JavaParser AST {@link Type}.
 	 * @param propSchema
-	 *            param doc
+	 *            The target OpenAPI {@link Schema} to populate.
 	 */
 	private static void resolveType(Type type, Schema propSchema) {
-		String typeName = type.toString();
-
-		if (type.isClassOrInterfaceType()) {
-			ClassOrInterfaceType ciType = type.asClassOrInterfaceType();
-			String name = ciType.getNameAsString();
-			if (name.equals("String")) {
-				propSchema.type = "string";
-			} else if (name.equals("Integer")) {
-				propSchema.type = "integer";
-			} else if (name.equals("Long")) {
-				propSchema.type = "integer";
-				propSchema.format = "int64";
-			} else if (name.equals("Double") || name.equals("Float")) {
-				propSchema.type = "number";
-				if (name.equals("Float"))
-					propSchema.format = "float";
-			} else if (name.equals("Boolean")) {
-				propSchema.type = "boolean";
-			} else if (name.equals("UUID")) {
-				propSchema.type = "string";
-				propSchema.format = "uuid";
-			} else if (name.equals("LocalDate")) {
-				propSchema.type = "string";
-				propSchema.format = "date";
-			} else if (name.equals("OffsetDateTime") || name.equals("ZonedDateTime")) {
-				propSchema.type = "string";
-				propSchema.format = "date-time";
-			} else if (name.equals("List") || name.equals("ArrayList") || name.equals("Set")) {
-				propSchema.type = "array";
-				Schema items = new Schema();
-				if (ciType.getTypeArguments().isPresent() && !ciType.getTypeArguments().get().isEmpty()) {
-					resolveType(ciType.getTypeArguments().get().get(0), items);
-				} else {
-					items.type = "string";
-				}
-				propSchema.items = items;
-			} else if (name.equals("Map") || name.equals("HashMap")) {
-				propSchema.type = "object";
-				if (ciType.getTypeArguments().isPresent() && ciType.getTypeArguments().get().size() > 1) {
-					Schema addProps = new Schema();
-					resolveType(ciType.getTypeArguments().get().get(1), addProps);
-					propSchema.additionalProperties = addProps;
-				}
-			} else {
-				propSchema.$ref = "#/components/schemas/" + name;
-			}
-		} else if (type.isArrayType()) {
-			String elemType = type.asArrayType().getComponentType().toString();
-			if (elemType.equals("byte")) {
-				propSchema.type = "string";
-				propSchema.format = "binary";
-			} else {
-				propSchema.type = "array";
-				Schema items = new Schema();
-				resolveType(type.asArrayType().getComponentType(), items);
-				propSchema.items = items;
-			}
-		} else if (type.isPrimitiveType()) {
-			String pType = type.asPrimitiveType().toString();
-			if (pType.equals("int")) {
-				propSchema.type = "integer";
-			} else if (pType.equals("long")) {
-				propSchema.type = "integer";
-				propSchema.format = "int64";
-			} else if (pType.equals("double") || pType.equals("float")) {
-				propSchema.type = "number";
-			} else if (pType.equals("boolean")) {
-				propSchema.type = "boolean";
-			}
-		}
+		openapi.TypeMapper.toSchema(type, propSchema, false);
 	}
 }

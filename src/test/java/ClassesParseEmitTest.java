@@ -20,12 +20,19 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Unit tests for {@link classes.Parse} and {@link classes.Emit}.
+ */
 public class ClassesParseEmitTest {
 
+	/**
+	 * Verifies enum parsing into OpenAPI string schemas with enum values.
+	 */
 	@Test
 	public void testParseEnum() {
 		String source = "/** My Enum */\n" + "public enum MyEnum {\n" + "    @JsonProperty(\"val_a\")\n"
-				+ "    VAL_A,\n" + "    VAL_B\n" + "}\n";
+				+ "    VAL_A,\n" + "    @Deprecated\n" + "    @JsonProperty(value = \"val_b\")\n" + "    VAL_B\n"
+				+ "}\n" + "/**\n * @author x\n */\npublic enum EmptyDocEnum { A }\n" + "public enum NoDocEnum { X }\n";
 		OpenAPI api = Parse.parse(source);
 		assertNotNull(api.components.schemas.get("MyEnum"));
 		Schema schema = api.components.schemas.get("MyEnum");
@@ -34,21 +41,26 @@ public class ClassesParseEmitTest {
 		assertEquals(Arrays.asList("val_a", "VAL_B"), schema.enumValues);
 	}
 
+	/**
+	 * Verifies DTO class parsing including XML, discriminator, inheritance, and
+	 * property metadata.
+	 */
 	@Test
 	public void testParseClass() {
 		String source = "/**\n" + " * Class doc\n" + " * @xmlName xname\n" + " * @xmlNamespace xns\n"
 				+ " * @xmlPrefix xpr\n" + " * @xmlAttribute true\n" + " * @xmlWrapped false\n"
 				+ " * @discriminatorProperty type\n" + " * @discriminatorMapping foo FooType\n"
+				+ " * @discriminatorMapping nospace\n" + " * @unknownTag ignored\n"
 				+ " * @discriminatorDefault defaultMapping\n" + " * @schemaExample {ex}\n"
-				+ " * @schemaExternalDocs http://doc doc_desc\n" + " */\n"
-				+ "@JsonTypeInfo(use=Id.NAME, property=\"type\")\n" + "public class MyClass extends BaseClass {\n"
-				+ "    /**\n" + "     * prop doc\n" + "     * @xmlName xpname\n" + "     * @xmlNamespace xpns\n"
-				+ "     * @xmlPrefix xppr\n" + "     * @xmlAttribute false\n" + "     * @xmlWrapped true\n"
-				+ "     * @schemaExample exprop\n" + "     * @schemaExternalDocs http://pdoc pdesc\n" + "     */\n"
-				+ "    @JsonProperty(\"prop_a\")\n" + "    public String propA;\n" + "    private int propB;\n" + // should
-																													// be
-																													// ignored
-				"}\n" + "/**\n" + " * @schemaExternalDocs http://nospace\n" + " */\n"
+				+ " * @schemaExternalDocs http://doc doc_desc\n" + " */\n" + "@Deprecated\n"
+				+ "@JsonTypeInfo(\"simple\")\n" + "@JsonTypeInfo(use=Id.NAME, property=\"type\")\n"
+				+ "public class MyClass extends BaseClass {\n" + "    /**\n" + "     * prop doc\n"
+				+ "     * @xmlName xpname\n" + "     * @xmlNamespace xpns\n" + "     * @xmlPrefix xppr\n"
+				+ "     * @xmlAttribute false\n" + "     * @xmlWrapped true\n" + "     * @schemaExample exprop\n"
+				+ "     * @schemaExternalDocs http://pdoc pdesc\n" + "     * @unknownPropTag ignored\n" + "     */\n"
+				+ "    @Deprecated\n" + "    @JsonProperty(value = \"ignored\")\n" + "    @JsonProperty(\"prop_a\")\n"
+				+ "    public String propA;\n" + "    private int propB;\n" + "    String pkgProp;\n" + "}\n" + "/**\n"
+				+ " * @schemaExternalDocs http://nospace\n" + " */\n"
 				+ "@JsonTypeInfo(use=Id.NAME, property=\"type\")\n" + "public class NoSpaceClass {}\n"
 				+ "public interface MyInterface {}\n" + "public class MyClient {}\n" + "class NospaceServer { \n"
 				+ "    /**\n" + "     * @schemaExternalDocs http://nospace\n" + "     */\n"
@@ -97,6 +109,10 @@ public class ClassesParseEmitTest {
 		assertEquals("pdesc", propSchema.externalDocs.description);
 	}
 
+	/**
+	 * Verifies primitive, boxed, collection, map, and temporal type mapping in
+	 * {@link classes.Parse}.
+	 */
 	@Test
 	public void testParseTypes() {
 		String source = "public class Types {\n" + "    public Integer vInt;\n" + "    public Long vLong;\n"
@@ -161,6 +177,9 @@ public class ClassesParseEmitTest {
 		assertEquals("boolean", ((Schema) schema.properties.get("pBool")).type);
 	}
 
+	/**
+	 * Verifies graceful handling of malformed Java source input.
+	 */
 	@Test
 	public void testParseException() {
 		// Syntax error causes ParseException, which is caught and returns empty api.
@@ -169,6 +188,9 @@ public class ClassesParseEmitTest {
 		assertNotNull(api.components.schemas);
 	}
 
+	/**
+	 * Verifies full SDK and DTO emission from a comprehensive OpenAPI model.
+	 */
 	@Test
 	public void testEmitNew() {
 		OpenAPI api = new OpenAPI();
@@ -181,9 +203,12 @@ public class ClassesParseEmitTest {
 
 		Operation getOp = new Operation();
 		getOp.operationId = "getThing";
+		getOp.summary = "Get Thing Summary";
 		Parameter p1 = new Parameter();
 		p1.name = "id";
 		p1.in = "path";
+		p1.description = "ID desc";
+		p1.required = true;
 		Parameter p2 = new Parameter();
 		p2.name = "query_p";
 		p2.in = "query";
@@ -195,6 +220,7 @@ public class ClassesParseEmitTest {
 		pi.get = getOp;
 
 		Operation postOp = new Operation();
+		postOp.description = "Post Thing Desc";
 		postOp.requestBody = new RequestBody();
 		pi.post = postOp;
 
@@ -357,6 +383,9 @@ public class ClassesParseEmitTest {
 		assertNotNull(new Parse());
 	}
 
+	/**
+	 * Verifies lexical-preserving emission into an existing Java source string.
+	 */
 	@Test
 	public void testEmitExisting() {
 		OpenAPI api = new OpenAPI();
@@ -372,6 +401,9 @@ public class ClassesParseEmitTest {
 		assertFalse(result.contains("OLD_V"));
 	}
 
+	/**
+	 * Verifies default client class naming when Info or title is absent.
+	 */
 	@Test
 	public void testEmitApiDefaultTitle() {
 		OpenAPI api = new OpenAPI();
@@ -384,6 +416,9 @@ public class ClassesParseEmitTest {
 		assertTrue(result.contains("class ApiClient"));
 	}
 
+	/**
+	 * Verifies reserved class names (Parse, Emit) are skipped during DTO emission.
+	 */
 	@Test
 	public void testEmitEmptySchema() {
 		OpenAPI api = new OpenAPI();
@@ -391,8 +426,46 @@ public class ClassesParseEmitTest {
 		api.components.schemas = new HashMap<>();
 		api.components.schemas.put("Parse", new Schema());
 		api.components.schemas.put("Emit", new Schema());
-		String result = Emit.emit(api, null);
+
+		Schema sparseObj = new Schema();
+		sparseObj.description = "";
+		sparseObj.xml = new XML();
+		sparseObj.externalDocs = new ExternalDocumentation();
+		ExternalDocumentation urlOnlyEd = new ExternalDocumentation();
+		urlOnlyEd.url = "https://example.com";
+		sparseObj.discriminator = new Discriminator();
+		sparseObj.discriminator.extensions = null;
+		sparseObj.properties = new HashMap<>();
+
+		Schema propSparse = new Schema();
+		propSparse.description = "";
+		propSparse.xml = new XML();
+		propSparse.externalDocs = new ExternalDocumentation();
+		Schema propUrlOnlyEd = new Schema();
+		propUrlOnlyEd.externalDocs = urlOnlyEd;
+		sparseObj.properties.put("default", propSparse);
+		sparseObj.properties.put("const", propUrlOnlyEd);
+		sparseObj.properties.put("class", new Schema());
+		api.components.schemas.put("SparseObj", sparseObj);
+
+		Schema discNullExt = new Schema();
+		discNullExt.discriminator = new Discriminator();
+		discNullExt.externalDocs = urlOnlyEd;
+		api.components.schemas.put("DiscNullExt", discNullExt);
+
+		String result = Emit.emit(api, "   ");
 		assertFalse(result.contains("class Parse"));
 		assertFalse(result.contains("class Emit"));
+		// Re-emit into existing result so existing fields hit
+		// !getFieldByName(...).isPresent() false branch
+		String reEmitted = Emit.emit(api, result);
+		assertTrue(reEmitted.contains("defaultValue"));
+		assertTrue(reEmitted.contains("constValue"));
+		assertTrue(reEmitted.contains("classValue"));
+
+		Map<String, String> modular = Emit.emitModular(api);
+		assertFalse(modular.containsKey("models/Parse.java"));
+		assertFalse(modular.containsKey("models/Emit.java"));
+		assertTrue(modular.containsKey("models/SparseObj.java"));
 	}
 }

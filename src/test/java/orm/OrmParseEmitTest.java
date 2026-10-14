@@ -12,18 +12,31 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
+/**
+ * Unit and round-trip tests for {@link orm.Parse} and {@link orm.Emit}.
+ */
 public class OrmParseEmitTest {
 
+	/**
+	 * Verifies default constructor of {@link Parse}.
+	 */
 	@Test
 	public void testParseConstructor() {
 		new Parse();
 	}
 
+	/**
+	 * Verifies default constructor of {@link Emit}.
+	 */
 	@Test
 	public void testEmitConstructor() {
 		new Emit();
 	}
 
+	/**
+	 * Verifies JPA entity parsing across primitive, boxed, temporal, collection,
+	 * and map field types.
+	 */
 	@Test
 	public void testParseValid() {
 		String javaSource = "package com.example;\n" + "import jakarta.persistence.*;\n" + "import java.util.*;\n"
@@ -116,6 +129,9 @@ public class OrmParseEmitTest {
 		assertNotNull(missingNameTable.properties.get("missingNameCol"));
 	}
 
+	/**
+	 * Verifies graceful handling of malformed Java source in {@link Parse#parse}.
+	 */
 	@Test
 	public void testParseError() {
 		OpenAPI api = Parse.parse("this is not valid java {{");
@@ -123,6 +139,9 @@ public class OrmParseEmitTest {
 		assertEquals("3.2.0", api.openapi);
 	}
 
+	/**
+	 * Verifies null/empty component handling in {@link Emit#emit}.
+	 */
 	@Test
 	public void testEmitNullChecks() {
 		OpenAPI api = new OpenAPI();
@@ -133,6 +152,10 @@ public class OrmParseEmitTest {
 		assertEquals("test2", Emit.emit(api, "test2")); // Hits the components != null && schemas == null case
 	}
 
+	/**
+	 * Verifies JPA entity emission and round-trip parsing of annotations and
+	 * relationships.
+	 */
 	@Test
 	public void testEmitNew() {
 		OpenAPI api = new OpenAPI();
@@ -249,6 +272,12 @@ public class OrmParseEmitTest {
 		refSchema.$ref = "#/components/schemas/Role";
 		user.properties.put("role", refSchema); // Role
 
+		Schema reqRefSchema = new Schema();
+		reqRefSchema.$ref = "#/components/schemas/Department";
+		user.properties.put("dept", reqRefSchema);
+
+		user.required = new ArrayList<>(Arrays.asList("active", "dept"));
+
 		Schema unknown = new Schema();
 		unknown.type = "unknown";
 		user.properties.put("unk", unknown);
@@ -271,6 +300,10 @@ public class OrmParseEmitTest {
 		assertTrue(emitted.contains("public java.util.UUID id;"));
 		assertTrue(emitted.contains("@Id"));
 		assertTrue(emitted.contains("@GeneratedValue(strategy = GenerationType.IDENTITY)"));
+		assertTrue(emitted.contains("@ManyToOne"));
+		assertTrue(emitted.contains("@JoinColumn(name = \"role_id\")"));
+		assertTrue(emitted.contains("@JoinColumn(name = \"dept_id\", nullable = false)"));
+		assertTrue(emitted.contains("@Column(name = \"active\", nullable = false)"));
 		assertTrue(emitted.contains("public String _1invalid;"));
 		assertTrue(emitted.contains("public String enumValue;"));
 		assertTrue(emitted.contains("public Boolean active;"));
@@ -291,8 +324,23 @@ public class OrmParseEmitTest {
 		assertFalse(emitted.contains("class Emit"));
 		assertFalse(emitted.contains("class Parse"));
 		assertFalse(emitted.contains("class EnumObj"));
+
+		OpenAPI roundTrip = Parse.parse(emitted
+				+ "\n@Entity public class Extra { @JoinColumn(name = \"custom_col\", nullable = true) @JoinColumn public Role r; }");
+		Schema parsedUser = roundTrip.components.schemas.get("User");
+		assertNotNull(parsedUser);
+		assertNotNull(parsedUser.required);
+		assertTrue(parsedUser.required.contains("active"));
+		assertTrue(parsedUser.required.contains("dept"));
+		assertEquals(true, ((Schema) parsedUser.properties.get("id")).extensions.get("x-primary-key"));
+		assertEquals(true, ((Schema) parsedUser.properties.get("id")).extensions.get("x-generated-value"));
+		assertEquals("many-to-one", ((Schema) parsedUser.properties.get("role")).extensions.get("x-relationship"));
+		assertEquals("one-to-many", ((Schema) parsedUser.properties.get("tags")).extensions.get("x-relationship"));
 	}
 
+	/**
+	 * Verifies lexical-preserving JPA entity emission into existing source.
+	 */
 	@Test
 	public void testEmitExisting() {
 		OpenAPI api = new OpenAPI();
@@ -323,6 +371,10 @@ public class OrmParseEmitTest {
 		assertTrue(emitted.contains("@Table(name = \"custom_table\")")); // existing shouldn't be overwritten
 	}
 
+	/**
+	 * Verifies JPA entity emission adds {@code @Entity} and {@code @Table} when
+	 * absent on an existing class.
+	 */
 	@Test
 	public void testEmitExistingWithoutAnnotations() {
 		OpenAPI api = new OpenAPI();
@@ -341,6 +393,11 @@ public class OrmParseEmitTest {
 		String emittedEmpty = Emit.emit(api, "   ");
 		assertTrue(emittedEmpty.contains("@Entity"));
 	}
+
+	/**
+	 * Verifies emission of untyped properties with and without
+	 * {@code additionalProperties}.
+	 */
 	@Test
 	public void testEmitNotObjectWithAdditionalProps() {
 		OpenAPI api = new OpenAPI();
@@ -366,6 +423,11 @@ public class OrmParseEmitTest {
 		String emitted = Emit.emit(api, null);
 		assertNotNull(emitted);
 	}
+
+	/**
+	 * Verifies fallback type resolution when property or additionalProperties is
+	 * not a {@link Schema}.
+	 */
 	@Test
 	public void testResolveTypeNotSchema() {
 		OpenAPI api = new OpenAPI();

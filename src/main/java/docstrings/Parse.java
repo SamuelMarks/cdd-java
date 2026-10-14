@@ -1,10 +1,16 @@
 package docstrings;
 
+import java.util.HashMap;
 import openapi.OpenAPI;
+import openapi.Operation;
+import openapi.PathItem;
+import openapi.Paths;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
- * Parses docstrings from language source to OpenAPI representation or vice
- * versa.
+ * Parses docstrings from language source or documentation JSON to an OpenAPI
+ * representation.
  */
 public class Parse {
 	/**
@@ -14,15 +20,45 @@ public class Parse {
 	}
 
 	/**
-	 * Parses docstrings into an OpenAPI model.
+	 * Parses documentation JSON (as emitted by {@link Emit#emitDocsJson}) into an
+	 * OpenAPI model.
 	 *
 	 * @param input
-	 *            The input.
-	 * @return The parsed object.
+	 *            The documentation JSON string or source input.
+	 * @return The parsed {@link OpenAPI} object.
 	 */
 	public static OpenAPI parse(String input) {
 		OpenAPI api = new OpenAPI();
-		// A full parser would extract the JSON docstrings
+		if (input == null || !input.trim().startsWith("{")) {
+			return api;
+		}
+		JSONObject root = new JSONObject(input);
+		if (root.has("endpoints")) {
+			api.paths = new Paths();
+			api.paths.pathItems = new HashMap<>();
+			JSONArray endpoints = root.getJSONArray("endpoints");
+			for (int i = 0; i < endpoints.length(); i++) {
+				JSONObject ep = endpoints.getJSONObject(i);
+				String path = ep.optString("path", "/");
+				String method = ep.optString("method", "GET").toUpperCase();
+				PathItem item = api.paths.pathItems.computeIfAbsent(path, k -> new PathItem());
+				Operation op = new Operation();
+				if (ep.has("operationId")) {
+					op.operationId = ep.getString("operationId");
+				}
+				if ("POST".equals(method)) {
+					item.post = op;
+				} else if ("PUT".equals(method)) {
+					item.put = op;
+				} else if ("DELETE".equals(method)) {
+					item.delete = op;
+				} else if ("PATCH".equals(method)) {
+					item.patch = op;
+				} else {
+					item.get = op;
+				}
+			}
+		}
 		return api;
 	}
 }

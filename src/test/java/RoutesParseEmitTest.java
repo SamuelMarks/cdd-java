@@ -5,8 +5,16 @@ import static org.junit.Assert.*;
 import openapi.OpenAPI;
 import java.util.*;
 
+/**
+ * Comprehensive unit and round-trip tests for {@link routes.Parse} and
+ * {@link routes.Emit}.
+ */
 public class RoutesParseEmitTest {
 
+	/**
+	 * Verifies exhaustive parsing and emission of Javadoc tags, operations,
+	 * parameters, request bodies, responses, callbacks, and webhooks.
+	 */
 	@Test
 	public void testParseEmitExhaustive() {
 		String code1 = """
@@ -1650,6 +1658,10 @@ public class RoutesParseEmitTest {
 		assertNotNull(errApi);
 	}
 
+	/**
+	 * Verifies parsing of class-level and method-level Javadoc tags in both forward
+	 * and reverse order.
+	 */
 	@Test
 	public void testGeneratedTagsCoverage() {
 		String source = "package test;\n" + "import java.net.http.HttpResponse;\n" + "/**\n"
@@ -1748,6 +1760,10 @@ public class RoutesParseEmitTest {
 		assertNotNull(apiRev);
 	}
 
+	/**
+	 * Verifies {@link routes.Emit#emit} across callbacks, webhooks, examples, and
+	 * existing class bodies.
+	 */
 	@Test
 	public void testRoutesEmitCoverage() {
 		openapi.OpenAPI api = new openapi.OpenAPI();
@@ -1860,6 +1876,10 @@ public class RoutesParseEmitTest {
 		routes.Emit.emit(api, existing);
 	}
 
+	/**
+	 * Verifies individual class and method Javadoc tags when surrounding context is
+	 * sparse.
+	 */
 	@Test
 	public void testIndividualTagsForNullBranches() {
 		String[] classTags = {"openapiVersion", "openapiSelf", "jsonSchemaDialect", "title", "version", "summary",
@@ -1878,19 +1898,22 @@ public class RoutesParseEmitTest {
 				"responseContentExample", "responseLinkParam", "responseLink", "responseLinkOpId", "responseLinkOpRef",
 				"responseLinkDesc", "responseLinkServer", "responseLinkRequestBody"};
 
+		String[] payloads = {"val1", "val1 val2", "val1 val2 val3", "val1 val2 val3 val4 val5 val6"};
 		for (String tag : classTags) {
-			String content = "val1 val2 val3 val4 val5 val6";
-			if (tag.equals("serverVariable"))
-				content = "srv port 8080 desc";
-			if (tag.equals("serverVariableEnum"))
-				content = "srv enum v1,v2";
-			if (tag.equals("securityScheme"))
-				content = "sec1 type=http scheme=basic";
-			if (tag.equals("securitySchemeFlow"))
-				content = "implicit sec1 http http scope1=a";
+			for (String baseContent : payloads) {
+				String content = baseContent;
+				if (tag.equals("serverVariable") && baseContent.length() > 15)
+					content = "srv port 8080 desc";
+				if (tag.equals("serverVariableEnum") && baseContent.length() > 15)
+					content = "srv enum v1,v2";
+				if (tag.equals("securityScheme") && baseContent.length() > 15)
+					content = "sec1 type=http scheme=basic";
+				if (tag.equals("securitySchemeFlow") && baseContent.length() > 15)
+					content = "implicit sec1 http http scope1=a";
 
-			String source = "package test;\n/**\n * @" + tag + " " + content + "\n */\nclass Test {}";
-			routes.Parse.parse(source);
+				String source = "package test;\n/**\n * @" + tag + " " + content + "\n */\nclass Test {}";
+				routes.Parse.parse(source);
+			}
 		}
 
 		String[] methodTags = {"callback", "tag", "externalDocs", "deprecated", "operationServer", "operationSecurity",
@@ -1899,15 +1922,115 @@ public class RoutesParseEmitTest {
 				"requestBodyRequired", "requestBodyContent", "requestBodyContentSchema", "requestBodyContentExample",
 				"requestBodyContentItemSchema", "requestBodyContentPrefixEncoding", "requestBodyContentItemEncoding",
 				"requestBodyEncoding", "requestBodyEncodingPrefixEncoding", "requestBodyEncodingItemEncoding",
-				"requestBodyContentExamples", "responseDefault", "response"};
+				"requestBodyContentExamples", "requestBodyContentUnknown", "responseDefault", "response",
+				"responseHeaderExamples", "responseHeader", "responseHeaderRequired", "responseHeaderDeprecated",
+				"responseHeaderStyle", "responseHeaderExplode", "responseHeaderSchema", "responseHeaderExample",
+				"responseHeaderContent", "responseHeaderUnknown", "responseContentExamples", "responseContent",
+				"responseContentItemSchema", "responseContentPrefixEncoding", "responseContentItemEncoding",
+				"responseEncoding", "responseEncodingPrefixEncoding", "responseEncodingItemEncoding",
+				"responseContentSchema", "responseContentExample", "responseLinkParam", "responseLink",
+				"responseLinkOpId", "responseLinkOpRef", "responseLinkDesc", "responseLinkServer",
+				"responseLinkRequestBody", "responseLinkUnknown"};
 
 		for (String tag : methodTags) {
-			String content = "val1 val2 val3 val4 val5 val6";
-			String source = "package test;\nimport java.net.http.HttpResponse;\nclass Test {\n" + "    /**\n * @" + tag
-					+ " " + content + "\n */\n"
-					+ "    public HttpResponse<String> testMethod(String Authorization) { new StringBuilder(baseUrl + \"/test\"); HttpRequest.newBuilder().uri(java.net.URI.create(baseUrl + \"/test\")).GET(); return null; }\n"
-					+ "}";
-			routes.Parse.parse(source);
+			for (String content : payloads) {
+				String source = "package test;\nimport java.net.http.HttpResponse;\nclass Test {\n" + "    /**\n * @"
+						+ tag + " " + content + "\n */\n"
+						+ "    public HttpResponse<String> testMethod(String Authorization) { new StringBuilder(baseUrl + \"/test\"); HttpRequest.newBuilder().uri(java.net.URI.create(baseUrl + \"/test\")).GET(); return null; }\n"
+						+ "}";
+				routes.Parse.parse(source);
+			}
 		}
+	}
+
+	/**
+	 * Verifies round-trip emission and parsing across all 9 HTTP verbs (GET, POST,
+	 * PUT, DELETE, PATCH, OPTIONS, HEAD, TRACE, QUERY).
+	 */
+	@Test
+	public void testAllHttpVerbsRoundTrip() {
+		openapi.OpenAPI api = new openapi.OpenAPI();
+		api.openapi = "3.2.0";
+		api.info = new openapi.Info();
+		api.info.title = "VerbTest";
+		api.info.version = "1.0.0";
+		api.paths = new openapi.Paths();
+		api.paths.pathItems = new java.util.HashMap<>();
+
+		openapi.PathItem pi = new openapi.PathItem();
+		pi.get = new openapi.Operation();
+		pi.get.operationId = "doGet";
+		pi.post = new openapi.Operation();
+		pi.post.operationId = "doPost";
+		pi.post.requestBody = new openapi.RequestBody();
+		pi.put = new openapi.Operation();
+		pi.put.operationId = "doPut";
+		pi.put.requestBody = new openapi.RequestBody();
+		pi.delete = new openapi.Operation();
+		pi.delete.operationId = "doDelete";
+		pi.patch = new openapi.Operation();
+		pi.patch.operationId = "doPatch";
+		pi.patch.requestBody = new openapi.RequestBody();
+		pi.options = new openapi.Operation();
+		pi.options.operationId = "doOptions";
+		pi.head = new openapi.Operation();
+		pi.head.operationId = "doHead";
+		pi.trace = new openapi.Operation();
+		pi.trace.operationId = "doTrace";
+		pi.query = new openapi.Operation();
+		pi.query.operationId = "doQuery";
+		pi.query.requestBody = new openapi.RequestBody();
+		api.paths.pathItems.put("/verbs", pi);
+
+		String emitted = routes.Emit.emit(api, null);
+		assertTrue(emitted.contains("doOptions"));
+		assertTrue(emitted.contains("doHead"));
+		assertTrue(emitted.contains("doTrace"));
+		assertTrue(emitted.contains("doQuery"));
+
+		openapi.OpenAPI parsed = routes.Parse.parse(emitted);
+		openapi.PathItem parsedPi = parsed.paths.pathItems.get("/verbs");
+		assertNotNull(parsedPi);
+		assertNotNull(new routes.Emit());
+		assertNotNull(new routes.Parse());
+		routes.Parse.parseCallbackInterface(new com.github.javaparser.ast.body.ClassOrInterfaceDeclaration(), null);
+		String cbInterfaceSource = "/**\n" + " * @server https://s1.example.com S1\n"
+				+ " * @server https://s2.example.com S2\n" + " * @securitySchemeFlow unknown s1 u1 u2\n"
+				+ " * @pathServer /p https://ps1.example.com PS1\n" + " * @pathServer /p https://ps2.example.com PS2\n"
+				+ " * @pathParameter /p p1 query P1\n" + " * @pathParameter /p p2 query P2\n" + " */\n"
+				+ "public class T {\n" + "  public interface MyCbCallbackHandler {\n" + "    void onGet();\n"
+				+ "    void onPost();\n" + "    void onPut();\n" + "    void onDelete();\n" + "    void onPatch();\n"
+				+ "    void onQuery();\n" + "    void onUnknown();\n" + "    void helper();\n" + "  }\n"
+				+ "  public interface MyHookWebhookHandler {\n"
+				+ "    void onPost(String body, String requestBody, String extra);\n" + "    void onGet();\n" + "  }\n"
+				+ "  /**\n" + "   * Summary line\n" + "   * Description line\n" + "   * @tag t1\n" + "   * @tag t2\n"
+				+ "   * @param q1 q1\n" + "   * @param q2 Detailed description\n" + "   * @param\n"
+				+ "   * @requestBodyContentSchema application/json object\n"
+				+ "   * @requestBodyContent application/json\n"
+				+ "   * @requestBodyContentPrefixEncoding application/json text/plain\n"
+				+ "   * @requestBodyContentPrefixEncoding application/json application/octet-stream\n"
+				+ "   * @requestBodyEncodingPrefixEncoding application/json field1 text/plain\n"
+				+ "   * @requestBodyEncodingPrefixEncoding application/json field1 application/octet-stream\n"
+				+ "   */\n" + "  public HttpResponse<String> m1(String q1, String q2, String authorization) {\n"
+				+ "    Object unused = new Object();\n"
+				+ "    StringBuilder sb = new StringBuilder(this.baseUrl + \"/p?foo=bar\");\n"
+				+ "    StringBuilder sbPlain = new StringBuilder(\"plain\");\n"
+				+ "    HttpRequest.newBuilder().GET();\n" + "    return null;\n" + "  }\n"
+				+ "  /** Single line summary. */\n" + "  public HttpResponse<String> m2(String authorization) {\n"
+				+ "    HttpRequest.newBuilder().uri(URI.create(this.baseUrl + \"/p2\")).GET();\n" + "    return null;\n"
+				+ "  }\n" + "  public HttpResponse<String> mNoPath() {\n" + "    HttpRequest.newBuilder().GET();\n"
+				+ "    return null;\n" + "  }\n" + "  public HttpResponse<String> mNoVerb() {\n" + "    return null;\n"
+				+ "  }\n" + "}\n";
+		assertNotNull(routes.Parse.parse(cbInterfaceSource));
+
+		assertNotNull(parsedPi.get);
+		assertNotNull(parsedPi.post);
+		assertNotNull(parsedPi.put);
+		assertNotNull(parsedPi.delete);
+		assertNotNull(parsedPi.patch);
+		assertNotNull(parsedPi.options);
+		assertNotNull(parsedPi.head);
+		assertNotNull(parsedPi.trace);
+		assertNotNull(parsedPi.query);
 	}
 }

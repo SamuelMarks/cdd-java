@@ -13,7 +13,6 @@ import java.util.Map;
 /**
  * Emitter for server tests.
  */
-@cli.Generated
 public class Emit {
 
 	/**
@@ -31,23 +30,6 @@ public class Emit {
 	 */
 	public static Map<String, String> emitModular(OpenAPI model) {
 		Map<String, String> files = new java.util.HashMap<>();
-
-		// Unified Error Exception
-		CompilationUnit excCu = new CompilationUnit();
-		excCu.setPackageDeclaration("exceptions");
-		ClassOrInterfaceDeclaration excClass = excCu.addClass("ServerException").setModifier(Modifier.Keyword.PUBLIC,
-				true);
-		excClass.addExtendedType("RuntimeException");
-		excClass.setJavadocComment("Comprehensive unified error exception for the mock server.");
-		com.github.javaparser.ast.body.ConstructorDeclaration excCtor = excClass
-				.addConstructor(Modifier.Keyword.PUBLIC);
-		excCtor.addParameter("String", "message");
-		excCtor.setJavadocComment("Constructor.\n@param message Error message.");
-		com.github.javaparser.ast.stmt.BlockStmt block = new com.github.javaparser.ast.stmt.BlockStmt();
-		block.addStatement(new com.github.javaparser.ast.stmt.ExplicitConstructorInvocationStmt(false, null,
-				new com.github.javaparser.ast.NodeList<>(new com.github.javaparser.ast.expr.NameExpr("message"))));
-		excCtor.setBody(block);
-		files.put("../main/java/exceptions/ServerException.java", excCu.toString());
 
 		// Model Tests
 		if (model.components != null && model.components.schemas != null) {

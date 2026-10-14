@@ -5,14 +5,25 @@ import cli.Emit;
 import cli.Parse;
 import java.util.*;
 
+/**
+ * Unit tests for {@link cli.Emit} and {@link cli.Parse}.
+ */
 public class CliParseEmitTest {
 
+	/**
+	 * Verifies default constructors of {@link Emit} and {@link Parse}.
+	 */
 	@Test
 	public void testConstructors() {
 		assertNotNull(new Emit());
 		assertNotNull(new Parse());
 	}
 
+	/**
+	 * Builds a comprehensive OpenAPI model for CLI emission and parsing tests.
+	 *
+	 * @return The constructed {@link OpenAPI} model.
+	 */
 	private OpenAPI buildApi() {
 		OpenAPI api = new OpenAPI();
 		api.info = new Info();
@@ -207,6 +218,12 @@ public class CliParseEmitTest {
 		return api;
 	}
 
+	/**
+	 * Creates a populated {@link Operation} with parameters, request body,
+	 * encodings, responses, headers, and links.
+	 *
+	 * @return The constructed {@link Operation}.
+	 */
 	private Operation createOp() {
 		Operation op = new Operation();
 		op.tags = Arrays.asList("t1", "t2");
@@ -315,6 +332,10 @@ public class CliParseEmitTest {
 		return op;
 	}
 
+	/**
+	 * Verifies exhaustive CLI emission, parsing, edge cases, and symmetric response
+	 * encoding round-trips.
+	 */
 	@Test
 	public void testExhaustive() {
 		OpenAPI api = buildApi();
@@ -535,6 +556,57 @@ public class CliParseEmitTest {
 				+ "        System.out.println(\"        LinkParam l1 p1 v1\");\n"
 				+ "        System.out.println(\"      Link l1 operationId=o1 operationRef=o2 description=\\\"d\\\" requestBody=\\\"rb\\\" serverUrl=\\\"http://s\\\"\");\n"
 				+ "    }\n";
+		OpenAPI edgeApi = Parse.parse(cliEdge);
+		assertNotNull(edgeApi);
 
+		// Symmetric round-trip test for response content encodings and StaticJavaParser
+		// compilation
+		OpenAPI respEncApi = new OpenAPI();
+		respEncApi.paths = new Paths();
+		respEncApi.paths.pathItems = new HashMap<>();
+		PathItem respPi = new PathItem();
+		Operation respOp = new Operation();
+		respOp.operationId = "respEncOp";
+		respOp.responses = new Responses();
+		respOp.responses.statusCodes = new HashMap<>();
+		Response r200 = new Response();
+		r200.description = "ok";
+		r200.content = new HashMap<>();
+		MediaType rMt = new MediaType();
+		Map<String, Object> itemSch = new HashMap<>();
+		itemSch.put("type", "string");
+		rMt.itemSchema = itemSch;
+		Encoding prefEnc = new Encoding();
+		prefEnc.contentType = "text/plain";
+		rMt.prefixEncoding = java.util.Arrays.asList(prefEnc);
+		Encoding itemEnc = new Encoding();
+		itemEnc.contentType = "application/octet-stream";
+		rMt.itemEncoding = itemEnc;
+		rMt.encoding = new HashMap<>();
+		Encoding propEnc = new Encoding();
+		propEnc.contentType = "application/json";
+		propEnc.prefixEncoding = java.util.Arrays.asList(prefEnc);
+		propEnc.itemEncoding = itemEnc;
+		rMt.encoding.put("prop1", propEnc);
+		r200.content.put("application/json", rMt);
+		respOp.responses.statusCodes.put("200", r200);
+		respPi.get = respOp;
+		respEncApi.paths.pathItems.put("/resp-enc", respPi);
+
+		String emittedRespCli = Emit.emitCli(respEncApi);
+		assertNotNull(com.github.javaparser.StaticJavaParser.parse(emittedRespCli));
+		OpenAPI roundTripRespEnc = Parse.parse(emittedRespCli);
+		Response parsedR200 = (Response) roundTripRespEnc.paths.pathItems.get("/resp-enc").get.responses.statusCodes
+				.get("200");
+		assertNotNull(parsedR200);
+		MediaType parsedRMt = parsedR200.content.get("application/json");
+		assertNotNull(parsedRMt);
+		assertNotNull(parsedRMt.itemSchema);
+		assertEquals(1, parsedRMt.prefixEncoding.size());
+		assertEquals("text/plain", parsedRMt.prefixEncoding.get(0).contentType);
+		assertEquals("application/octet-stream", parsedRMt.itemEncoding.contentType);
+		assertEquals("application/json", parsedRMt.encoding.get("prop1").contentType);
+		assertEquals("text/plain", parsedRMt.encoding.get("prop1").prefixEncoding.get(0).contentType);
+		assertEquals("application/octet-stream", parsedRMt.encoding.get("prop1").itemEncoding.contentType);
 	}
 }

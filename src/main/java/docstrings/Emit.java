@@ -65,7 +65,16 @@ public class Emit {
 	}
 
 	/**
-	 * createSnippet doc
+	 * Creates a formatted Java SDK usage snippet for an OpenAPI operation.
+	 *
+	 * @param op
+	 *            The {@link Operation} to generate a snippet for.
+	 * @param noImports
+	 *            Whether to omit {@code import} statements.
+	 * @param noWrapping
+	 *            Whether to omit the outer {@code Example} class and {@code main}
+	 *            method wrapper.
+	 * @return The generated Java code snippet string.
 	 */
 	private static String createSnippet(Operation op, boolean noImports, boolean noWrapping) {
 		StringBuilder sb = new StringBuilder();
@@ -73,9 +82,6 @@ public class Emit {
 			sb.append("import my.api.ApiClient;\nimport my.api.ApiException;\n\n");
 		}
 		if (!noWrapping) {
-			/**
-			 * Documented.
-			 */
 			sb.append("public class Example {\n    public static void main(String[] args) {\n");
 		}
 		String snippetOpId = (op.operationId != null && !op.operationId.isEmpty()) ? op.operationId : "callEndpoint";
