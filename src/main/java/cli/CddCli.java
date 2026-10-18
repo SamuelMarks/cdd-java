@@ -152,6 +152,84 @@ public class CddCli {
 	}
 
 	/**
+	 * Generates Java workflow SDK, CLI, or Server test/mock code from an Arazzo
+	 * 1.1.0 specification.
+	 *
+	 * @param subCommand
+	 *            Subcommand ({@code to_sdk}, {@code to_sdk_cli}, or
+	 *            {@code to_server}).
+	 * @param input
+	 *            Input Arazzo 1.1.0 specification file or directory path.
+	 * @param outputDir
+	 *            Target output directory path.
+	 * @param noGithubActions
+	 *            Whether to disable GitHub Actions workflow generation.
+	 * @param noInstallablePackage
+	 *            Whether to disable installable package ({@code pom.xml})
+	 *            generation.
+	 * @param generateTests
+	 *            Whether to generate E2E workflow tests and stateful mocks.
+	 * @return Exit code (0 for success, 1 for error).
+	 */
+	public static int generateFromArazzo(String subCommand, String input, String outputDir, boolean noGithubActions,
+			boolean noInstallablePackage, boolean generateTests) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("from_arazzo");
+		if (subCommand != null && !subCommand.isEmpty())
+			argsList.add(subCommand);
+		if (input != null) {
+			argsList.add("-i");
+			argsList.add(input);
+		}
+		if (outputDir != null) {
+			argsList.add("-o");
+			argsList.add(outputDir);
+		}
+		if (noGithubActions)
+			argsList.add("--no-github-actions");
+		if (noInstallablePackage)
+			argsList.add("--no-installable-package");
+		if (generateTests)
+			argsList.add("--tests");
+		try {
+			return run(argsList.toArray(new String[0]));
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			return 1;
+		}
+	}
+
+	/**
+	 * Generates an Arazzo 1.1.0 specification from Java workflow, CLI, test, or
+	 * mock source code.
+	 *
+	 * @param input
+	 *            Input Java source file or directory path.
+	 * @param output
+	 *            Output Arazzo specification file path ({@code .json} or
+	 *            {@code .yaml}).
+	 * @return Exit code (0 for success, 1 for error).
+	 */
+	public static int generateToArazzo(String input, String output) {
+		List<String> argsList = new ArrayList<>();
+		argsList.add("to_arazzo");
+		if (input != null) {
+			argsList.add("-i");
+			argsList.add(input);
+		}
+		if (output != null) {
+			argsList.add("-o");
+			argsList.add(output);
+		}
+		try {
+			return run(argsList.toArray(new String[0]));
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			return 1;
+		}
+	}
+
+	/**
 	 * Generates JSON documentation with code snippets for an OpenAPI specification.
 	 *
 	 * @param input
@@ -284,7 +362,7 @@ public class CddCli {
 			return 0;
 		}
 		if (args[0].equals("--version") || args[0].equals("-v")) {
-			System.out.println("0.0.3");
+			System.out.println("0.0.4");
 			return 0;
 		}
 		String command = args[0];
@@ -444,6 +522,98 @@ public class CddCli {
 			String spec = openapi.Emit.toString(fullApi);
 			writeFile(resolveFile(outputFile), spec);
 			System.out.println("Emitted OpenAPI to " + outputFile);
+		} else if (command.equals("from_arazzo")) {
+			if (hasFlag(args, "-h", "--help", null)) {
+				System.out.println("cdd-java from_arazzo");
+				System.out.println("Usage:");
+				System.out.println(
+						"  cdd-java from_arazzo to_sdk_cli -i <arazzo.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
+				System.out.println(
+						"  cdd-java from_arazzo to_sdk -i <arazzo.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
+				System.out.println("  cdd-java from_arazzo to_server -i <arazzo.json> [-o <target_directory>]");
+				return 0;
+			}
+			String subCommand = "to_sdk";
+			if (args.length > 1 && !args[1].startsWith("-")) {
+				subCommand = args[1];
+			}
+			if (!subCommand.equals("to_sdk_cli") && !subCommand.equals("to_sdk") && !subCommand.equals("to_server")) {
+				System.err.println("Unknown from_arazzo subcommand: " + subCommand);
+				throw new Exception("Exit 1");
+			}
+			String inputFile = getArg(args, "-i", "--input", "CDD_INPUT");
+			String outputDir = getArg(args, "-o", "--output", "CDD_OUTPUT");
+			if (outputDir == null) {
+				outputDir = System.getProperty("user.dir");
+			}
+			if (inputFile == null) {
+				System.err.println("Missing -i <arazzo.json>");
+				throw new Exception("Exit 1");
+			}
+			boolean noGithubActions = hasFlag(args, "--no-github-actions", "--no-github-actions",
+					"CDD_NO_GITHUB_ACTIONS");
+			boolean noInstallablePackage = hasFlag(args, "--no-installable-package", "--no-installable-package",
+					"CDD_NO_INSTALLABLE_PACKAGE");
+			boolean generateTests = hasFlag(args, "--tests", "--tests", "CDD_TESTS");
+			File specFile = resolveFile(inputFile);
+			arazzo.Arazzo spec = arazzo.Parse.fromFile(specFile);
+			Map<String, OpenAPI> openApiSources = arazzo.ArazzoResolver.loadOpenApiSources(spec,
+					specFile.getParentFile());
+			File outDir = resolveFile(outputDir);
+			outDir.mkdirs();
+			if (!noInstallablePackage) {
+				generateScaffolding(outDir);
+			}
+			if (!noGithubActions) {
+				generateGithubActions(outDir);
+			}
+			if (subCommand.equals("to_sdk_cli")) {
+				writeFile(new File(outDir, "WorkflowCli.java"), cli.ArazzoCliEmitter.emitWorkflowCli(spec));
+				if (generateTests) {
+					writeFile(new File(outDir, "WorkflowCliIntegrationTest.java"), tests.ArazzoTestEmitter.emit(spec));
+					writeFile(new File(outDir, "WorkflowCliMock.java"), mocks.ArazzoMockEmitter.emit(spec));
+				}
+				System.out.println("Generated Arazzo SDK CLI in " + outDir.getAbsolutePath());
+			} else if (subCommand.equals("to_sdk")) {
+				String wfClassName = workflows.Emit.deriveClassName(spec);
+				writeFile(new File(outDir, "src/main/java/workflows/" + wfClassName + ".java"),
+						workflows.Emit.emit(spec, openApiSources, null));
+				if (generateTests) {
+					writeFile(new File(outDir, "src/test/java/" + wfClassName + "IntegrationTest.java"),
+							tests.ArazzoTestEmitter.emit(spec));
+					writeFile(new File(outDir, "src/test/java/" + wfClassName + "Mock.java"),
+							mocks.ArazzoMockEmitter.emit(spec));
+				}
+				System.out.println("Generated Arazzo SDK in " + outDir.getAbsolutePath());
+			} else {
+				String wfClassName = workflows.Emit.deriveClassName(spec);
+				writeFile(new File(outDir, "src/main/java/workflows/" + wfClassName + ".java"),
+						workflows.Emit.emit(spec, openApiSources, null));
+				writeFile(new File(outDir, "src/test/java/" + wfClassName + "IntegrationTest.java"),
+						tests.ArazzoTestEmitter.emit(spec));
+				writeFile(new File(outDir, "src/test/java/" + wfClassName + "Mock.java"),
+						mocks.ArazzoMockEmitter.emit(spec));
+				System.out.println("Generated Arazzo Server E2E Tests & Mocks in " + outDir.getAbsolutePath());
+			}
+		} else if (command.equals("to_arazzo")) {
+			if (hasFlag(args, "-h", "--help", null)) {
+				System.out.println("cdd-java to_arazzo");
+				System.out.println("Usage:");
+				System.out.println("  cdd-java to_arazzo -i <path/to/code> [-o <arazzo.json>]");
+				return 0;
+			}
+			String filePath = getArg(args, "-i", "--input", "CDD_INPUT");
+			String outputFile = getArg(args, "-o", "--output", "CDD_OUTPUT");
+			if (filePath == null) {
+				System.err.println("Missing -i <path/to/code>");
+				throw new Exception("Exit 1");
+			}
+			if (outputFile == null) {
+				outputFile = "arazzo.json";
+			}
+			arazzo.Arazzo spec = extractArazzo(resolveFile(filePath));
+			arazzo.Emit.toFile(spec, resolveFile(outputFile));
+			System.out.println("Emitted Arazzo to " + outputFile);
 		} else if (command.equals("to_docs_json")) {
 			if (hasFlag(args, "-h", "--help", null)) {
 				System.out.println("cdd-java to_docs_json");
@@ -521,6 +691,9 @@ public class CddCli {
 					newSource = functions.Emit.emit(fullApi, source);
 				} else if (absPath.contains("/cli/")) {
 					newSource = cli.Emit.emitCli(fullApi);
+				} else if (absPath.contains("/workflows/")) {
+					arazzo.Arazzo arazzoSpec = extractArazzo(dir);
+					newSource = workflows.Emit.emit(arazzoSpec, null, source);
 				}
 				File targetFile = jf;
 				if (outputDir != null) {
@@ -621,6 +794,27 @@ public class CddCli {
 						outFiles.put(e.getKey(), e.getValue());
 					}
 				}
+			} else if (command.equals("from_arazzo")) {
+				String subCommand = "to_sdk";
+				if (cmdArgs.length > 1 && !cmdArgs[1].startsWith("-")) {
+					subCommand = cmdArgs[1];
+				}
+				String specContent = inFiles.optString("arazzo.json", inFiles.optString("spec.json", null));
+				arazzo.Arazzo spec = arazzo.Parse.fromString(specContent);
+				if (subCommand.equals("to_sdk_cli")) {
+					outFiles.put("WorkflowCli.java", cli.ArazzoCliEmitter.emitWorkflowCli(spec));
+				} else if (subCommand.equals("to_sdk")) {
+					String wfClassName = workflows.Emit.deriveClassName(spec);
+					outFiles.put("src/main/java/workflows/" + wfClassName + ".java", workflows.Emit.emit(spec));
+				} else {
+					String wfClassName = workflows.Emit.deriveClassName(spec);
+					outFiles.put("src/test/java/" + wfClassName + "IntegrationTest.java",
+							tests.ArazzoTestEmitter.emit(spec));
+					outFiles.put("src/test/java/" + wfClassName + "Mock.java", mocks.ArazzoMockEmitter.emit(spec));
+				}
+			} else if (command.equals("to_arazzo")) {
+				arazzo.Arazzo spec = extractArazzo(workspaceDir);
+				outFiles.put("arazzo.json", arazzo.Emit.toString(spec));
 			} else if (command.equals("to_openapi") || command.equals("sync")) {
 				OpenAPI api = extractOpenAPI(workspaceDir);
 				String spec = openapi.Emit.toString(api);
@@ -695,7 +889,7 @@ public class CddCli {
 				+ "xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 "
 				+ "http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" + "    <modelVersion>4.0.0</modelVersion>\n"
 				+ "    <groupId>com.example</groupId>\n" + "    <artifactId>generated-sdk</artifactId>\n"
-				+ "    <version>0.0.3</version>\n" + "    <properties>\n"
+				+ "    <version>0.0.4</version>\n" + "    <properties>\n"
 				+ "        <maven.compiler.source>11</maven.compiler.source>\n"
 				+ "        <maven.compiler.target>11</maven.compiler.target>\n" + "    </properties>\n"
 				+ "    <dependencies>\n" + "        <dependency>\n" + "            <groupId>io.javalin</groupId>\n"
@@ -831,7 +1025,7 @@ public class CddCli {
 			if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
 				String method = req.optString("method", "");
 				if ("initialize".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.3\"}},\"id\":"
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.4\"}},\"id\":"
 							+ idStr + "}";
 				} else if ("notifications/initialized".equals(method) || "initialized".equals(method)
 						|| "$/cancelRequest".equals(method) || "cancelled".equals(method)
@@ -843,7 +1037,7 @@ public class CddCli {
 					return "{\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[{\"name\":\"cdd_generate\",\"description\":\"Generate code from OpenAPI or sync code\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"files\":{\"type\":\"object\"}},\"required\":[\"command\"]}}]},\"id\":"
 							+ idStr + "}";
 				} else if ("resources/list".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/openapi\",\"name\":\"OpenAPI AST\",\"mimeType\":\"application/json\"}]},\"id\":"
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/openapi\",\"name\":\"OpenAPI AST\",\"mimeType\":\"application/json\"},{\"uri\":\"cdd://ast/arazzo\",\"name\":\"Arazzo AST\",\"mimeType\":\"application/json\"}]},\"id\":"
 							+ idStr + "}";
 				} else if ("resources/read".equals(method)) {
 					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
@@ -852,6 +1046,11 @@ public class CddCli {
 						OpenAPI api = extractOpenAPI(workspaceDir);
 						String astText = openapi.Emit.toString(api);
 						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":"
+								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
+					} else if ("cdd://ast/arazzo".equals(uri)) {
+						arazzo.Arazzo spec = extractArazzo(workspaceDir);
+						String astText = arazzo.Emit.toString(spec);
+						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/arazzo\",\"mimeType\":\"application/json\",\"text\":"
 								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
 					} else {
 						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Resource not found\"},\"id\":"
@@ -887,7 +1086,7 @@ public class CddCli {
 								+ idStr + "}";
 					}
 				} else if ("version".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.3\",\"id\":" + idStr + "}";
+					return "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.4\",\"id\":" + idStr + "}";
 				} else {
 					if (idObj == null)
 						return null;
@@ -945,7 +1144,7 @@ public class CddCli {
 		fullApi.openapi = "3.2.0";
 		fullApi.info = new openapi.Info();
 		fullApi.info.title = "Extracted API";
-		fullApi.info.version = "0.0.3";
+		fullApi.info.version = "0.0.4";
 		fullApi.paths = new openapi.Paths();
 		fullApi.paths.pathItems = new java.util.HashMap<>();
 		fullApi.components = new openapi.Components();
@@ -984,6 +1183,47 @@ public class CddCli {
 			}
 		}
 		return fullApi;
+	}
+
+	/**
+	 * Extracts an aggregated Arazzo 1.1.0 specification from a Java file or
+	 * directory containing workflow orchestrators, CLI runners, E2E tests, or
+	 * mocks.
+	 *
+	 * @param dir
+	 *            The root directory or single file to scan.
+	 * @return The extracted {@link arazzo.Arazzo} specification.
+	 * @throws Exception
+	 *             If reading or parsing files fails.
+	 */
+	private static arazzo.Arazzo extractArazzo(File dir) throws Exception {
+		File arazzoFile = new File(dir, "arazzo.json");
+		if (arazzoFile.isFile()) {
+			return arazzo.Parse.fromFile(arazzoFile);
+		}
+		List<File> javaFiles = new ArrayList<>();
+		findJavaFiles(dir, javaFiles);
+		for (File jf : javaFiles) {
+			String source = readFile(jf);
+			String name = jf.getName();
+			if (name.contains("WorkflowCli")) {
+				return cli.ArazzoCliParser.parseWorkflowCli(source);
+			}
+			if (name.contains("IntegrationTest")) {
+				return tests.ArazzoTestParser.parse(source);
+			}
+			if (name.contains("Mock")) {
+				return mocks.ArazzoMockParser.parse(source);
+			}
+			return workflows.Parse.parse(source);
+		}
+		arazzo.Arazzo empty = new arazzo.Arazzo();
+		empty.info = new arazzo.ArazzoInfo();
+		empty.info.title = "Extracted Workflow";
+		empty.info.version = "1.0.0";
+		empty.sourceDescriptions = new ArrayList<>();
+		empty.workflows = new ArrayList<>();
+		return empty;
 	}
 
 	/**
@@ -1071,6 +1311,8 @@ public class CddCli {
 		System.out.println("\nSubcommands:");
 		System.out.println("  from_openapi    Generate code from an OpenAPI specification.");
 		System.out.println("  to_openapi      Generate an OpenAPI specification from source code.");
+		System.out.println("  from_arazzo     Generate workflow code from an Arazzo 1.1.0 specification.");
+		System.out.println("  to_arazzo       Generate an Arazzo 1.1.0 specification from workflow source code.");
 		System.out.println(
 				"  to_docs_json    Generate JSON documentation with code snippets for an OpenAPI specification.");
 		System.out.println("  serve_json_rpc  Expose CLI interface as a JSON-RPC server.");

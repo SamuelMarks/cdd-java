@@ -61,6 +61,7 @@ The Frontend's responsibility is to read an input source and translate it into t
 
 * **Static Analysis (AST-Driven)**: For `Java` source code, the tool **does not** use dynamic reflection or execute the code. Instead, it reads the source files, generates an Abstract Syntax Tree (AST), and navigates the tree to extract classes, structs, functions, type signatures, API client definitions, server routes, and docstrings.
 * **OpenAPI Parsing**: For OpenAPI and JSON Schema inputs, the parser normalizes the structure, resolving internal `$ref`s and extracting properties, endpoints (client or server perspectives), and metadata into the IR.
+* **Arazzo 1.1.0 Parsing (`arazzo.Parse`)**: Parses JSON/YAML Arazzo 1.1.0 workflow specifications, `SourceDescription` links, `Workflow` / `Step` DAGs, `Criterion` / `Selector` assertions, and `RuntimeExpression` roots into the strongly typed `arazzo.Arazzo` IR, and extracts Arazzo specs back from Java workflow orchestrators (`workflows.Parse`), CLI runners (`cli.ArazzoCliParser`), E2E JUnit tests (`tests.ArazzoTestParser`), and stateful mocks (`mocks.ArazzoMockParser`).
 
 ### 2. Intermediate Representation (IR)
 

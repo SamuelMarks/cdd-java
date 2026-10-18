@@ -468,7 +468,7 @@ public class CliMainTest {
 		}
 
 		String out = outContent.toString();
-		assertTrue(out.contains("\"result\":\"0.0.3\""));
+		assertTrue(out.contains("\"result\":\"0.0.4\""));
 		assertTrue(out.contains("-32700"));
 		assertTrue(out.contains("-32600"));
 		assertTrue(out.contains("-32601"));
@@ -618,6 +618,130 @@ public class CliMainTest {
 			setEnv("CDD_TESTS", null);
 			setEnv("CDD_INPUT_FILE", null);
 			setEnv("CDD_OUTPUT_DIR", null);
+		}
+	}
+
+	/**
+	 * Verifies {@code from_arazzo}, {@code to_arazzo}, {@code sync} with workflows,
+	 * in-memory Arazzo commands, and MCP {@code cdd://ast/arazzo} resource reads.
+	 *
+	 * @throws Exception
+	 *             If execution fails.
+	 */
+	@Test
+	public void testFromAndToArazzoCliAndMcp() throws Exception {
+		File tempDir = Files.createTempDirectory("cdd_arazzo_cli").toFile();
+		File arazzoFile = new File(tempDir, "arazzo.json");
+		String arazzoJson = "{\"arazzo\":\"1.1.0\",\"info\":{\"title\":\"PetFlow\",\"version\":\"1.0.0\"},\"sourceDescriptions\":[{\"name\":\"petstore\",\"url\":\"./oas.json\",\"type\":\"openapi\"}],\"workflows\":[{\"workflowId\":\"adopt\",\"steps\":[{\"stepId\":\"s1\",\"operationId\":\"getPet\"}]}]}";
+		Files.writeString(arazzoFile.toPath(), arazzoJson);
+
+		runMain(new String[]{"from_arazzo", "-h"});
+		runMain(new String[]{"from_arazzo", "--help"});
+		runMain(new String[]{"to_arazzo", "-h"});
+		runMain(new String[]{"to_arazzo", "--help"});
+		runMain(new String[]{"from_arazzo", "unknown_sub", "-i", arazzoFile.getAbsolutePath()});
+		runMain(new String[]{"from_arazzo", "to_sdk"});
+		runMain(new String[]{"to_arazzo"});
+
+		File sdkOut = new File(tempDir, "sdk_out");
+		File cliOut = new File(tempDir, "cli_out");
+		File srvOut = new File(tempDir, "srv_out");
+		File plainJavaDir = Files.createTempDirectory("cdd_arazzo_plain").toFile();
+		Files.writeString(new File(plainJavaDir, "Plain.java").toPath(),
+				"public class Plain { public void stepOne() {} }");
+
+		File defaultOutDir = Files.createTempDirectory("cdd_arazzo_default_out").toFile();
+		String oldUserDir = System.getProperty("user.dir");
+		try {
+			System.setProperty("user.dir", defaultOutDir.getAbsolutePath());
+			runMain(new String[]{"from_arazzo", "-i", arazzoFile.getAbsolutePath(), "--no-installable-package",
+					"--no-github-actions"});
+			runMain(new String[]{"to_arazzo", "-i", plainJavaDir.getAbsolutePath(), "-o",
+					new File(defaultOutDir, "arazzo_default.json").getAbsolutePath()});
+			setEnv("CDD_WASI_VIRTUAL_ROOT", defaultOutDir.getAbsolutePath());
+			setEnv("CDD_OUTPUT", "/arazzo_wasi.json");
+			runMain(new String[]{"to_arazzo", "-i", plainJavaDir.getAbsolutePath()});
+			setEnv("CDD_WASI_VIRTUAL_ROOT", null);
+			setEnv("CDD_OUTPUT", null);
+			runMain(new String[]{"to_arazzo", "-i", plainJavaDir.getAbsolutePath()});
+			Files.deleteIfExists(new File("arazzo.json").toPath());
+		} finally {
+			System.setProperty("user.dir", oldUserDir);
+			setEnv("CDD_WASI_VIRTUAL_ROOT", null);
+			setEnv("CDD_OUTPUT", null);
+		}
+		runMain(new String[]{"from_arazzo", "to_sdk", "-i", arazzoFile.getAbsolutePath(), "-o",
+				sdkOut.getAbsolutePath(), "--tests"});
+		runMain(new String[]{"from_arazzo", "to_sdk", "-i", arazzoFile.getAbsolutePath(), "-o",
+				sdkOut.getAbsolutePath(), "--no-github-actions", "--no-installable-package"});
+		runMain(new String[]{"from_arazzo", "to_sdk_cli", "-i", arazzoFile.getAbsolutePath(), "-o",
+				cliOut.getAbsolutePath(), "--tests"});
+		runMain(new String[]{"from_arazzo", "to_sdk_cli", "-i", arazzoFile.getAbsolutePath(), "-o",
+				cliOut.getAbsolutePath()});
+		runMain(new String[]{"from_arazzo", "to_server", "-i", arazzoFile.getAbsolutePath(), "-o",
+				srvOut.getAbsolutePath()});
+
+		File rtSdk = new File(tempDir, "rt_sdk.json");
+		File rtCli = new File(tempDir, "rt_cli.json");
+		runMain(new String[]{"to_arazzo", "-i", sdkOut.getAbsolutePath(), "-o", rtSdk.getAbsolutePath()});
+		runMain(new String[]{"to_arazzo", "-i", cliOut.getAbsolutePath(), "-o", rtCli.getAbsolutePath()});
+		runMain(new String[]{"to_arazzo", "-i", tempDir.getAbsolutePath(), "-o",
+				new File(tempDir, "rt_from_spec.json").getAbsolutePath()});
+
+		File onlyTestDir = Files.createTempDirectory("cdd_arazzo_only_test").toFile();
+		Files.copy(new File(srvOut, "src/test/java/PetFlowWorkflowsIntegrationTest.java").toPath(),
+				new File(onlyTestDir, "PetFlowWorkflowsIntegrationTest.java").toPath());
+		runMain(new String[]{"to_arazzo", "-i", onlyTestDir.getAbsolutePath(), "-o",
+				new File(tempDir, "rt_test.json").getAbsolutePath()});
+
+		File onlyMockDir = Files.createTempDirectory("cdd_arazzo_only_mock").toFile();
+		Files.copy(new File(srvOut, "src/test/java/PetFlowWorkflowsMock.java").toPath(),
+				new File(onlyMockDir, "PetFlowWorkflowsMock.java").toPath());
+		runMain(new String[]{"to_arazzo", "-i", onlyMockDir.getAbsolutePath(), "-o",
+				new File(tempDir, "rt_mock.json").getAbsolutePath()});
+
+		runMain(new String[]{"to_arazzo", "-i", plainJavaDir.getAbsolutePath(), "-o",
+				new File(tempDir, "rt_plain.json").getAbsolutePath()});
+
+		File emptyDir = Files.createTempDirectory("cdd_arazzo_empty").toFile();
+		runMain(new String[]{"to_arazzo", "-i", emptyDir.getAbsolutePath(), "-o",
+				new File(tempDir, "rt_empty.json").getAbsolutePath()});
+
+		assertEquals(0, CddCli.generateFromArazzo("to_sdk", arazzoFile.getAbsolutePath(), sdkOut.getAbsolutePath(),
+				true, true, true));
+		assertEquals(0, CddCli.generateFromArazzo("", arazzoFile.getAbsolutePath(), sdkOut.getAbsolutePath(), false,
+				false, false));
+		assertEquals(1, CddCli.generateFromArazzo(null, null, null, false, false, false));
+		assertEquals(0,
+				CddCli.generateToArazzo(sdkOut.getAbsolutePath(), new File(tempDir, "prog.json").getAbsolutePath()));
+		assertEquals(1, CddCli.generateToArazzo(null, null));
+
+		// Sync with /workflows/ directory
+		assertEquals(0, CddCli.sync(sdkOut.getAbsolutePath(), null, "workflows"));
+
+		// process_in_memory for from_arazzo and to_arazzo
+		String escaped = arazzoJson.replace("\"", "\\\"");
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_arazzo\"],\"files\":{\"arazzo.json\":\"" + escaped + "\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_arazzo\",\"to_sdk\"],\"files\":{\"arazzo.json\":\"" + escaped + "\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_arazzo\",\"to_sdk_cli\"],\"files\":{\"arazzo.json\":\"" + escaped + "\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_arazzo\",\"to_server\"],\"files\":{\"arazzo.json\":\"" + escaped + "\"}}"});
+		runMain(new String[]{"process_in_memory",
+				"{\"command\":[\"from_arazzo\",\"--tests\"],\"files\":{\"spec.json\":\"" + escaped + "\"}}"});
+
+		File prevWs = CddCli.workspaceDir;
+		CddCli.workspaceDir = sdkOut;
+		try {
+			runMain(new String[]{"process_in_memory", "{\"command\":[\"to_arazzo\"]}"});
+			String rpcResp = CddCli.handleJsonRpcRequest(
+					"{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"cdd://ast/arazzo\"},\"id\":77}");
+			assertNotNull(rpcResp);
+			assertTrue(rpcResp.contains("cdd://ast/arazzo"));
+		} finally {
+			CddCli.workspaceDir = prevWs;
 		}
 	}
 }

@@ -73,3 +73,13 @@ repos:
         entry: python3 ./scripts/run_with_fallback.py python3 scripts/test_generated_server.py v3 ../petstore_oas3.json
         language: system
         pass_filenames: false
+      - id: verify-ml-framework-snapshots
+        name: Verify ML Framework Snapshots Grounding
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/verify_ml_framework_snapshots.py
+        language: system
+        pass_filenames: false
+      - id: arazzo-1-1-0-test
+        name: Arazzo 1.1.0 SDK, CLI & Server Test
+        entry: python3 ./scripts/run_with_fallback.py python3 scripts/test_arazzo.py
+        language: system
+        pass_filenames: false

@@ -1233,7 +1233,7 @@ public class Parse {
 	 *            The JSON object representing the schema.
 	 * @return The parsed {@link Schema} instance.
 	 */
-	private static Schema parseSchema(JSONObject sObj) {
+	public static Schema parseSchema(JSONObject sObj) {
 		Schema s = new Schema();
 		s.$ref = optStr(sObj, "$ref");
 		if (!sObj.isNull("type")) {

@@ -1051,7 +1051,7 @@ public class Emit {
 	 *            The {@link Schema} to serialize.
 	 * @return The serialized {@link JSONObject}.
 	 */
-	private static JSONObject serializeSchema(Schema s) {
+	public static JSONObject serializeSchema(Schema s) {
 		JSONObject obj = new JSONObject();
 		putIfNotNull(obj, "$ref", s.$ref);
 		if (s.type instanceof List) {
