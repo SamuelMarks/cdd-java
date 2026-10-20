@@ -78,8 +78,7 @@ public class Emit {
 		CompilationUnit cu;
 		boolean isNew = false;
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 		} else {
 			cu = new CompilationUnit();
 			isNew = true;
@@ -147,8 +146,8 @@ public class Emit {
 			} else {
 				enumDecl.getEntries().clear();
 			}
-			List<arazzo.PayloadValue> enumValues = schemaMap.enumValues;
-			for (arazzo.PayloadValue val : enumValues) {
+			List<common.PayloadValue> enumValues = schemaMap.enumValues;
+			for (common.PayloadValue val : enumValues) {
 				String valStr = String.valueOf(val);
 				String safeName = valStr.replaceAll("[^a-zA-Z0-9_]", "_").toUpperCase();
 				if (safeName.isEmpty() || Character.isDigit(safeName.charAt(0)))
@@ -275,7 +274,7 @@ public class Emit {
 	 * @return The resolved Java type string.
 	 */
 	private static String resolveType(openapi.ReferenceOr<Schema> schemaObj, OpenAPI model) {
-		if (schemaObj != null && schemaObj.value.$ref != null) {
+		if (schemaObj != null && schemaObj.resolveRefString() != null) {
 			return "Object";
 		}
 		return openapi.TypeMapper.toJavaType(schemaObj, model, false);

@@ -98,11 +98,11 @@ public class CliParseFuzzTest {
 		lnk.operationId = "op1";
 		lnk.operationRef = "op1";
 		lnk.description = "d";
-		lnk.requestBody = "rb";
+		lnk.requestBody = common.PayloadValue.ofString("rb");
 		lnk.server = new Server();
 		lnk.server.url = "http";
 		lnk.parameters = new HashMap<>();
-		lnk.parameters.put("p", "p");
+		lnk.parameters.put("p", common.PayloadValue.ofString("p"));
 		api.components.links.put("l", ReferenceOr.ofValue(lnk));
 		api.components.callbacks = new HashMap<>();
 		api.components.callbacks.put("cb", ReferenceOr.ofValue(new Callback()));

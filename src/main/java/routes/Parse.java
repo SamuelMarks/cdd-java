@@ -276,7 +276,7 @@ public class Parse {
 					}
 				}
 				if (meta.paramExamples.containsKey(pName)) {
-					p.example = meta.paramExamples.get(pName);
+					p.example = common.PayloadValue.ofString(meta.paramExamples.get(pName));
 				}
 				if (meta.paramExamplesMap.containsKey(pName)) {
 					p.examples = meta.paramExamplesMap.get(pName);
@@ -333,36 +333,7 @@ public class Parse {
 				op.responses.statusCodes.put("200", openapi.ReferenceOr.ofValue(r200));
 			}
 
-			switch (method) {
-
-				case "GET" :
-					item.get = op;
-					break;
-				case "POST" :
-					item.post = op;
-					break;
-				case "PUT" :
-					item.put = op;
-					break;
-				case "DELETE" :
-					item.delete = op;
-					break;
-				case "PATCH" :
-					item.patch = op;
-					break;
-				case "QUERY" :
-					item.query = op;
-					break;
-				case "OPTIONS" :
-					item.options = op;
-					break;
-				case "HEAD" :
-					item.head = op;
-					break;
-				case "TRACE" :
-					item.trace = op;
-					break;
-			}
+			item.setOperation(openapi.HttpVerb.fromString(method), op);
 		}
 	}
 

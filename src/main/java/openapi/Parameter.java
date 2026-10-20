@@ -1,5 +1,7 @@
 package openapi;
 
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +9,7 @@ import java.util.Map;
 /**
  * Parameter object compliant with OpenAPI 3.2.0.
  */
-public class Parameter {
+public class Parameter extends ExtensibleElement {
 	/** Default constructor. */
 	public Parameter() {
 	}
@@ -34,7 +36,7 @@ public class Parameter {
 	/** The collectionFormat property. */
 	public String collectionFormat;
 	/** The defaultValue property. */
-	public Object defaultValue;
+	public PayloadValue defaultValue;
 	/** The maximum property. */
 	public Number maximum;
 	/** The exclusiveMaximum property. */
@@ -56,7 +58,7 @@ public class Parameter {
 	/** The uniqueItems property. */
 	public Boolean uniqueItems;
 	/** The enumValues property. */
-	public List<Object> enumValues;
+	public List<PayloadValue> enumValues;
 	/** The multipleOf property. */
 	public Number multipleOf;
 
@@ -69,35 +71,48 @@ public class Parameter {
 	/** The schema property. */
 	public ReferenceOr<Schema> schema;
 	/** The example property. */
-	public Object example;
+	public PayloadValue example;
 	/** The examples property. */
 	public Map<String, ReferenceOr<Example>> examples;
 	/** The content property. */
 	public Map<String, MediaType> content;
 
-	/** Extensions. */
-	public Map<String, Object> extensions = new HashMap<>();
-
 	/**
-	 * Get extensions.
+	 * Returns the strongly typed {@link ParameterLocation} for {@link #in}.
 	 *
-	 * @return extensions
+	 * @return The resolved {@link ParameterLocation}, or {@code null}.
 	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
+	public ParameterLocation getLocation() {
+		return ParameterLocation.fromString(in);
 	}
 
 	/**
-	 * Add extension.
+	 * Sets {@link #in} from a strongly typed {@link ParameterLocation}.
 	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
+	 * @param location
+	 *            The {@link ParameterLocation}.
 	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
+	public void setLocation(ParameterLocation location) {
+		this.in = location != null ? location.value : null;
+	}
+
+	/**
+	 * Returns the strongly typed {@link ParameterStyle} for {@link #style}.
+	 *
+	 * @return The resolved {@link ParameterStyle}, or {@code null}.
+	 */
+	public ParameterStyle getParameterStyle() {
+		return ParameterStyle.fromString(style);
+	}
+
+	/**
+	 * Sets {@link #style} from a strongly typed {@link ParameterStyle}.
+	 *
+	 * @param parameterStyle
+	 *            The {@link ParameterStyle}.
+	 */
+	public void setParameterStyle(ParameterStyle parameterStyle) {
+		this.style = parameterStyle != null ? parameterStyle.value : null;
 	}
 
 	/**
@@ -106,7 +121,8 @@ public class Parameter {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(name, in, description, required, deprecated, allowEmptyValue, type, format,
 				items, collectionFormat, defaultValue, maximum, exclusiveMaximum, minimum, exclusiveMinimum, maxLength,
 				minLength, pattern, maxItems, minItems, uniqueItems, enumValues, multipleOf, style, explode,

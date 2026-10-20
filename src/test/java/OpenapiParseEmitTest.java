@@ -353,7 +353,7 @@ public class OpenapiParseEmitTest {
 		globalParam.type = "array";
 		globalParam.format = "int32";
 		globalParam.collectionFormat = "csv";
-		globalParam.defaultValue = 10;
+		globalParam.defaultValue = common.PayloadValue.ofNumber(10);
 		globalParam.maximum = 100;
 		globalParam.exclusiveMaximum = true;
 		globalParam.minimum = 1;
@@ -364,13 +364,14 @@ public class OpenapiParseEmitTest {
 		globalParam.maxItems = 50;
 		globalParam.minItems = 1;
 		globalParam.uniqueItems = true;
-		globalParam.enumValues = java.util.Arrays.asList(10, 20);
+		globalParam.enumValues = java.util.Arrays.asList(common.PayloadValue.ofNumber(10),
+				common.PayloadValue.ofNumber(20));
 		globalParam.multipleOf = 5;
 		Items items = new Items();
 		items.type = "integer";
 		items.format = "int32";
 		items.collectionFormat = "multi";
-		items.defaultValue = 5;
+		items.defaultValue = common.PayloadValue.ofNumber(5);
 		items.maximum = 50;
 		items.exclusiveMaximum = false;
 		items.minimum = 1;
@@ -381,7 +382,7 @@ public class OpenapiParseEmitTest {
 		items.maxItems = 10;
 		items.minItems = 1;
 		items.uniqueItems = false;
-		items.enumValues = java.util.Collections.singletonList(5);
+		items.enumValues = java.util.Collections.singletonList(common.PayloadValue.ofNumber(5));
 		items.multipleOf = 1;
 		Items nestedItems = new Items();
 		nestedItems.type = "string";
@@ -391,9 +392,9 @@ public class OpenapiParseEmitTest {
 		Example paramEx = new Example();
 		paramEx.summary = "exSum";
 		paramEx.description = "exDesc";
-		paramEx.value = "10";
+		paramEx.value = common.PayloadValue.ofString("10");
 		paramEx.externalValue = "http://example.com/ex";
-		paramEx.dataValue = "data";
+		paramEx.dataValue = common.PayloadValue.ofString("data");
 		paramEx.serializedValue = "10";
 		paramEx.addExtension("x-ex", "1");
 		globalParam.examples = java.util.Collections.singletonMap("ex1", ReferenceOr.ofValue(paramEx));
@@ -423,7 +424,7 @@ public class OpenapiParseEmitTest {
 		hdr.format = "uuid";
 		hdr.items = nestedItems;
 		hdr.collectionFormat = "csv";
-		hdr.defaultValue = "abc";
+		hdr.defaultValue = common.PayloadValue.ofString("abc");
 		hdr.maximum = 10;
 		hdr.exclusiveMaximum = false;
 		hdr.minimum = 1;
@@ -434,14 +435,14 @@ public class OpenapiParseEmitTest {
 		hdr.maxItems = 2;
 		hdr.minItems = 1;
 		hdr.uniqueItems = true;
-		hdr.enumValues = java.util.Collections.singletonList("abc");
+		hdr.enumValues = java.util.Collections.singletonList(common.PayloadValue.ofString("abc"));
 		hdr.multipleOf = 1;
 		hdr.schema = ReferenceOr.ofValue(respSchema);
-		hdr.example = "abc";
+		hdr.example = common.PayloadValue.ofString("abc");
 		hdr.examples = new HashMap<>();
 		hdr.examples.put("hEx", ReferenceOr.ofValue(paramEx));
 		Example rawExObj = new Example();
-		rawExObj.value = "rawVal";
+		rawExObj.value = common.PayloadValue.ofString("rawVal");
 		hdr.examples.put("rawEx", ReferenceOr.ofValue(rawExObj));
 		hdr.content = java.util.Collections.singletonMap("text/plain", paramMt);
 		hdr.addExtension("x-hdr", "v");
@@ -449,15 +450,16 @@ public class OpenapiParseEmitTest {
 		globalResp.examples = new HashMap<>();
 		globalResp.examples.put("application/json", ReferenceOr.ofValue(paramEx));
 		Example rawRespExObj = new Example();
-		rawRespExObj.value = "rawExample";
+		rawRespExObj.value = common.PayloadValue.ofString("rawExample");
 		globalResp.examples.put("text/plain", ReferenceOr.ofValue(rawRespExObj));
 
 		Link link = new Link();
 		link.operationRef = "#/paths/~1users/get";
 		link.operationId = "getUsers";
 		link.description = "Link desc";
-		link.requestBody = "$response.body#/id";
-		link.parameters = java.util.Collections.singletonMap("userId", "$response.body#/id");
+		link.requestBody = common.PayloadValue.ofString("$response.body#/id");
+		link.parameters = java.util.Collections.singletonMap("userId",
+				common.PayloadValue.ofString("$response.body#/id"));
 		Server linkServer = new Server();
 		linkServer.url = "https://link.example.com";
 		link.server = linkServer;
@@ -518,8 +520,8 @@ public class OpenapiParseEmitTest {
 		richSchema.maxProperties = 10;
 		richSchema.minProperties = 1;
 		richSchema.required = java.util.Collections.singletonList("id");
-		richSchema.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("a"),
-				arazzo.PayloadValue.ofString("b"));
+		richSchema.enumValues = java.util.Arrays.asList(common.PayloadValue.ofString("a"),
+				common.PayloadValue.ofString("b"));
 		Schema subSchema = new Schema();
 		subSchema.type = SchemaType.ofSingle("string");
 		ReferenceOr<Schema> subSchemaRefOr = ReferenceOr.ofValue(subSchema);
@@ -530,13 +532,13 @@ public class OpenapiParseEmitTest {
 		richSchema.items = subSchemaRefOr;
 		richSchema.properties = java.util.Collections.singletonMap("id", subSchemaRefOr);
 		richSchema.additionalProperties = AdditionalProperties.ofSchema(subSchema);
-		richSchema.defaultValue = arazzo.PayloadValue.ofString("a");
-		richSchema.constValue = arazzo.PayloadValue.ofString("a");
+		richSchema.defaultValue = common.PayloadValue.ofString("a");
+		richSchema.constValue = common.PayloadValue.ofString("a");
 		richSchema.readOnly = true;
 		richSchema.writeOnly = false;
 		richSchema.deprecated = true;
-		richSchema.example = arazzo.PayloadValue.ofString("a");
-		richSchema.examples = java.util.Collections.singletonList(arazzo.PayloadValue.ofString("a"));
+		richSchema.example = common.PayloadValue.ofString("a");
+		richSchema.examples = java.util.Collections.singletonList(common.PayloadValue.ofString("a"));
 		ExternalDocumentation extDocs = new ExternalDocumentation();
 		extDocs.url = "https://docs.example.com";
 		extDocs.description = "Docs";
@@ -597,7 +599,7 @@ public class OpenapiParseEmitTest {
 		MediaType encMt = new MediaType();
 		encMt.schema = subSchemaRefOr;
 		encMt.itemSchema = subSchemaRefOr;
-		encMt.example = "ex";
+		encMt.example = common.PayloadValue.ofString("ex");
 		encMt.examples = java.util.Collections.singletonMap("e1", ReferenceOr.ofValue(paramEx));
 		Encoding enc = new Encoding();
 		enc.contentType = "application/json";
@@ -643,7 +645,7 @@ public class OpenapiParseEmitTest {
 		Responses opResps = new Responses();
 		opResps.defaultResponse = ReferenceOr.ofValue(globalResp);
 		opResps.statusCodes = java.util.Collections.singletonMap("200", ReferenceOr.ofValue(globalResp));
-		opResps.addProperty("x-resps", "v");
+		opResps.addExtension("x-resps", "v");
 		allMethodsOp.responses = opResps;
 		SecurityRequirement sr = new SecurityRequirement();
 		sr.addRequirement("OAuth", java.util.Collections.singletonList("read"));
@@ -671,12 +673,13 @@ public class OpenapiParseEmitTest {
 		leafCb.pathItems.put("{$request.body#/leafUrl}", leafPi);
 		allMethodsOp.callbacks = java.util.Collections.singletonMap("onEvent", ReferenceOr.ofValue(leafCb));
 		cb.pathItems.put("{$request.body#/callbackUrl}", cbPi);
-		cb.addProperty("x-cb", "v");
+		cb.addExtension("x-cb", "v");
 		api1.webhooks = java.util.Collections.singletonMap("newPetWebhook", leafPi);
 		api1.components.callbacks = java.util.Collections.singletonMap("CompCb", ReferenceOr.ofValue(cb));
 		api1.components.pathItems = java.util.Collections.singletonMap("SharedPi", ReferenceOr.ofValue(cbPi));
 		api1.components.mediaTypes = java.util.Collections.singletonMap("CompMt", ReferenceOr.ofValue(encMt));
-		api1.components.addExtension("x-comp", java.util.Arrays.asList("a", "b"));
+		api1.components.addExtension("x-comp", common.PayloadValue.ofArray(
+				java.util.Arrays.asList(common.PayloadValue.ofString("a"), common.PayloadValue.ofString("b"))));
 
 		// Also include sparse instances to cover null/empty branches on Tag, Header,
 		// Link, SecurityScheme, OAuthFlows, OAuthFlow, Discriminator

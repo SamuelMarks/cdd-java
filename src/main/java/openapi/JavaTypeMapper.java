@@ -15,32 +15,46 @@ public final class JavaTypeMapper {
 	}
 
 	/**
-	 * Resolves an OpenAPI {@link Schema} or {@link ReferenceOr} object into its
-	 * corresponding Java type string.
+	 * Resolves an OpenAPI {@link ReferenceOr}{@code <}{@link Schema}{@code >}
+	 * wrapper into its corresponding Java type string.
 	 *
-	 * @param schemaObj
-	 *            The OpenAPI {@link Schema} or {@link ReferenceOr} object.
+	 * @param refOr
+	 *            The {@link ReferenceOr}{@code <}{@link Schema}{@code >} wrapper.
 	 * @param model
 	 *            The root {@link OpenAPI} model.
 	 * @param mapAsObject
 	 *            Whether to map {@code object} schemas with
 	 *            {@code additionalProperties} to {@code Map<String, Object>}
-	 *            unconditionally (used by seeder) or recursively resolve value
-	 *            types.
+	 *            unconditionally.
 	 * @return The resolved Java type string.
 	 */
-	public static String toJavaType(Object schemaObj, OpenAPI model, boolean mapAsObject) {
-		if (schemaObj instanceof ReferenceOr) {
-			ReferenceOr<?> refOr = (ReferenceOr<?>) schemaObj;
-			if (refOr.isRef()) {
-				return refOr.ref.ref.substring(refOr.ref.ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
-			}
-			return toJavaType(refOr.value, model, mapAsObject);
-		}
-		if (!(schemaObj instanceof Schema)) {
+	public static String toJavaType(ReferenceOr<Schema> refOr, OpenAPI model, boolean mapAsObject) {
+		if (refOr == null) {
 			return "Object";
 		}
-		Schema schemaMap = (Schema) schemaObj;
+		if (refOr.isRef()) {
+			return refOr.ref.ref.substring(refOr.ref.ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
+		}
+		return toJavaType(refOr.value, model, mapAsObject);
+	}
+
+	/**
+	 * Resolves an OpenAPI {@link Schema} into its corresponding Java type string.
+	 *
+	 * @param schemaMap
+	 *            The OpenAPI {@link Schema}.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @param mapAsObject
+	 *            Whether to map {@code object} schemas with
+	 *            {@code additionalProperties} to {@code Map<String, Object>}
+	 *            unconditionally.
+	 * @return The resolved Java type string.
+	 */
+	public static String toJavaType(Schema schemaMap, OpenAPI model, boolean mapAsObject) {
+		if (schemaMap == null) {
+			return "Object";
+		}
 		if (schemaMap.$ref != null) {
 			return schemaMap.$ref.substring(schemaMap.$ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
 		}
@@ -79,6 +93,32 @@ public final class JavaTypeMapper {
 				return "Map<String, " + innerType + ">";
 			}
 			return "Map<String, Object>";
+		}
+		return "Object";
+	}
+
+	/**
+	 * Resolves an OpenAPI {@link Schema} or {@link ReferenceOr} object into its
+	 * corresponding Java type string.
+	 *
+	 * @param schemaObj
+	 *            The OpenAPI {@link Schema} or {@link ReferenceOr} object.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @param mapAsObject
+	 *            Whether to map {@code object} schemas with
+	 *            {@code additionalProperties} to {@code Map<String, Object>}
+	 *            unconditionally (used by seeder) or recursively resolve value
+	 *            types.
+	 * @return The resolved Java type string.
+	 */
+	@SuppressWarnings("unchecked")
+	public static String toJavaType(Object schemaObj, OpenAPI model, boolean mapAsObject) {
+		if (schemaObj instanceof ReferenceOr) {
+			return toJavaType((ReferenceOr<Schema>) schemaObj, model, mapAsObject);
+		}
+		if (schemaObj instanceof Schema) {
+			return toJavaType((Schema) schemaObj, model, mapAsObject);
 		}
 		return "Object";
 	}

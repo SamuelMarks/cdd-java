@@ -1,5 +1,6 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +8,7 @@ import java.util.Map;
 /**
  * Encoding object.
  */
-public class Encoding {
+public class Encoding extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -55,30 +56,22 @@ public class Encoding {
 	public Encoding itemEncoding;
 
 	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
+	 * Returns the strongly typed {@link ParameterStyle} for {@link #style}.
 	 *
-	 * @return extensions
+	 * @return The resolved {@link ParameterStyle}, or {@code null}.
 	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
+	public ParameterStyle getParameterStyle() {
+		return ParameterStyle.fromString(style);
 	}
 
 	/**
-	 * Add extension.
+	 * Sets {@link #style} from a strongly typed {@link ParameterStyle}.
 	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
+	 * @param parameterStyle
+	 *            The {@link ParameterStyle}.
 	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
+	public void setParameterStyle(ParameterStyle parameterStyle) {
+		this.style = parameterStyle != null ? parameterStyle.value : null;
 	}
 
 	/**
@@ -87,7 +80,8 @@ public class Encoding {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(contentType, headers, style, explode, allowReserved, encoding, prefixEncoding,
 				itemEncoding, extensions);
 	}

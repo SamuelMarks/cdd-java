@@ -1,5 +1,7 @@
 package arazzo;
 
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,7 +9,7 @@ import java.util.Map;
  * Arazzo Parameter Object binding a named value or runtime expression to a
  * step, workflow, or action parameter location.
  */
-public class ArazzoParameter {
+public class ArazzoParameter extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -33,40 +35,13 @@ public class ArazzoParameter {
 	public PayloadValue value;
 
 	/**
-	 * Specification vendor extensions ({@code ^x-}).
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Returns the vendor extensions map.
-	 *
-	 * @return The extensions map.
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Adds a vendor extension if its name starts with {@code "x-"}.
-	 *
-	 * @param name
-	 *            The extension property name.
-	 * @param value
-	 *            The extension value.
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		}
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(name, in, value, extensions);
 	}
 

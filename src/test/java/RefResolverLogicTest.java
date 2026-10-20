@@ -209,5 +209,12 @@ public class RefResolverLogicTest {
 		Files.writeString(tempFile.toPath(), "{\"type\":\"string\"}");
 		String fetchedRelative = resolver.fetch(tempFile.getAbsolutePath(), "");
 		assertTrue(fetchedRelative.contains("\"string\""));
+
+		RefResolver customResolver = new RefResolver(uri -> "{\"Pet\":{\"type\":\"string\"}}");
+		JSONObject inMemRoot = new JSONObject(
+				"{\"paths\":{\"/pet\":{\"get\":{\"responses\":{\"200\":{\"schema\":{\"$ref\":\"mem://spec.json#/Pet\"}}}}}}}");
+		customResolver.bundle(inMemRoot, "mem://root.json");
+		assertEquals("string",
+				inMemRoot.getJSONObject("components").getJSONObject("schemas").getJSONObject("Pet").getString("type"));
 	}
 }

@@ -1,5 +1,6 @@
 package cli;
 
+import common.PayloadValue;
 import java.util.*;
 import java.util.regex.*;
 import openapi.*;
@@ -354,7 +355,7 @@ public class CliHelpCodec {
 							sb.append(" serverUrl=\\\"").append(escape(lnk.server.url)).append("\\\"");
 						sb.append("\");\n");
 						if (lnk.parameters != null) {
-							for (java.util.Map.Entry<String, Object> pe : lnk.parameters.entrySet()) {
+							for (java.util.Map.Entry<String, PayloadValue> pe : lnk.parameters.entrySet()) {
 								sb.append("        System.out.println(\"Component linksParam ").append(escape(k))
 										.append(" ").append(escape(pe.getKey())).append(" ")
 										.append(escape(pe.getValue().toString())).append("\");\n");
@@ -391,24 +392,9 @@ public class CliHelpCodec {
 			for (Map.Entry<String, PathItem> pe : api.paths.pathItems.entrySet()) {
 				String path = pe.getKey();
 				PathItem pi = pe.getValue();
-				if (pi.get != null)
-					appendOp(sb, "get", path, pi.get);
-				if (pi.post != null)
-					appendOp(sb, "post", path, pi.post);
-				if (pi.put != null)
-					appendOp(sb, "put", path, pi.put);
-				if (pi.delete != null)
-					appendOp(sb, "delete", path, pi.delete);
-				if (pi.patch != null)
-					appendOp(sb, "patch", path, pi.patch);
-				if (pi.options != null)
-					appendOp(sb, "options", path, pi.options);
-				if (pi.head != null)
-					appendOp(sb, "head", path, pi.head);
-				if (pi.trace != null)
-					appendOp(sb, "trace", path, pi.trace);
-				if (pi.query != null)
-					appendOp(sb, "query", path, pi.query);
+				for (Map.Entry<HttpVerb, Operation> opEntry : pi.getOperationsMap().entrySet()) {
+					appendOp(sb, opEntry.getKey().specName, path, opEntry.getValue());
+				}
 			}
 		}
 	}
@@ -529,7 +515,7 @@ public class CliHelpCodec {
 							sb.append(" serverUrl=\\\"").append(escape(lnk.server.url)).append("\\\"");
 						sb.append("\");\n");
 						if (lnk.parameters != null) {
-							for (java.util.Map.Entry<String, Object> pe : lnk.parameters.entrySet()) {
+							for (java.util.Map.Entry<String, PayloadValue> pe : lnk.parameters.entrySet()) {
 								sb.append("        System.out.println(\"        LinkParam ").append(escape(lName))
 										.append(" ").append(escape(pe.getKey())).append(" ")
 										.append(escape(pe.getValue().toString())).append("\");\n");
@@ -575,7 +561,7 @@ public class CliHelpCodec {
 						sb.append(" serverUrl=\\\"").append(escape(lnk.server.url)).append("\\\"");
 					sb.append("\");\n");
 					if (lnk.parameters != null) {
-						for (java.util.Map.Entry<String, Object> pe : lnk.parameters.entrySet()) {
+						for (java.util.Map.Entry<String, PayloadValue> pe : lnk.parameters.entrySet()) {
 							sb.append("        System.out.println(\"        LinkParam ").append(escape(lName))
 									.append(" ").append(escape(pe.getKey())).append(" ")
 									.append(escape(pe.getValue().toString())).append("\");\n");
@@ -951,7 +937,7 @@ public class CliHelpCodec {
 				if (lnk != null) {
 					if (lnk.parameters == null)
 						lnk.parameters = new HashMap<>();
-					lnk.parameters.put(parts[1], parts[2]);
+					lnk.parameters.put(parts[1], PayloadValue.ofString(parts[2]));
 				}
 			}
 			return true;
@@ -1036,7 +1022,7 @@ public class CliHelpCodec {
 				lnk.description = mDesc.group(1);
 			Matcher mReq = Pattern.compile(" requestBody=\\\"([^\\\"]*)\\\"").matcher(padded);
 			if (mReq.find())
-				lnk.requestBody = mReq.group(1);
+				lnk.requestBody = PayloadValue.ofString(mReq.group(1));
 			Matcher mSrv = Pattern.compile(" serverUrl=\\\"([^\\\"]*)\\\"").matcher(padded);
 			if (mSrv.find()) {
 				lnk.server = new Server();
@@ -1067,24 +1053,7 @@ public class CliHelpCodec {
 				api.paths = new Paths();
 			PathItem pi = api.paths.pathItems.computeIfAbsent(state.currentPath, k -> new PathItem());
 			state.currentOp = new Operation();
-			if (method.equals("get"))
-				pi.get = state.currentOp;
-			else if (method.equals("post"))
-				pi.post = state.currentOp;
-			else if (method.equals("put"))
-				pi.put = state.currentOp;
-			else if (method.equals("delete"))
-				pi.delete = state.currentOp;
-			else if (method.equals("patch"))
-				pi.patch = state.currentOp;
-			else if (method.equals("options"))
-				pi.options = state.currentOp;
-			else if (method.equals("head"))
-				pi.head = state.currentOp;
-			else if (method.equals("trace"))
-				pi.trace = state.currentOp;
-			else if (method.equals("query"))
-				pi.query = state.currentOp;
+			pi.setOperation(HttpVerb.fromString(method), state.currentOp);
 		} else if (line.startsWith("Operation Object ")) {
 			if (state.currentOp != null) {
 				String l = line.substring(17);
@@ -1155,7 +1124,7 @@ public class CliHelpCodec {
 			}
 		} else if (line.startsWith("      Example: ")) {
 			if (state.currentParameter != null) {
-				state.currentParameter.example = line.substring(15);
+				state.currentParameter.example = PayloadValue.ofString(line.substring(15));
 			}
 		} else if (line.startsWith("      Example ")) {
 			if (state.currentParameter != null) {
@@ -1181,7 +1150,7 @@ public class CliHelpCodec {
 						Example ex = new Example();
 						ex.summary = sum;
 						ex.description = desc;
-						ex.value = val;
+						ex.value = val != null ? PayloadValue.ofString(val) : null;
 						state.currentParameter.examples.put(key, ReferenceOr.ofValue(ex));
 					}
 				}
@@ -1286,7 +1255,7 @@ public class CliHelpCodec {
 					if (lnk != null) {
 						if (lnk.parameters == null)
 							lnk.parameters = new HashMap<>();
-						lnk.parameters.put(parts[1], parts[2]);
+						lnk.parameters.put(parts[1], PayloadValue.ofString(parts[2]));
 					}
 				}
 			}

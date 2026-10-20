@@ -600,7 +600,7 @@ public class RuntimeExpression {
 	 * @return The unescaped token.
 	 */
 	private static String unescapePointerToken(String token) {
-		return token.replace("~1", "/").replace("~0", "~");
+		return common.JsonPointerUtils.unescapePointerToken(token);
 	}
 
 	/**

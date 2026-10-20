@@ -1,12 +1,13 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Responses object.
  */
-public class Responses {
+public class Responses extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -17,49 +18,45 @@ public class Responses {
 	 * Default response.
 	 */
 	public ReferenceOr<Response> defaultResponse;
+
 	/**
 	 * Status codes.
 	 */
 	public Map<String, ReferenceOr<Response>> statusCodes = new HashMap<>();
-	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
 
 	/**
-	 * Add property.
+	 * Adds a response or reference for a status code (or {@code "default"}).
 	 *
-	 * @param name
-	 *            Name
-	 * @param value
-	 *            Value
+	 * @param statusCode
+	 *            The HTTP status code (e.g. {@code "200"}, {@code "4XX"}, or
+	 *            {@code "default"}).
+	 * @param response
+	 *            The {@link ReferenceOr} wrapping the {@link Response}.
 	 */
-	@SuppressWarnings("unchecked")
-	public void addProperty(String name, Object value) {
-		if (name.equals("default")) {
-			if (value instanceof ReferenceOr) {
-				defaultResponse = (ReferenceOr<Response>) value;
-			} else if (value instanceof Response) {
-				defaultResponse = ReferenceOr.ofValue((Response) value);
-			}
-		} else if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		} else if (value instanceof ReferenceOr) {
-			statusCodes.put(name, (ReferenceOr<Response>) value);
-		} else if (value instanceof Response) {
-			statusCodes.put(name, ReferenceOr.ofValue((Response) value));
+	public void addStatusCode(String statusCode, ReferenceOr<Response> response) {
+		if (statusCode == null || response == null) {
+			return;
+		}
+		if ("default".equals(statusCode)) {
+			defaultResponse = response;
+		} else if (!statusCode.startsWith("x-")) {
+			statusCodes.put(statusCode, response);
 		}
 	}
 
 	/**
-	 * Get properties.
+	 * Adds an inline {@link Response} for a status code (or {@code "default"}).
 	 *
-	 * @return properties
+	 * @param statusCode
+	 *            The HTTP status code (e.g. {@code "200"}, {@code "4XX"}, or
+	 *            {@code "default"}).
+	 * @param response
+	 *            The inline {@link Response}.
 	 */
-	public Map<String, Object> getProperties() {
-		Map<String, Object> props = new HashMap<>(statusCodes);
-		props.putAll(extensions);
-		return props;
+	public void addStatusCode(String statusCode, Response response) {
+		if (response != null) {
+			addStatusCode(statusCode, ReferenceOr.ofValue(response));
+		}
 	}
 
 	/**
@@ -68,7 +65,8 @@ public class Responses {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(defaultResponse, statusCodes, extensions);
 	}
 

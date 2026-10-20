@@ -99,8 +99,7 @@ public class Emit {
 		CompilationUnit cu;
 		boolean isNew = false;
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 		} else {
 			cu = new CompilationUnit();
 			isNew = true;
@@ -201,7 +200,7 @@ public class Emit {
 
 				String type = resolveType(prop.getValue(), model);
 				Schema propSchema = prop.getValue().value;
-				if (propSchema.enumValues != null) {
+				if (propSchema != null && propSchema.enumValues != null) {
 					String firstVal = String.valueOf(propSchema.enumValues.get(0)).replace("\\", "\\\\").replace("\"",
 							"\\\"");
 					b.append("  obj.").append(safePropName).append(" = \"").append(firstVal).append("\";\n");
@@ -265,7 +264,7 @@ public class Emit {
 	 *            The root {@link OpenAPI} model.
 	 * @return The resolved Java type string.
 	 */
-	private static String resolveType(Object schemaObj, OpenAPI model) {
+	private static String resolveType(openapi.ReferenceOr<Schema> schemaObj, OpenAPI model) {
 		return openapi.TypeMapper.toJavaType(schemaObj, model, true);
 	}
 }

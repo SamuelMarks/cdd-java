@@ -22,7 +22,7 @@ public class OrmParseEmitTest {
 	 */
 	@Test
 	public void testParseConstructor() {
-		new Parse();
+		assertNotNull(new Parse());
 	}
 
 	/**
@@ -30,7 +30,7 @@ public class OrmParseEmitTest {
 	 */
 	@Test
 	public void testEmitConstructor() {
-		new Emit();
+		assertNotNull(new Emit());
 	}
 
 	/**
@@ -66,7 +66,7 @@ public class OrmParseEmitTest {
 		assertFalse(api.components.schemas.containsKey("NotAnEntity"));
 
 		Schema user = api.components.schemas.get("User").value;
-		assertEquals("users_table", user.extensions.get("x-table-name"));
+		assertEquals(common.PayloadValue.ofString("users_table"), user.extensions.get("x-table-name"));
 
 		Map<String, openapi.ReferenceOr<Schema>> props = user.properties;
 		assertNotNull(props);
@@ -74,7 +74,7 @@ public class OrmParseEmitTest {
 		Schema idSchema = props.get("user_id").value;
 		assertNotNull(idSchema);
 		assertEquals(openapi.SchemaType.ofSingle("string"), idSchema.type);
-		assertEquals(true, idSchema.extensions.get("x-primary-key"));
+		assertEquals(common.PayloadValue.ofBoolean(true), idSchema.extensions.get("x-primary-key"));
 
 		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("age").value.type);
 		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("longAge").value.type);
@@ -292,7 +292,7 @@ public class OrmParseEmitTest {
 
 		// Test enumValues (should be skipped)
 		Schema enumSchema = new Schema();
-		enumSchema.enumValues = new ArrayList<>(Arrays.asList(arazzo.PayloadValue.ofString("A")));
+		enumSchema.enumValues = new ArrayList<>(Arrays.asList(common.PayloadValue.ofString("A")));
 		api.components.schemas.put("EnumObj", openapi.ReferenceOr.ofValue(enumSchema));
 
 		String emitted = Emit.emit(api, null);
@@ -334,10 +334,14 @@ public class OrmParseEmitTest {
 		assertNotNull(parsedUser.required);
 		assertTrue(parsedUser.required.contains("active"));
 		assertTrue(parsedUser.required.contains("dept"));
-		assertEquals(true, parsedUser.properties.get("id").value.extensions.get("x-primary-key"));
-		assertEquals(true, parsedUser.properties.get("id").value.extensions.get("x-generated-value"));
-		assertEquals("many-to-one", parsedUser.properties.get("role").value.extensions.get("x-relationship"));
-		assertEquals("one-to-many", parsedUser.properties.get("tags").value.extensions.get("x-relationship"));
+		assertEquals(common.PayloadValue.ofBoolean(true),
+				parsedUser.properties.get("id").value.extensions.get("x-primary-key"));
+		assertEquals(common.PayloadValue.ofBoolean(true),
+				parsedUser.properties.get("id").value.extensions.get("x-generated-value"));
+		assertEquals(common.PayloadValue.ofString("many-to-one"),
+				parsedUser.properties.get("role").value.extensions.get("x-relationship"));
+		assertEquals(common.PayloadValue.ofString("one-to-many"),
+				parsedUser.properties.get("tags").value.extensions.get("x-relationship"));
 	}
 
 	/**
@@ -423,7 +427,8 @@ public class OrmParseEmitTest {
 
 		api.components.schemas.put("ParentModel", openapi.ReferenceOr.ofValue(parent));
 		String emitted = Emit.emit(api, null);
-		assertNotNull(emitted);
+		assertTrue(emitted.contains("public Map<String, Object> prop1;"));
+		assertTrue(emitted.contains("public Object prop2;"));
 	}
 
 	/**

@@ -142,8 +142,7 @@ public class Emit {
 		CompilationUnit cu;
 		boolean isNew = false;
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 		} else {
 			cu = new CompilationUnit();
 			isNew = true;

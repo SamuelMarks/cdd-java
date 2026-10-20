@@ -1,8 +1,17 @@
 package mocks;
 
 import arazzo.Arazzo;
+import arazzo.ArazzoJavadocCodec;
 import arazzo.Step;
 import arazzo.Workflow;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import openapi.TypeMapper;
@@ -28,46 +37,53 @@ public class ArazzoMockEmitter {
 	 */
 	public static String emit(Arazzo spec) {
 		String className = workflows.Emit.deriveClassName(spec) + "Mock";
-		StringBuilder sb = new StringBuilder();
-		sb.append("import java.util.LinkedHashMap;\n");
-		sb.append("import java.util.Map;\n\n");
-		sb.append("/**\n");
-		sb.append(" * Stateful workflow mock simulator generated from Arazzo ")
+		CompilationUnit cu = new CompilationUnit();
+		cu.addImport("java.util.LinkedHashMap");
+		cu.addImport("java.util.Map");
+
+		ClassOrInterfaceDeclaration cls = cu.addClass(className, Modifier.Keyword.PUBLIC);
+		StringBuilder classDoc = new StringBuilder();
+		classDoc.append(" * Stateful workflow mock simulator generated from Arazzo ")
 				.append(spec.arazzo != null ? spec.arazzo : "1.1.0").append(".\n");
-		workflows.Emit.appendSpecJavadoc(sb, " * ", spec);
-		sb.append(" */\n");
-		sb.append("public class ").append(className).append(" {\n");
-		sb.append("\t/** Tracks per-step invocation counts for retry simulation. */\n");
-		sb.append("\tpublic final Map<String, Integer> stepAttempts = new LinkedHashMap<>();\n\n");
-		sb.append("\t/** Default constructor. */\n");
-		sb.append("\tpublic ").append(className).append("() {\n\t}\n\n");
+		ArazzoJavadocCodec.appendSpecJavadoc(classDoc, " * ", spec);
+		cls.setJavadocComment(classDoc.toString());
+
+		FieldDeclaration stepAttemptsField = cls.addFieldWithInitializer("Map<String, Integer>", "stepAttempts",
+				StaticJavaParser.parseExpression("new LinkedHashMap<>()"), Modifier.Keyword.PUBLIC,
+				Modifier.Keyword.FINAL);
+		stepAttemptsField.setJavadocComment(" Tracks per-step invocation counts for retry simulation. ");
+
+		ConstructorDeclaration ctor = cls.addConstructor(Modifier.Keyword.PUBLIC);
+		ctor.setJavadocComment(" Default constructor. ");
 
 		if (spec.workflows != null) {
 			for (Workflow wf : spec.workflows) {
 				String mName = "mock_" + TypeMapper.sanitizeIdentifier(wf.workflowId);
-				sb.append("\t/**\n");
-				sb.append("\t * Simulates stateful execution of workflow ").append(wf.workflowId).append(".\n");
-				workflows.Emit.appendWorkflowJavadoc(sb, "\t * ", wf, spec);
-				sb.append("\t * @return Map of simulated step responses.\n");
-				sb.append("\t */\n");
-				sb.append("\tpublic Map<String, String> ").append(mName).append("() {\n");
-				sb.append("\t\tMap<String, String> responses = new LinkedHashMap<>();\n");
+				MethodDeclaration md = cls.addMethod(mName, Modifier.Keyword.PUBLIC);
+				md.setType("Map<String, String>");
+				StringBuilder methodDoc = new StringBuilder();
+				methodDoc.append(" * Simulates stateful execution of workflow ").append(wf.workflowId).append(".\n");
+				ArazzoJavadocCodec.appendWorkflowJavadoc(methodDoc, " * ", wf, spec);
+				methodDoc.append(" * @return Map of simulated step responses.\n");
+				md.setJavadocComment(methodDoc.toString());
+
+				BlockStmt body = new BlockStmt();
+				body.addStatement(
+						StaticJavaParser.parseStatement("Map<String, String> responses = new LinkedHashMap<>();"));
 				if (wf.steps != null) {
 					for (Step s : wf.steps) {
 						String stepEsc = TypeMapper.escape(s.stepId);
-						sb.append("\t\tstepAttempts.put(\"").append(stepEsc).append("\", stepAttempts.getOrDefault(\"")
-								.append(stepEsc).append("\", 0) + 1);\n");
-						sb.append("\t\tresponses.put(\"").append(stepEsc)
-								.append("\", \"{\\\"status\\\":\\\"ok\\\",\\\"stepId\\\":\\\"").append(stepEsc)
-								.append("\\\"}\");\n");
+						body.addStatement(StaticJavaParser.parseStatement("stepAttempts.put(\"" + stepEsc
+								+ "\", stepAttempts.getOrDefault(\"" + stepEsc + "\", 0) + 1);"));
+						body.addStatement(StaticJavaParser.parseStatement("responses.put(\"" + stepEsc
+								+ "\", \"{\\\"status\\\":\\\"ok\\\",\\\"stepId\\\":\\\"" + stepEsc + "\\\"}\");"));
 					}
 				}
-				sb.append("\t\treturn responses;\n");
-				sb.append("\t}\n\n");
+				body.addStatement(StaticJavaParser.parseStatement("return responses;"));
+				md.setBody(body);
 			}
 		}
-		sb.append("}\n");
-		return sb.toString();
+		return cu.toString();
 	}
 
 	/**

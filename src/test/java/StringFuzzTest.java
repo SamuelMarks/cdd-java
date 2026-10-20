@@ -105,6 +105,8 @@ public class StringFuzzTest {
 			OpenAPI api = cli.Parse.parse(input);
 			assertNotNull("Expected non-null OpenAPI for input: " + input, api);
 			assertNotNull("Expected non-null components for input: " + input, api.components);
+			assertNotNull(api.components.schemas);
+			assertNotNull(api.components.securitySchemes);
 		}
 	}
 }

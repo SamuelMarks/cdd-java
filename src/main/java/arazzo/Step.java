@@ -1,5 +1,6 @@
 package arazzo;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +9,7 @@ import java.util.Map;
  * Arazzo Step Object representing a single operation, AsyncAPI channel message,
  * or nested sub-workflow invocation within a {@link Workflow}.
  */
-public class Step {
+public class Step extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -105,11 +106,6 @@ public class Step {
 	public List<String> dependsOn;
 
 	/**
-	 * Specification vendor extensions ({@code ^x-}).
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
 	 * Validates that exactly one target ({@link #operationId},
 	 * {@link #operationPath}, {@link #channelPath}, or {@link #workflowId}) is set
 	 * on this step.
@@ -135,35 +131,13 @@ public class Step {
 	}
 
 	/**
-	 * Returns the vendor extensions map.
-	 *
-	 * @return The extensions map.
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Adds a vendor extension if its name starts with {@code "x-"}.
-	 *
-	 * @param name
-	 *            The extension property name.
-	 * @param value
-	 *            The extension value.
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		}
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(stepId, description, operationId, operationPath, channelPath, workflowId,
 				parameters, requestBody, successCriteria, onSuccess, onFailure, outputs, timeout, correlationId, action,
 				dependsOn, extensions);

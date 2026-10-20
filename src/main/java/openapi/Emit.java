@@ -1,6 +1,6 @@
 package openapi;
 
-import arazzo.PayloadValue;
+import common.PayloadValue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -175,7 +175,7 @@ public class Emit {
 	 */
 	private static void putPayloadValue(JSONObject obj, String key, PayloadValue pv) {
 		if (pv != null) {
-			obj.put(key, arazzo.Emit.serializePayloadValue(pv));
+			obj.put(key, PayloadValue.toJsonValue(pv));
 		}
 	}
 
@@ -194,7 +194,7 @@ public class Emit {
 		if (isNonEmpty(list)) {
 			JSONArray arr = new JSONArray();
 			for (PayloadValue item : list) {
-				arr.put(arazzo.Emit.serializePayloadValue(item));
+				arr.put(PayloadValue.toJsonValue(item));
 			}
 			obj.put(key, arr);
 		}
@@ -321,9 +321,9 @@ public class Emit {
 	 * @param extensions
 	 *            The extensions map.
 	 */
-	private static void putExtensions(JSONObject obj, Map<String, Object> extensions) {
-		for (Map.Entry<String, Object> e : extensions.entrySet()) {
-			obj.put(e.getKey(), e.getValue());
+	private static void putExtensions(JSONObject obj, Map<String, PayloadValue> extensions) {
+		for (Map.Entry<String, PayloadValue> e : extensions.entrySet()) {
+			obj.put(e.getKey(), PayloadValue.toJsonValue(e.getValue()));
 		}
 	}
 
@@ -622,7 +622,7 @@ public class Emit {
 		if (mt.itemSchema != null) {
 			mtObj.put("itemSchema", serializeRefOr(mt.itemSchema, Emit::serializeSchema));
 		}
-		putIfNotNull(mtObj, "example", mt.example);
+		putPayloadValue(mtObj, "example", mt.example);
 		if (isNonEmpty(mt.examples)) {
 			mtObj.put("examples", serializeRefOrMap(mt.examples, Emit::serializeExample));
 		}
@@ -775,7 +775,7 @@ public class Emit {
 			pObj.put("items", serializeItems(p.items));
 		}
 		putIfNotNull(pObj, "collectionFormat", p.collectionFormat);
-		putIfNotNull(pObj, "default", p.defaultValue);
+		putPayloadValue(pObj, "default", p.defaultValue);
 		putIfNotNull(pObj, "maximum", p.maximum);
 		putIfNotNull(pObj, "exclusiveMaximum", p.exclusiveMaximum);
 		putIfNotNull(pObj, "minimum", p.minimum);
@@ -786,12 +786,12 @@ public class Emit {
 		putIfNotNull(pObj, "maxItems", p.maxItems);
 		putIfNotNull(pObj, "minItems", p.minItems);
 		putIfNotNull(pObj, "uniqueItems", p.uniqueItems);
-		putNonEmptyList(pObj, "enum", p.enumValues);
+		putPayloadValueList(pObj, "enum", p.enumValues);
 		putIfNotNull(pObj, "multipleOf", p.multipleOf);
 		if (p.schema != null) {
 			pObj.put("schema", serializeRefOr(p.schema, Emit::serializeSchema));
 		}
-		putIfNotNull(pObj, "example", p.example);
+		putPayloadValue(pObj, "example", p.example);
 		if (isNonEmpty(p.examples)) {
 			pObj.put("examples", serializeRefOrMap(p.examples, Emit::serializeExample));
 		}
@@ -824,7 +824,7 @@ public class Emit {
 			hObj.put("items", serializeItems(h.items));
 		}
 		putIfNotNull(hObj, "collectionFormat", h.collectionFormat);
-		putIfNotNull(hObj, "default", h.defaultValue);
+		putPayloadValue(hObj, "default", h.defaultValue);
 		putIfNotNull(hObj, "maximum", h.maximum);
 		putIfNotNull(hObj, "exclusiveMaximum", h.exclusiveMaximum);
 		putIfNotNull(hObj, "minimum", h.minimum);
@@ -835,12 +835,12 @@ public class Emit {
 		putIfNotNull(hObj, "maxItems", h.maxItems);
 		putIfNotNull(hObj, "minItems", h.minItems);
 		putIfNotNull(hObj, "uniqueItems", h.uniqueItems);
-		putNonEmptyList(hObj, "enum", h.enumValues);
+		putPayloadValueList(hObj, "enum", h.enumValues);
 		putIfNotNull(hObj, "multipleOf", h.multipleOf);
 		if (h.schema != null) {
 			hObj.put("schema", serializeRefOr(h.schema, Emit::serializeSchema));
 		}
-		putIfNotNull(hObj, "example", h.example);
+		putPayloadValue(hObj, "example", h.example);
 		if (isNonEmpty(h.examples)) {
 			hObj.put("examples", serializeRefOrMap(h.examples, Emit::serializeExample));
 		}
@@ -866,7 +866,7 @@ public class Emit {
 			iObj.put("items", serializeItems(items.items));
 		}
 		putIfNotNull(iObj, "collectionFormat", items.collectionFormat);
-		putIfNotNull(iObj, "default", items.defaultValue);
+		putPayloadValue(iObj, "default", items.defaultValue);
 		putIfNotNull(iObj, "maximum", items.maximum);
 		putIfNotNull(iObj, "exclusiveMaximum", items.exclusiveMaximum);
 		putIfNotNull(iObj, "minimum", items.minimum);
@@ -877,7 +877,7 @@ public class Emit {
 		putIfNotNull(iObj, "maxItems", items.maxItems);
 		putIfNotNull(iObj, "minItems", items.minItems);
 		putIfNotNull(iObj, "uniqueItems", items.uniqueItems);
-		putNonEmptyList(iObj, "enum", items.enumValues);
+		putPayloadValueList(iObj, "enum", items.enumValues);
 		putIfNotNull(iObj, "multipleOf", items.multipleOf);
 		putExtensions(iObj, items.extensions);
 		return iObj;
@@ -894,9 +894,9 @@ public class Emit {
 		JSONObject exObj = new JSONObject();
 		putIfNotNull(exObj, "summary", ex.summary);
 		putIfNotNull(exObj, "description", ex.description);
-		putIfNotNull(exObj, "value", ex.value);
+		putPayloadValue(exObj, "value", ex.value);
 		putIfNotNull(exObj, "externalValue", ex.externalValue);
-		putIfNotNull(exObj, "dataValue", ex.dataValue);
+		putPayloadValue(exObj, "dataValue", ex.dataValue);
 		putIfNotNull(exObj, "serializedValue", ex.serializedValue);
 		putExtensions(exObj, ex.extensions);
 		return exObj;
@@ -914,9 +914,13 @@ public class Emit {
 		putIfNotNull(lObj, "operationRef", l.operationRef);
 		putIfNotNull(lObj, "operationId", l.operationId);
 		putIfNotNull(lObj, "description", l.description);
-		putIfNotNull(lObj, "requestBody", l.requestBody);
+		putPayloadValue(lObj, "requestBody", l.requestBody);
 		if (isNonEmpty(l.parameters)) {
-			lObj.put("parameters", new JSONObject(l.parameters));
+			JSONObject pMapObj = new JSONObject();
+			for (Map.Entry<String, PayloadValue> e : l.parameters.entrySet()) {
+				pMapObj.put(e.getKey(), PayloadValue.toJsonValue(e.getValue()));
+			}
+			lObj.put("parameters", pMapObj);
 		}
 		if (l.server != null) {
 			lObj.put("server", serializeServer(l.server));

@@ -34,8 +34,7 @@ public class Emit {
 		boolean hasPaths = model != null && model.paths != null && model.paths.pathItems != null
 				&& !model.paths.pathItems.isEmpty();
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			CompilationUnit cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			CompilationUnit cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 			if (hasPaths) {
 				java.util.List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
 				if (!classes.isEmpty()) {
@@ -68,11 +67,9 @@ public class Emit {
 		for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 			String path = entry.getKey();
 			PathItem pi = entry.getValue();
-			emitOpMethod(cls, "GET", path, pi.get);
-			emitOpMethod(cls, "POST", path, pi.post);
-			emitOpMethod(cls, "PUT", path, pi.put);
-			emitOpMethod(cls, "DELETE", path, pi.delete);
-			emitOpMethod(cls, "PATCH", path, pi.patch);
+			for (Map.Entry<openapi.HttpVerb, Operation> opEntry : pi.getOperationsMap().entrySet()) {
+				emitOpMethod(cls, opEntry.getKey().name(), path, opEntry.getValue());
+			}
 		}
 	}
 
@@ -90,13 +87,10 @@ public class Emit {
 	 *            The {@link Operation}, or {@code null}.
 	 */
 	private static void emitOpMethod(ClassOrInterfaceDeclaration cls, String verb, String path, Operation op) {
-		if (op == null) {
-			return;
-		}
 		String methodName = (op.operationId != null && !op.operationId.isEmpty())
 				? op.operationId.replaceAll("[^a-zA-Z0-9_]", "")
 				: (verb.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", ""));
-		if (!cls.getMethodsByName(methodName).isEmpty()) {
+		if (common.AstMergeUtils.hasMethod(cls, methodName)) {
 			return;
 		}
 		MethodDeclaration md = cls.addMethod(methodName, Modifier.Keyword.PUBLIC, Modifier.Keyword.STATIC);

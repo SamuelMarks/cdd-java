@@ -41,8 +41,7 @@ public class Emit {
 		CompilationUnit cu;
 		boolean isNew = false;
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 		} else {
 			StringBuilder sb = new StringBuilder();
 			sb.append("import java.net.http.HttpClient;\n");
@@ -84,24 +83,9 @@ public class Emit {
 					for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 						String path = entry.getKey();
 						PathItem item = entry.getValue();
-						if (item.get != null)
-							appendMcpSseCall(sb, "GET", path, item.get, item, model);
-						if (item.post != null)
-							appendMcpSseCall(sb, "POST", path, item.post, item, model);
-						if (item.put != null)
-							appendMcpSseCall(sb, "PUT", path, item.put, item, model);
-						if (item.delete != null)
-							appendMcpSseCall(sb, "DELETE", path, item.delete, item, model);
-						if (item.patch != null)
-							appendMcpSseCall(sb, "PATCH", path, item.patch, item, model);
-						if (item.options != null)
-							appendMcpSseCall(sb, "OPTIONS", path, item.options, item, model);
-						if (item.head != null)
-							appendMcpSseCall(sb, "HEAD", path, item.head, item, model);
-						if (item.trace != null)
-							appendMcpSseCall(sb, "TRACE", path, item.trace, item, model);
-						if (item.query != null)
-							appendMcpSseCall(sb, "QUERY", path, item.query, item, model);
+						for (Map.Entry<openapi.HttpVerb, Operation> opEntry : item.getOperationsMap().entrySet()) {
+							appendMcpSseCall(sb, opEntry.getKey().name(), path, opEntry.getValue(), item, model);
+						}
 					}
 				}
 				sb.append("}\n");
@@ -112,30 +96,12 @@ public class Emit {
 				for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 					String path = entry.getKey();
 					PathItem item = entry.getValue();
-
-					if (item.get != null)
-						emitMethodToAST(classDecl, "GET", path, item.get, item, model);
-					if (item.post != null)
-						emitMethodToAST(classDecl, "POST", path, item.post, item, model);
-					if (item.put != null)
-						emitMethodToAST(classDecl, "PUT", path, item.put, item, model);
-					if (item.delete != null)
-						emitMethodToAST(classDecl, "DELETE", path, item.delete, item, model);
-					if (item.patch != null)
-						emitMethodToAST(classDecl, "PATCH", path, item.patch, item, model);
-					if (item.options != null)
-						emitMethodToAST(classDecl, "OPTIONS", path, item.options, item, model);
-					if (item.head != null)
-						emitMethodToAST(classDecl, "HEAD", path, item.head, item, model);
-					if (item.trace != null)
-						emitMethodToAST(classDecl, "TRACE", path, item.trace, item, model);
-					if (item.query != null)
-						emitMethodToAST(classDecl, "QUERY", path, item.query, item, model);
-
-					Operation[] itemOps = {item.get, item.post, item.put, item.delete, item.patch, item.options,
-							item.head, item.trace, item.query};
-					for (Operation itemOp : itemOps) {
-						if (itemOp != null && itemOp.callbacks != null) {
+					Map<openapi.HttpVerb, Operation> opsMap = item.getOperationsMap();
+					for (Map.Entry<openapi.HttpVerb, Operation> opEntry : opsMap.entrySet()) {
+						emitMethodToAST(classDecl, opEntry.getKey().name(), path, opEntry.getValue(), item, model);
+					}
+					for (Operation itemOp : opsMap.values()) {
+						if (itemOp.callbacks != null) {
 							emitCallbacksToAST(classDecl, itemOp.callbacks);
 						}
 					}

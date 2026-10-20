@@ -711,7 +711,7 @@ public class RoutesParseEmitTest {
 		getP1.in = "query";
 		getP1.name = "q1";
 		openapi.Example ex1 = new openapi.Example();
-		ex1.value = "val";
+		ex1.value = common.PayloadValue.ofString("val");
 		ex1.summary = "sum";
 		ex1.description = "desc";
 		getP1.examples = new java.util.HashMap<>();

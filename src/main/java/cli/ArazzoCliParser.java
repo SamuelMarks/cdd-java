@@ -47,7 +47,7 @@ public class ArazzoCliParser {
 
 		for (ClassOrInterfaceDeclaration cls : cu.findAll(ClassOrInterfaceDeclaration.class)) {
 			if (cls.getJavadocComment().isPresent()) {
-				workflows.Parse.parseSpecJavadoc(cls.getJavadocComment().get().getContent(), spec);
+				arazzo.ArazzoJavadocCodec.parseSpecJavadoc(cls.getJavadocComment().get().getContent(), spec);
 			}
 		}
 
@@ -61,7 +61,7 @@ public class ArazzoCliParser {
 						if (currentBlock != null) {
 							Workflow wf = new Workflow();
 							wf.steps = new ArrayList<>();
-							workflows.Parse.parseWorkflowJavadoc(currentBlock.toString(), wf);
+							arazzo.ArazzoJavadocCodec.parseWorkflowJavadoc(currentBlock.toString(), wf);
 							spec.workflows.add(wf);
 						}
 						currentBlock = new StringBuilder();
@@ -73,7 +73,7 @@ public class ArazzoCliParser {
 				if (currentBlock != null) {
 					Workflow wf = new Workflow();
 					wf.steps = new ArrayList<>();
-					workflows.Parse.parseWorkflowJavadoc(currentBlock.toString(), wf);
+					arazzo.ArazzoJavadocCodec.parseWorkflowJavadoc(currentBlock.toString(), wf);
 					spec.workflows.add(wf);
 				}
 			}

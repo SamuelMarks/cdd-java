@@ -1,5 +1,7 @@
 package openapi;
 
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +9,7 @@ import java.util.Map;
 /**
  * Header object.
  */
-public class Header {
+public class Header extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -43,7 +45,7 @@ public class Header {
 	/** The collectionFormat property. */
 	public String collectionFormat;
 	/** The defaultValue property. */
-	public Object defaultValue;
+	public PayloadValue defaultValue;
 	/** The maximum property. */
 	public Number maximum;
 	/** The exclusiveMaximum property. */
@@ -65,7 +67,7 @@ public class Header {
 	/** The uniqueItems property. */
 	public Boolean uniqueItems;
 	/** The enumValues property. */
-	public List<Object> enumValues;
+	public List<PayloadValue> enumValues;
 	/** The multipleOf property. */
 	public Number multipleOf;
 
@@ -92,7 +94,7 @@ public class Header {
 	/**
 	 * The example property.
 	 */
-	public Object example;
+	public PayloadValue example;
 
 	/**
 	 * The examples property.
@@ -105,30 +107,22 @@ public class Header {
 	public Map<String, MediaType> content;
 
 	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
+	 * Returns the strongly typed {@link ParameterStyle} for {@link #style}.
 	 *
-	 * @return extensions
+	 * @return The resolved {@link ParameterStyle}, or {@code null}.
 	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
+	public ParameterStyle getParameterStyle() {
+		return ParameterStyle.fromString(style);
 	}
 
 	/**
-	 * Add extension.
+	 * Sets {@link #style} from a strongly typed {@link ParameterStyle}.
 	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
+	 * @param parameterStyle
+	 *            The {@link ParameterStyle}.
 	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
+	public void setParameterStyle(ParameterStyle parameterStyle) {
+		this.style = parameterStyle != null ? parameterStyle.value : null;
 	}
 
 	/**
@@ -137,7 +131,8 @@ public class Header {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(description, required, deprecated, allowEmptyValue, type, format, items,
 				collectionFormat, defaultValue, maximum, exclusiveMaximum, minimum, exclusiveMinimum, maxLength,
 				minLength, pattern, maxItems, minItems, uniqueItems, enumValues, multipleOf, style, explode,

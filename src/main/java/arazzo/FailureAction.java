@@ -1,5 +1,6 @@
 package arazzo;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +10,7 @@ import java.util.Map;
  * fallback transitions ({@code end}, {@code retry}, or {@code goto}) when a
  * step fails.
  */
-public class FailureAction {
+public class FailureAction extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -61,40 +62,13 @@ public class FailureAction {
 	public List<Criterion> criteria;
 
 	/**
-	 * Specification vendor extensions ({@code ^x-}).
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Returns the vendor extensions map.
-	 *
-	 * @return The extensions map.
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Adds a vendor extension if its name starts with {@code "x-"}.
-	 *
-	 * @param name
-	 *            The extension property name.
-	 * @param value
-	 *            The extension value.
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		}
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(name, type, workflowId, stepId, parameters, retryAfter, retryLimit, criteria,
 				extensions);
 	}

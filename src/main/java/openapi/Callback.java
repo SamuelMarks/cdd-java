@@ -1,12 +1,13 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Callback object.
  */
-public class Callback {
+public class Callback extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -17,36 +18,19 @@ public class Callback {
 	 * Path items.
 	 */
 	public Map<String, PathItem> pathItems = new HashMap<>();
-	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
 
 	/**
-	 * Add property.
+	 * Adds a callback runtime expression and its associated {@link PathItem}.
 	 *
-	 * @param name
-	 *            Name
-	 * @param value
-	 *            Value
+	 * @param expression
+	 *            The callback runtime expression key.
+	 * @param pathItem
+	 *            The {@link PathItem} definition.
 	 */
-	public void addProperty(String name, Object value) {
-		if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		} else if (value instanceof PathItem) {
-			pathItems.put(name, (PathItem) value);
+	public void addPathItem(String expression, PathItem pathItem) {
+		if (expression != null && pathItem != null && !expression.startsWith("x-")) {
+			pathItems.put(expression, pathItem);
 		}
-	}
-
-	/**
-	 * Get properties.
-	 *
-	 * @return properties
-	 */
-	public Map<String, Object> getProperties() {
-		Map<String, Object> props = new HashMap<>(extensions);
-		props.putAll(pathItems);
-		return props;
 	}
 
 	/**
@@ -55,7 +39,8 @@ public class Callback {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(pathItems, extensions);
 	}
 

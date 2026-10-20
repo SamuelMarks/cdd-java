@@ -1,17 +1,17 @@
 package serverroutes;
 
-import openapi.OpenAPI;
-import openapi.PathItem;
-import openapi.Operation;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.Modifier;
-
+import com.github.javaparser.ast.stmt.BlockStmt;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import openapi.OpenAPI;
+import openapi.Operation;
+import openapi.PathItem;
 
 /**
  * Emitter for server routes.
@@ -57,72 +57,104 @@ public class Emit {
 			md.addParameter("DaoFactory", "daoFactory");
 			md.setJavadocComment("Registers routes for " + resourceName + ".");
 
-			StringBuilder sb = new StringBuilder();
-			sb.append("{\n");
+			BlockStmt body = new BlockStmt();
 
 			String javalinPath = path.replaceAll("\\{([^}]+)\\}", "<$1>");
 			String pathParamName = extractFirstPathParam(path);
 
 			String singularName = resolveEntityName(resourceName, pi, model);
+			boolean hasDao = hasEntityModel(singularName, model);
 
 			if (pi.get != null) {
 				int successCode = resolveSuccessCode(pi.get, 200);
-				if (pathParamName != null) {
-					sb.append("  app.get(\"").append(javalinPath).append("\", ctx -> {\n");
-					sb.append("    try {\n");
-					sb.append("      Object res = daoFactory.get").append(singularName)
-							.append("Dao().get(ctx.pathParam(\"").append(pathParamName).append("\"));\n");
-					sb.append("      if (res != null) ctx.status(").append(successCode)
-							.append(").json(res); else ctx.status(404);\n");
-					sb.append("    } catch (Exception e) { ctx.status(500).result(e.getMessage()); }\n");
-					sb.append("  });\n");
+				if (hasDao) {
+					if (pathParamName != null) {
+						body.addStatement(StaticJavaParser.parseStatement("app.get(\"" + javalinPath
+								+ "\", ctx -> { try { Object res = daoFactory.get" + singularName
+								+ "Dao().get(ctx.pathParam(\"" + pathParamName + "\")); if (res != null) ctx.status("
+								+ successCode
+								+ ").json(res); else ctx.status(404); } catch (Exception e) { ctx.status(500).result(e.getMessage()); } });"));
+					} else {
+						body.addStatement(StaticJavaParser.parseStatement("app.get(\"" + javalinPath
+								+ "\", ctx -> { try { ctx.status(" + successCode + ").json(daoFactory.get"
+								+ singularName
+								+ "Dao().list()); } catch (Exception e) { ctx.status(500).result(e.getMessage()); } });"));
+					}
 				} else {
-					sb.append("  app.get(\"").append(javalinPath).append("\", ctx -> {\n");
-					sb.append("    try { ctx.status(").append(successCode).append(").json(daoFactory.get")
-							.append(singularName).append("Dao().list()); }\n");
-					sb.append("    catch (Exception e) { ctx.status(500).result(e.getMessage()); }\n");
-					sb.append("  });\n");
+					body.addStatement(StaticJavaParser.parseStatement("app.get(\"" + javalinPath
+							+ "\", ctx -> ctx.status(" + successCode + ").result(\"{}\"));"));
 				}
 			}
 			if (pi.post != null) {
 				int successCode = resolveSuccessCode(pi.post, 201);
-				sb.append("  app.post(\"").append(javalinPath).append("\", ctx -> {\n");
-				sb.append("    try {\n");
-				sb.append("      models.").append(singularName).append(" entity = ctx.bodyAsClass(models.")
-						.append(singularName).append(".class);\n");
-				sb.append("      ctx.status(").append(successCode).append(").json(daoFactory.get").append(singularName)
-						.append("Dao().create(entity));\n");
-				sb.append("    } catch (Exception e) { ctx.status(500).result(e.getMessage()); }\n");
-				sb.append("  });\n");
+				if (hasDao) {
+					body.addStatement(StaticJavaParser.parseStatement("app.post(\"" + javalinPath
+							+ "\", ctx -> { try { models." + singularName + " entity = ctx.bodyAsClass(models."
+							+ singularName + ".class); ctx.status(" + successCode + ").json(daoFactory.get"
+							+ singularName
+							+ "Dao().create(entity)); } catch (Exception e) { ctx.status(500).result(e.getMessage()); } });"));
+				} else {
+					body.addStatement(StaticJavaParser.parseStatement("app.post(\"" + javalinPath
+							+ "\", ctx -> ctx.status(" + successCode + ").result(\"{}\"));"));
+				}
 			}
 			if (pi.put != null || pi.patch != null) {
 				Operation updateOp = pi.put != null ? pi.put : pi.patch;
 				int successCode = resolveSuccessCode(updateOp, 200);
-				sb.append("  app.put(\"").append(javalinPath).append("\", ctx -> {\n");
-				sb.append("    try {\n");
-				sb.append("      models.").append(singularName).append(" entity = ctx.bodyAsClass(models.")
-						.append(singularName).append(".class);\n");
-				sb.append("      ctx.status(").append(successCode).append(").json(daoFactory.get").append(singularName)
-						.append("Dao().update(entity));\n");
-				sb.append("    } catch (Exception e) { ctx.status(500).result(e.getMessage()); }\n");
-				sb.append("  });\n");
+				if (hasDao) {
+					body.addStatement(StaticJavaParser.parseStatement("app.put(\"" + javalinPath
+							+ "\", ctx -> { try { models." + singularName + " entity = ctx.bodyAsClass(models."
+							+ singularName + ".class); ctx.status(" + successCode + ").json(daoFactory.get"
+							+ singularName
+							+ "Dao().update(entity)); } catch (Exception e) { ctx.status(500).result(e.getMessage()); } });"));
+				} else {
+					body.addStatement(StaticJavaParser.parseStatement("app.put(\"" + javalinPath
+							+ "\", ctx -> ctx.status(" + successCode + ").result(\"{}\"));"));
+				}
 			}
 			if (pi.delete != null) {
 				int successCode = resolveSuccessCode(pi.delete, 204);
 				String delParam = pathParamName != null ? pathParamName : "id";
-				sb.append("  app.delete(\"").append(javalinPath).append("\", ctx -> {\n");
-				sb.append("    try { daoFactory.get").append(singularName).append("Dao().delete(ctx.pathParam(\"")
-						.append(delParam).append("\")); ctx.status(").append(successCode).append("); }\n");
-				sb.append("    catch (Exception e) { ctx.status(500).result(e.getMessage()); }\n");
-				sb.append("  });\n");
+				if (hasDao) {
+					body.addStatement(StaticJavaParser.parseStatement(
+							"app.delete(\"" + javalinPath + "\", ctx -> { try { daoFactory.get" + singularName
+									+ "Dao().delete(ctx.pathParam(\"" + delParam + "\")); ctx.status(" + successCode
+									+ "); } catch (Exception e) { ctx.status(500).result(e.getMessage()); } });"));
+				} else {
+					body.addStatement(StaticJavaParser.parseStatement(
+							"app.delete(\"" + javalinPath + "\", ctx -> ctx.status(" + successCode + "));"));
+				}
 			}
-			sb.append("}\n");
-			md.setBody(StaticJavaParser.parseBlock(sb.toString()));
+			md.setBody(body);
 
 			files.put("routes/" + className + ".java", cu.toString());
 		}
 
 		return files;
+	}
+
+	/**
+	 * Checks whether the OpenAPI specification defines a concrete (non-enum)
+	 * component schema for {@code entityName}.
+	 *
+	 * @param entityName
+	 *            The candidate entity class name.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @return {@code true} if a matching entity schema exists; {@code false}
+	 *         otherwise.
+	 */
+	public static boolean hasEntityModel(String entityName, OpenAPI model) {
+		if (model.components == null || model.components.schemas == null) {
+			return false;
+		}
+		for (Map.Entry<String, openapi.ReferenceOr<openapi.Schema>> entry : model.components.schemas.entrySet()) {
+			String candidate = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
+			if (candidate.equals(entityName) && entry.getValue().value.enumValues == null) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -149,7 +181,7 @@ public class Emit {
 	 *            The root {@link OpenAPI} model.
 	 * @return The resolved entity class name.
 	 */
-	private static String resolveEntityName(String resourceName, PathItem pi, OpenAPI model) {
+	public static String resolveEntityName(String resourceName, PathItem pi, OpenAPI model) {
 		String singularName = resourceName.endsWith("s")
 				? resourceName.substring(0, resourceName.length() - 1)
 				: resourceName;
@@ -168,7 +200,7 @@ public class Emit {
 	}
 
 	/**
-	 * Resolves the HTTP success status code declared on an {@link Operation}'s
+	 * Resolves the HTTP success status code declared on an {@link Operation}s
 	 * responses, or returns {@code defaultStatus} if none is declared.
 	 *
 	 * @param op
@@ -200,7 +232,7 @@ public class Emit {
 	 * @return The extracted resource name, or {@code "Root"} if no static segments
 	 *         exist.
 	 */
-	private static String getResourceName(String path) {
+	public static String getResourceName(String path) {
 		String[] parts = path.split("/");
 		for (String p : parts) {
 			if (!p.isEmpty() && !p.startsWith("{")) {

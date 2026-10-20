@@ -1,14 +1,16 @@
-package arazzo;
+package common;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
- * Strongly typed recursive representation of a JSON/YAML value or Arazzo
- * runtime expression used in {@link ArazzoParameter#value},
- * {@link ReusableObject#value}, {@link ArazzoRequestBody#payload}, and
- * {@link PayloadReplacement#value}.
+ * Strongly typed recursive representation of a JSON/YAML value or runtime
+ * expression used across OpenAPI 3.2.0 and Arazzo 1.1.0 AST nodes.
  */
 public final class PayloadValue {
 	/**
@@ -17,7 +19,7 @@ public final class PayloadValue {
 	public enum Kind {
 		/** Explicit JSON/YAML {@code null} literal. */
 		NULL,
-		/** String literal or Arazzo runtime expression (e.g. {@code $inputs.id}). */
+		/** String literal or runtime expression (e.g. {@code $inputs.id}). */
 		STRING,
 		/** Numeric literal ({@link Integer}, {@link Long}, or {@link Double}). */
 		NUMBER,
@@ -150,6 +152,80 @@ public final class PayloadValue {
 			return ofNull();
 		}
 		return new PayloadValue(Kind.ARRAY, null, null, null, null, val);
+	}
+
+	/**
+	 * Recursively converts a raw {@link org.json} value into a strongly typed
+	 * {@link PayloadValue}.
+	 *
+	 * @param raw
+	 *            The raw JSON value ({@link JSONObject#NULL}, {@link String},
+	 *            {@link Number}, {@link Boolean}, {@link JSONObject}, or
+	 *            {@link JSONArray}).
+	 * @return The parsed {@link PayloadValue}.
+	 */
+	public static PayloadValue fromJsonValue(Object raw) {
+		if (raw == null || JSONObject.NULL.equals(raw)) {
+			return ofNull();
+		}
+		if (raw instanceof Boolean) {
+			return ofBoolean((Boolean) raw);
+		}
+		if (raw instanceof Number) {
+			return ofNumber((Number) raw);
+		}
+		if (raw instanceof JSONObject) {
+			JSONObject jo = (JSONObject) raw;
+			Map<String, PayloadValue> map = new LinkedHashMap<>();
+			for (String k : jo.keySet()) {
+				map.put(k, fromJsonValue(jo.get(k)));
+			}
+			return ofObject(map);
+		}
+		if (raw instanceof JSONArray) {
+			JSONArray ja = (JSONArray) raw;
+			List<PayloadValue> list = new ArrayList<>();
+			for (int i = 0; i < ja.length(); i++) {
+				list.add(fromJsonValue(ja.get(i)));
+			}
+			return ofArray(list);
+		}
+		return ofString(String.valueOf(raw));
+	}
+
+	/**
+	 * Recursively converts a strongly typed {@link PayloadValue} into a
+	 * {@link org.json} compatible object.
+	 *
+	 * @param pv
+	 *            The {@link PayloadValue}.
+	 * @return The serialized JSON value.
+	 */
+	public static Object toJsonValue(PayloadValue pv) {
+		if (pv.isNull()) {
+			return JSONObject.NULL;
+		}
+		if (pv.isBoolean()) {
+			return pv.booleanVal;
+		}
+		if (pv.isNumber()) {
+			return pv.numberVal;
+		}
+		if (pv.isObject()) {
+			JSONObject jo = new JSONObject();
+			for (Map.Entry<String, PayloadValue> e : pv.objectVal.entrySet()) {
+				jo.put(e.getKey(), toJsonValue(e.getValue()));
+			}
+			return jo;
+		}
+		if (pv.isArray()) {
+			JSONArray ja = new JSONArray();
+			for (PayloadValue item : pv.arrayVal) {
+				ja.put(toJsonValue(item));
+			}
+			return ja;
+		}
+		return pv.stringVal;
 	}
 
 	/**

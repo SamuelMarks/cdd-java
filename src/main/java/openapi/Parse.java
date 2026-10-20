@@ -1,6 +1,6 @@
 package openapi;
 
-import arazzo.PayloadValue;
+import common.PayloadValue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -284,19 +284,6 @@ public class Parse {
 	}
 
 	/**
-	 * Reads an arbitrary JSON value if present and non-null.
-	 *
-	 * @param obj
-	 *            The source JSONObject.
-	 * @param key
-	 *            The property name.
-	 * @return The unwrapped Java value or {@code null}.
-	 */
-	private static Object optVal(JSONObject obj, String key) {
-		return !obj.isNull(key) ? unwrapJson(obj.get(key)) : null;
-	}
-
-	/**
 	 * Reads a {@link PayloadValue} property if present and non-null.
 	 *
 	 * @param obj
@@ -306,7 +293,7 @@ public class Parse {
 	 * @return The parsed {@link PayloadValue} or {@code null}.
 	 */
 	private static PayloadValue optPayloadVal(JSONObject obj, String key) {
-		return !obj.isNull(key) ? arazzo.Parse.parsePayloadValue(obj.get(key)) : null;
+		return !obj.isNull(key) ? PayloadValue.fromJsonValue(obj.get(key)) : null;
 	}
 
 	/**
@@ -326,7 +313,7 @@ public class Parse {
 		JSONArray arr = obj.getJSONArray(key);
 		List<PayloadValue> res = new ArrayList<>();
 		for (int i = 0; i < arr.length(); i++) {
-			res.add(arazzo.Parse.parsePayloadValue(arr.get(i)));
+			res.add(PayloadValue.fromJsonValue(arr.get(i)));
 		}
 		return res;
 	}
@@ -374,23 +361,6 @@ public class Parse {
 	}
 
 	/**
-	 * Unwraps org.json containers into standard Java Lists and Maps.
-	 *
-	 * @param raw
-	 *            The raw JSON value.
-	 * @return The unwrapped value.
-	 */
-	private static Object unwrapJson(Object raw) {
-		if (raw instanceof JSONObject) {
-			return ((JSONObject) raw).toMap();
-		}
-		if (raw instanceof JSONArray) {
-			return ((JSONArray) raw).toList();
-		}
-		return raw;
-	}
-
-	/**
 	 * Reads a list of strings from a JSONObject property if present.
 	 *
 	 * @param obj
@@ -412,22 +382,6 @@ public class Parse {
 	}
 
 	/**
-	 * Reads a list of arbitrary objects from a JSONObject property if present.
-	 *
-	 * @param obj
-	 *            The source JSONObject.
-	 * @param key
-	 *            The property name.
-	 * @return The object list or {@code null}.
-	 */
-	private static List<Object> optObjList(JSONObject obj, String key) {
-		if (obj.isNull(key)) {
-			return null;
-		}
-		return obj.getJSONArray(key).toList();
-	}
-
-	/**
 	 * Copies all {@code x-*} specification extensions from a JSONObject into a
 	 * target map.
 	 *
@@ -436,10 +390,10 @@ public class Parse {
 	 * @param target
 	 *            The target extensions map.
 	 */
-	private static void copyExtensions(JSONObject obj, Map<String, Object> target) {
+	private static void copyExtensions(JSONObject obj, Map<String, PayloadValue> target) {
 		for (String k : obj.keySet()) {
 			if (k.startsWith("x-")) {
-				target.put(k, unwrapJson(obj.get(k)));
+				target.put(k, PayloadValue.fromJsonValue(obj.get(k)));
 			}
 		}
 	}
@@ -601,7 +555,7 @@ public class Parse {
 		paths.pathItems = new HashMap<>();
 		for (String pathKey : pathsObj.keySet()) {
 			if (pathKey.startsWith("x-")) {
-				paths.extensions.put(pathKey, unwrapJson(pathsObj.get(pathKey)));
+				paths.extensions.put(pathKey, PayloadValue.fromJsonValue(pathsObj.get(pathKey)));
 			} else {
 				paths.pathItems.put(pathKey, parsePathItem(pathsObj.getJSONObject(pathKey)));
 			}
@@ -760,7 +714,7 @@ public class Parse {
 		if (mtObj.has("itemSchema")) {
 			mt.itemSchema = parseRefOr(mtObj.getJSONObject("itemSchema"), Parse::parseSchema);
 		}
-		mt.example = optVal(mtObj, "example");
+		mt.example = optPayloadVal(mtObj, "example");
 		if (mtObj.has("examples")) {
 			mt.examples = parseRefOrMap(mtObj.getJSONObject("examples"), Parse::parseExample);
 		}
@@ -848,7 +802,7 @@ public class Parse {
 		responses.statusCodes = new HashMap<>();
 		for (String rKey : respObj.keySet()) {
 			if (rKey.startsWith("x-")) {
-				responses.extensions.put(rKey, unwrapJson(respObj.get(rKey)));
+				responses.extensions.put(rKey, PayloadValue.fromJsonValue(respObj.get(rKey)));
 			} else if ("default".equals(rKey)) {
 				responses.defaultResponse = parseRefOr(respObj.getJSONObject(rKey), Parse::parseResponse);
 			} else {
@@ -912,7 +866,7 @@ public class Parse {
 			p.items = parseItems(pObj.getJSONObject("items"));
 		}
 		p.collectionFormat = optStr(pObj, "collectionFormat");
-		p.defaultValue = optVal(pObj, "default");
+		p.defaultValue = optPayloadVal(pObj, "default");
 		p.maximum = optNum(pObj, "maximum");
 		p.exclusiveMaximum = optBool(pObj, "exclusiveMaximum");
 		p.minimum = optNum(pObj, "minimum");
@@ -923,12 +877,12 @@ public class Parse {
 		p.maxItems = optInt(pObj, "maxItems");
 		p.minItems = optInt(pObj, "minItems");
 		p.uniqueItems = optBool(pObj, "uniqueItems");
-		p.enumValues = optObjList(pObj, "enum");
+		p.enumValues = optPayloadValList(pObj, "enum");
 		p.multipleOf = optNum(pObj, "multipleOf");
 		if (pObj.has("schema")) {
 			p.schema = parseRefOr(pObj.getJSONObject("schema"), Parse::parseSchema);
 		}
-		p.example = optVal(pObj, "example");
+		p.example = optPayloadVal(pObj, "example");
 		if (pObj.has("examples")) {
 			p.examples = parseRefOrMap(pObj.getJSONObject("examples"), Parse::parseExample);
 		}
@@ -961,7 +915,7 @@ public class Parse {
 			h.items = parseItems(hObj.getJSONObject("items"));
 		}
 		h.collectionFormat = optStr(hObj, "collectionFormat");
-		h.defaultValue = optVal(hObj, "default");
+		h.defaultValue = optPayloadVal(hObj, "default");
 		h.maximum = optNum(hObj, "maximum");
 		h.exclusiveMaximum = optBool(hObj, "exclusiveMaximum");
 		h.minimum = optNum(hObj, "minimum");
@@ -972,12 +926,12 @@ public class Parse {
 		h.maxItems = optInt(hObj, "maxItems");
 		h.minItems = optInt(hObj, "minItems");
 		h.uniqueItems = optBool(hObj, "uniqueItems");
-		h.enumValues = optObjList(hObj, "enum");
+		h.enumValues = optPayloadValList(hObj, "enum");
 		h.multipleOf = optNum(hObj, "multipleOf");
 		if (hObj.has("schema")) {
 			h.schema = parseRefOr(hObj.getJSONObject("schema"), Parse::parseSchema);
 		}
-		h.example = optVal(hObj, "example");
+		h.example = optPayloadVal(hObj, "example");
 		if (hObj.has("examples")) {
 			h.examples = parseRefOrMap(hObj.getJSONObject("examples"), Parse::parseExample);
 		}
@@ -1003,7 +957,7 @@ public class Parse {
 			items.items = parseItems(iObj.getJSONObject("items"));
 		}
 		items.collectionFormat = optStr(iObj, "collectionFormat");
-		items.defaultValue = optVal(iObj, "default");
+		items.defaultValue = optPayloadVal(iObj, "default");
 		items.maximum = optNum(iObj, "maximum");
 		items.exclusiveMaximum = optBool(iObj, "exclusiveMaximum");
 		items.minimum = optNum(iObj, "minimum");
@@ -1014,7 +968,7 @@ public class Parse {
 		items.maxItems = optInt(iObj, "maxItems");
 		items.minItems = optInt(iObj, "minItems");
 		items.uniqueItems = optBool(iObj, "uniqueItems");
-		items.enumValues = optObjList(iObj, "enum");
+		items.enumValues = optPayloadValList(iObj, "enum");
 		items.multipleOf = optNum(iObj, "multipleOf");
 		copyExtensions(iObj, items.extensions);
 		return items;
@@ -1031,9 +985,9 @@ public class Parse {
 		Example ex = new Example();
 		ex.summary = optStr(exObj, "summary");
 		ex.description = optStr(exObj, "description");
-		ex.value = optVal(exObj, "value");
+		ex.value = optPayloadVal(exObj, "value");
 		ex.externalValue = optStr(exObj, "externalValue");
-		ex.dataValue = optVal(exObj, "dataValue");
+		ex.dataValue = optPayloadVal(exObj, "dataValue");
 		ex.serializedValue = optStr(exObj, "serializedValue");
 		copyExtensions(exObj, ex.extensions);
 		return ex;
@@ -1051,9 +1005,13 @@ public class Parse {
 		l.operationRef = optStr(lObj, "operationRef");
 		l.operationId = optStr(lObj, "operationId");
 		l.description = optStr(lObj, "description");
-		l.requestBody = optVal(lObj, "requestBody");
+		l.requestBody = optPayloadVal(lObj, "requestBody");
 		if (lObj.has("parameters")) {
-			l.parameters = lObj.getJSONObject("parameters").toMap();
+			JSONObject pMapObj = lObj.getJSONObject("parameters");
+			l.parameters = new HashMap<>();
+			for (String k : pMapObj.keySet()) {
+				l.parameters.put(k, PayloadValue.fromJsonValue(pMapObj.get(k)));
+			}
 		}
 		if (lObj.has("server")) {
 			l.server = parseServer(lObj.getJSONObject("server"));
@@ -1073,7 +1031,7 @@ public class Parse {
 		Callback cb = new Callback();
 		for (String k : cbObj.keySet()) {
 			if (k.startsWith("x-")) {
-				cb.extensions.put(k, unwrapJson(cbObj.get(k)));
+				cb.extensions.put(k, PayloadValue.fromJsonValue(cbObj.get(k)));
 			} else {
 				cb.pathItems.put(k, parsePathItem(cbObj.getJSONObject(k)));
 			}

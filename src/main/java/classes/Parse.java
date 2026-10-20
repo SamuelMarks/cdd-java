@@ -70,7 +70,7 @@ public class Parse {
 					}
 				}
 
-				List<arazzo.PayloadValue> enumValues = new ArrayList<>();
+				List<common.PayloadValue> enumValues = new ArrayList<>();
 				for (EnumConstantDeclaration constDecl : enumDecl.getEntries()) {
 					String val = constDecl.getNameAsString();
 					for (AnnotationExpr ann : constDecl.getAnnotations()) {
@@ -78,7 +78,7 @@ public class Parse {
 							val = ((SingleMemberAnnotationExpr) ann).getMemberValue().toString().replace("\"", "");
 						}
 					}
-					enumValues.add(arazzo.PayloadValue.ofString(val));
+					enumValues.add(common.PayloadValue.ofString(val));
 				}
 				schema.enumValues = enumValues;
 				api.components.schemas.put(enumName, openapi.ReferenceOr.ofValue(schema));
@@ -142,7 +142,7 @@ public class Parse {
 							discriminatorObj.addExtension("defaultMapping", tContent);
 							hasDisc = true;
 						} else if ("schemaExample".equals(tName))
-							schema.example = arazzo.PayloadValue.ofString(tContent);
+							schema.example = common.PayloadValue.ofString(tContent);
 						else if ("schemaExternalDocs".equals(tName)) {
 							ExternalDocumentation extDocs = new ExternalDocumentation();
 							int spaceIdx = tContent.indexOf(' ');
@@ -235,7 +235,7 @@ public class Parse {
 										xmlObj.wrapped = Boolean.parseBoolean(tContent);
 										hasXml = true;
 									} else if ("schemaExample".equals(tName))
-										propSchema.example = arazzo.PayloadValue.ofString(tContent);
+										propSchema.example = common.PayloadValue.ofString(tContent);
 									else if ("schemaExternalDocs".equals(tName)) {
 										ExternalDocumentation extDocs = new ExternalDocumentation();
 										int spaceIdx = tContent.indexOf(' ');

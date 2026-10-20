@@ -1,5 +1,6 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +8,7 @@ import java.util.Map;
 /**
  * Server object.
  */
-public class Server {
+public class Server extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -35,39 +36,13 @@ public class Server {
 	public Map<String, ServerVariable> variables;
 
 	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
-	 *
-	 * @return extensions
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Add extension.
-	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(url, description, name, variables, extensions);
 	}
 

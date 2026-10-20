@@ -1,7 +1,12 @@
 package cli;
 
-import openapi.*;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import java.util.Map;
+import openapi.*;
 
 /**
  * Emits the CLI application from an OpenAPI spec.
@@ -26,46 +31,48 @@ public class Emit {
 	}
 
 	/**
-	 * Emits the CLI Java code.
+	 * Emits the CLI Java code using JavaParser AST construction.
 	 *
 	 * @param api
 	 *            The OpenAPI spec to emit.
 	 * @return The generated Java source code.
 	 */
 	public static String emitCli(OpenAPI api) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("package cli;\n\n");
-		sb.append("import java.util.Arrays;\n");
-		sb.append("import java.io.BufferedReader;\n");
-		sb.append("import java.io.InputStreamReader;\n");
-		sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
-		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n");
-		sb.append("import com.fasterxml.jackson.databind.node.ObjectNode;\n");
-		sb.append("import com.fasterxml.jackson.databind.node.ArrayNode;\n\n");
-		sb.append("public class SdkCli {\n");
-		sb.append("    public SdkCli() {}\n\n");
-		sb.append("    public static void main(String[] args) {\n");
-		sb.append("        if (args.length == 0 || args[0].equals(\"--help\") || args[0].equals(\"-h\")) {\n");
-		sb.append("            printHelp();\n");
-		sb.append("            return;\n");
-		sb.append("        }\n");
-		sb.append("        String command = args[0];\n");
-		sb.append("        if (command.equals(\"mcp\")) {\n");
-		sb.append("            runMcpServer();\n");
-		sb.append("            return;\n");
-		sb.append("        }\n");
-		sb.append("        System.err.println(\"Unknown command: \" + command);\n");
-		sb.append("        printHelp();\n");
-		sb.append("    }\n\n");
-		emitMcpServerMethod(sb, api);
-		sb.append("    private static void printHelp() {\n");
-		sb.append("        System.out.println(\"SDK CLI\");\n");
-		CliHelpCodec.emitInfoAndServers(sb, api);
-		CliHelpCodec.emitComponents(sb, api);
-		CliHelpCodec.emitOperations(sb, api);
-		sb.append("    }\n");
-		sb.append("}\n");
-		return sb.toString();
+		CompilationUnit cu = new CompilationUnit();
+		cu.setPackageDeclaration("cli");
+		cu.addImport("java.util.Arrays");
+		cu.addImport("java.io.BufferedReader");
+		cu.addImport("java.io.InputStreamReader");
+		cu.addImport("com.fasterxml.jackson.databind.ObjectMapper");
+		cu.addImport("com.fasterxml.jackson.databind.JsonNode");
+		cu.addImport("com.fasterxml.jackson.databind.node.ObjectNode");
+		cu.addImport("com.fasterxml.jackson.databind.node.ArrayNode");
+
+		ClassOrInterfaceDeclaration cls = cu.addClass("SdkCli", Modifier.Keyword.PUBLIC);
+		cls.addConstructor(Modifier.Keyword.PUBLIC);
+
+		MethodDeclaration mainMd = cls.addMethod("main", Modifier.Keyword.PUBLIC, Modifier.Keyword.STATIC);
+		mainMd.addParameter("String[]", "args");
+		mainMd.setBody(StaticJavaParser
+				.parseBlock("{\n" + "if (args.length == 0 || args[0].equals(\"--help\") || args[0].equals(\"-h\")) {\n"
+						+ "    printHelp();\n" + "    return;\n" + "}\n" + "String command = args[0];\n"
+						+ "if (command.equals(\"mcp\")) {\n" + "    runMcpServer();\n" + "    return;\n" + "}\n"
+						+ "System.err.println(\"Unknown command: \" + command);\n" + "printHelp();\n" + "}"));
+
+		StringBuilder mcpSb = new StringBuilder();
+		emitMcpServerMethod(mcpSb, api);
+		cls.addMember(StaticJavaParser.parseBodyDeclaration(mcpSb.toString()));
+
+		MethodDeclaration helpMd = cls.addMethod("printHelp", Modifier.Keyword.PRIVATE, Modifier.Keyword.STATIC);
+		StringBuilder helpSb = new StringBuilder("{\n");
+		helpSb.append("        System.out.println(\"SDK CLI\");\n");
+		CliHelpCodec.emitInfoAndServers(helpSb, api);
+		CliHelpCodec.emitComponents(helpSb, api);
+		CliHelpCodec.emitOperations(helpSb, api);
+		helpSb.append("}");
+		helpMd.setBody(StaticJavaParser.parseBlock(helpSb.toString()));
+
+		return cu.toString();
 	}
 
 	/**
@@ -176,7 +183,7 @@ public class Emit {
 		sb.append("        } catch (Exception e) {\n");
 		sb.append("            e.printStackTrace();\n");
 		sb.append("        }\n");
-		sb.append("    }\n\n");
+		sb.append("    }\n");
 	}
 
 	/**
@@ -211,9 +218,7 @@ public class Emit {
 				Parameter p = pObj.value;
 				sb.append("                                {\n");
 				sb.append("                                    ObjectNode prop = mapper.createObjectNode();\n");
-				// simplistic
 				sb.append("                                    prop.put(\"type\", \"string\");\n");
-				// mapping
 				if (p.description != null) {
 					sb.append("                                    prop.put(\"description\", \"")
 							.append(escape(p.description)).append("\");\n");
@@ -231,9 +236,7 @@ public class Emit {
 			RequestBody rb = op.requestBody.value;
 			sb.append("                                {\n");
 			sb.append("                                    ObjectNode prop = mapper.createObjectNode();\n");
-			// assume string for
 			sb.append("                                    prop.put(\"type\", \"string\");\n");
-			// requestbody in cli
 			if (rb.description != null) {
 				sb.append("                                    prop.put(\"description\", \"")
 						.append(escape(rb.description)).append("\");\n");
@@ -252,7 +255,7 @@ public class Emit {
 	}
 
 	/**
-	 * Appends an MCP {@code tools/call} dispatch handler for an OpenAPI operation.
+	 * Appends an MCP {@code tools/call} dispatch block for an OpenAPI operation.
 	 *
 	 * @param sb
 	 *            The target {@link StringBuilder}.
@@ -268,17 +271,17 @@ public class Emit {
 				? op.operationId
 				: method + "_" + path.replaceAll("[^a-zA-Z0-9]", "_"));
 		sb.append("                            if (\"").append(escape(toolName)).append("\".equals(toolName)) {\n");
+		sb.append("                                ObjectNode callRes = mapper.createObjectNode();\n");
+		sb.append("                                ArrayNode content = mapper.createArrayNode();\n");
+		sb.append("                                ObjectNode textItem = mapper.createObjectNode();\n");
+		sb.append("                                textItem.put(\"type\", \"text\");\n");
+		sb.append("                                textItem.put(\"text\", \"Executed ").append(escape(toolName))
+				.append("\");\n");
+		sb.append("                                content.add(textItem);\n");
+		sb.append("                                callRes.set(\"content\", content);\n");
 		sb.append("                                ObjectNode resObj = mapper.createObjectNode();\n");
 		sb.append("                                resObj.put(\"jsonrpc\", \"2.0\");\n");
-		sb.append("                                ObjectNode result = mapper.createObjectNode();\n");
-		sb.append("                                ArrayNode contentArr = mapper.createArrayNode();\n");
-		sb.append("                                ObjectNode content = mapper.createObjectNode();\n");
-		sb.append("                                content.put(\"type\", \"text\");\n");
-		sb.append("                                content.put(\"text\", \"Executed ").append(escape(toolName))
-				.append("\");\n");
-		sb.append("                                contentArr.add(content);\n");
-		sb.append("                                result.set(\"content\", contentArr);\n");
-		sb.append("                                resObj.set(\"result\", result);\n");
+		sb.append("                                resObj.set(\"result\", callRes);\n");
 		sb.append("                                resObj.set(\"id\", idNode);\n");
 		sb.append("                                response = mapper.writeValueAsString(resObj);\n");
 		sb.append("                            }\n");

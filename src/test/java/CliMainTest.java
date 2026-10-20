@@ -30,6 +30,9 @@ public class CliMainTest {
 	/** In-memory environment variable overrides for {@link CddCli#envProvider}. */
 	private final Map<String, String> mockEnv = new HashMap<>();
 
+	/** Original exit handler. */
+	private final java.util.function.Consumer<Integer> originalExitHandler = Main.exitHandler;
+
 	/**
 	 * Redirects standard streams and resets environment variable overrides before
 	 * each test.
@@ -40,6 +43,9 @@ public class CliMainTest {
 		System.setErr(new PrintStream(errContent));
 		mockEnv.clear();
 		CddCli.envProvider = key -> mockEnv.containsKey(key) ? mockEnv.get(key) : System.getenv(key);
+		Main.exitHandler = code -> {
+			throw new RuntimeException("Exit " + code);
+		};
 	}
 
 	/**
@@ -52,6 +58,7 @@ public class CliMainTest {
 		System.setErr(originalErr);
 		System.setIn(originalIn);
 		CddCli.envProvider = System::getenv;
+		Main.exitHandler = originalExitHandler;
 		if (CddCli.activeHttpServer != null) {
 			CddCli.activeHttpServer.stop(0);
 			CddCli.activeHttpServer = null;

@@ -1,6 +1,7 @@
 package openapi;
 
-import arazzo.PayloadValue;
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +10,7 @@ import java.util.Map;
  * Schema object, fully compliant with OpenAPI 3.2.0 (JSON Schema Draft
  * 2020-12).
  */
-public class Schema {
+public class Schema extends ExtensibleElement {
 	/** Default constructor. */
 	public Schema() {
 	}
@@ -126,38 +127,14 @@ public class Schema {
 	/** The maxContains property. */
 	public Integer maxContains;
 
-	/** Extensions. */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
-	 *
-	 * @return extensions
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Add extension.
-	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
-	}
-
 	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList($ref, type, title, multipleOf, maximum, exclusiveMaximum, minimum,
 				exclusiveMinimum, maxLength, minLength, pattern, maxItems, minItems, uniqueItems, maxProperties,
 				minProperties, required, enumValues, allOf, anyOf, oneOf, not, items, properties, additionalProperties,

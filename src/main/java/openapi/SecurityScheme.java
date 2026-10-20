@@ -1,5 +1,6 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +8,7 @@ import java.util.Map;
 /**
  * SecurityScheme object.
  */
-public class SecurityScheme {
+public class SecurityScheme extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -83,40 +84,52 @@ public class SecurityScheme {
 	 * The deprecated property.
 	 */
 	public Boolean deprecated;
-	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
 
 	/**
-	 * Get extensions.
+	 * Returns the strongly typed {@link SecuritySchemeType} for {@link #type}.
 	 *
-	 * @return extensions
+	 * @return The resolved {@link SecuritySchemeType}, or {@code null}.
 	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
+	public SecuritySchemeType getSchemeType() {
+		return SecuritySchemeType.fromString(type);
 	}
 
 	/**
-	 * Add extension.
+	 * Sets {@link #type} from a strongly typed {@link SecuritySchemeType}.
 	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
+	 * @param schemeType
+	 *            The {@link SecuritySchemeType}.
 	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
+	public void setSchemeType(SecuritySchemeType schemeType) {
+		this.type = schemeType != null ? schemeType.value : null;
 	}
 
+	/**
+	 * Returns the strongly typed {@link ParameterLocation} for {@link #in}.
+	 *
+	 * @return The resolved {@link ParameterLocation}, or {@code null}.
+	 */
+	public ParameterLocation getLocation() {
+		return ParameterLocation.fromString(in);
+	}
+
+	/**
+	 * Sets {@link #in} from a strongly typed {@link ParameterLocation}.
+	 *
+	 * @param location
+	 *            The {@link ParameterLocation}.
+	 */
+	public void setLocation(ParameterLocation location) {
+		this.in = location != null ? location.value : null;
+	}
 	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(type, description, name, in, scheme, bearerFormat, flow, authorizationUrl,
 				tokenUrl, scopes, flows, openIdConnectUrl, oauth2MetadataUrl, deprecated, extensions);
 	}

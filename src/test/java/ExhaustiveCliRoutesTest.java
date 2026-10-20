@@ -58,7 +58,17 @@ public class ExhaustiveCliRoutesTest {
 		api.paths.pathItems.put("/empty", pi);
 
 		String out = cli.Emit.emitCli(api);
-		assertNotNull(out);
+		assertNotNull(com.github.javaparser.StaticJavaParser.parse(out));
+		assertTrue(out.contains("Component schemas EmptySchema"));
+		assertTrue(out.contains("Component responses EmptyResponse"));
+		assertTrue(out.contains("Component parameters EmptyParam"));
+		assertTrue(out.contains("Component requestBodies EmptyRequestBody"));
+		assertTrue(out.contains("Component headers EmptyHeader"));
+		assertTrue(out.contains("Component securitySchemes EmptySecurityScheme"));
+		assertTrue(out.contains("Component links EmptyLink"));
+		assertTrue(out.contains("Component callbacks EmptyCallback"));
+		assertTrue(out.contains("Component pathItems EmptyPathItem"));
+		assertTrue(out.contains("Operation: get /empty"));
 	}
 
 	/**
@@ -84,7 +94,21 @@ public class ExhaustiveCliRoutesTest {
 				+ "        System.out.println(\"      ResponseEncodingItemEncoding default application/xml enc9 text/plain\");\n"
 				+ "    }\n";
 		OpenAPI api = cli.Parse.parse(cliOutput);
-		assertNotNull(api);
+		Operation op = api.paths.pathItems.get("/p1").get;
+		MediaType rbMt = op.requestBody.value.content.get("application/json");
+		assertEquals("text/plain", rbMt.encoding.get("enc1").contentType);
+		assertEquals("text/plain", rbMt.encoding.get("enc2").prefixEncoding.get(0).contentType);
+		assertEquals("text/plain", rbMt.encoding.get("enc3").itemEncoding.contentType);
+
+		MediaType r200Mt = op.responses.statusCodes.get("200").value.content.get("application/json");
+		assertEquals("text/plain", r200Mt.encoding.get("enc4").contentType);
+		assertEquals("text/plain", r200Mt.encoding.get("enc5").prefixEncoding.get(0).contentType);
+		assertEquals("text/plain", r200Mt.encoding.get("enc6").itemEncoding.contentType);
+
+		MediaType rDefMt = op.responses.defaultResponse.value.content.get("application/xml");
+		assertEquals("text/plain", rDefMt.encoding.get("enc7").contentType);
+		assertEquals("text/plain", rDefMt.encoding.get("enc8").prefixEncoding.get(0).contentType);
+		assertEquals("text/plain", rDefMt.encoding.get("enc9").itemEncoding.contentType);
 	}
 
 	/**
@@ -97,26 +121,27 @@ public class ExhaustiveCliRoutesTest {
 	 */
 	@Test
 	public void testCliMainReflection() throws Exception {
-		System.setProperty("cdd.test", "true");
-		cli.CddCli.processInMemory("{");
-		cli.CddCli.processInMemory("{\"command\": \"to_openapi\"}");
-		InputStream oldIn = System.in;
-		System.setIn(new ByteArrayInputStream("".getBytes()));
+		java.util.function.Consumer<Integer> prevExit = cli.Main.exitHandler;
+		final List<Integer> exitCodes = new ArrayList<>();
+		cli.Main.exitHandler = exitCodes::add;
 		try {
-			cli.McpJsonRpcServer.serveJsonRpcStdio();
-		} finally {
-			System.setIn(oldIn);
-		}
-		cli.Main.main(new String[]{});
-		cli.Main.main(new String[]{"-v"});
-		cli.Main.main(new String[]{"--version"});
-		try {
+			cli.CddCli.processInMemory("{");
+			cli.CddCli.processInMemory("{\"command\": \"to_openapi\"}");
+			InputStream oldIn = System.in;
+			System.setIn(new ByteArrayInputStream("".getBytes()));
+			try {
+				cli.McpJsonRpcServer.serveJsonRpcStdio();
+			} finally {
+				System.setIn(oldIn);
+			}
+			cli.Main.main(new String[]{});
+			cli.Main.main(new String[]{"-v"});
+			cli.Main.main(new String[]{"--version"});
 			cli.Main.main(new String[]{"process_in_memory"});
-		} catch (Exception e) {
-		}
-		try {
 			cli.Main.main(new String[]{"invalid_cmd"});
-		} catch (Exception e) {
+			assertEquals(Arrays.asList(1, 1), exitCodes);
+		} finally {
+			cli.Main.exitHandler = prevExit;
 		}
 		assertTrue(cli.CddCli.hasFlag(new String[]{"-a"}, "-a", "--all", null));
 		assertTrue(cli.CddCli.hasFlag(new String[]{"--all"}, "-a", "--all", null));
@@ -125,7 +150,8 @@ public class ExhaustiveCliRoutesTest {
 		assertNull(cli.CddCli.getArg(new String[]{"-a"}, "-a", "--all", ""));
 		assertNull(cli.CddCli.getArg(new String[]{"-b", "val"}, "-a", "--all", ""));
 		assertNotNull(cli.SyncCommand.extractOpenAPI(new java.io.File("non_existent_file.json")));
-		assertNotNull(cli.ProjectScaffolder.resolveWasiPath("/absolute/path", cli.CddCli.envProvider));
+		assertEquals(new java.io.File("/absolute/path"),
+				cli.ProjectScaffolder.resolveWasiPath("/absolute/path", cli.CddCli.envProvider));
 	}
 
 	/**
@@ -140,8 +166,12 @@ public class ExhaustiveCliRoutesTest {
 				+ "   * @responseLink default myDefLink desc\n" + "   */\n"
 				+ "  @Custom(method = \"OPTIONS\", path = \"/opts\")\n" + "  public void opts() {}\n" + "}\n";
 		OpenAPI api = routes.Parse.parse(code);
-		assertNotNull(api);
+		assertEquals("3.2.0", api.openapi);
+		assertNotNull(api.paths);
+
 		String em = routes.Emit.emit(api, code);
-		assertNotNull(em);
+		assertNotNull(com.github.javaparser.StaticJavaParser.parse(em));
+		assertTrue(em.contains("@responseHeader 404 x-err desc"));
+		assertTrue(em.contains("@responseContent default text/plain DefSchema"));
 	}
 }

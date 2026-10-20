@@ -52,6 +52,41 @@ public final class TypeMapper {
 	}
 
 	/**
+	 * Resolves an OpenAPI {@link ReferenceOr}{@code <}{@link Schema}{@code >}
+	 * wrapper into its corresponding Java type string.
+	 *
+	 * @param refOr
+	 *            The {@link ReferenceOr}{@code <}{@link Schema}{@code >} wrapper.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @param mapAsObject
+	 *            Whether to map {@code object} schemas with
+	 *            {@code additionalProperties} to {@code Map<String, Object>}
+	 *            unconditionally.
+	 * @return The resolved Java type string.
+	 */
+	public static String toJavaType(ReferenceOr<Schema> refOr, OpenAPI model, boolean mapAsObject) {
+		return JavaTypeMapper.toJavaType(refOr, model, mapAsObject);
+	}
+
+	/**
+	 * Resolves an OpenAPI {@link Schema} into its corresponding Java type string.
+	 *
+	 * @param schemaMap
+	 *            The OpenAPI {@link Schema}.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @param mapAsObject
+	 *            Whether to map {@code object} schemas with
+	 *            {@code additionalProperties} to {@code Map<String, Object>}
+	 *            unconditionally.
+	 * @return The resolved Java type string.
+	 */
+	public static String toJavaType(Schema schemaMap, OpenAPI model, boolean mapAsObject) {
+		return JavaTypeMapper.toJavaType(schemaMap, model, mapAsObject);
+	}
+
+	/**
 	 * Resolves an OpenAPI {@link Schema} object into its corresponding Java type
 	 * string.
 	 *

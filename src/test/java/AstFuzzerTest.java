@@ -78,18 +78,23 @@ public class AstFuzzerTest {
 		fuzzObject(api, () -> {
 			String res = routes.Emit.emit(api, null);
 			assertTrue(res.contains("class "));
-			assertNotNull(routes.Parse.parse(res));
+			assertNotNull(com.github.javaparser.StaticJavaParser.parse(res));
+			OpenAPI parsedRoutes = routes.Parse.parse(res);
+			assertNotNull(parsedRoutes.openapi);
+			assertNotNull(parsedRoutes.paths);
 		});
 
 		fuzzObject(api, () -> {
 			String res = classes.Emit.emit(api, null);
-			assertNotNull(res);
-			assertNotNull(classes.Parse.parse(res));
+			assertNotNull(com.github.javaparser.StaticJavaParser.parse(res));
+			OpenAPI parsedClasses = classes.Parse.parse(res);
+			assertEquals("3.2.0", parsedClasses.openapi);
+			assertNotNull(parsedClasses.components);
 		});
 
 		String sampleSource = "public class T {}";
-		assertNotNull(routes.Parse.parse(sampleSource));
-		assertNotNull(classes.Parse.parse(sampleSource));
+		assertEquals("3.2.0", routes.Parse.parse(sampleSource).openapi);
+		assertEquals("3.2.0", classes.Parse.parse(sampleSource).openapi);
 	}
 
 	/**

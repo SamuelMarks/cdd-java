@@ -249,14 +249,14 @@ public class MiscParseEmitTest {
 		Parameter pEx = new Parameter();
 		pEx.name = "exParam";
 		pEx.in = "query";
-		pEx.example = "exVal";
+		pEx.example = common.PayloadValue.ofString("exVal");
 		op5.parameters.add(ReferenceOr.ofValue(pEx));
 
 		Parameter pDef = new Parameter();
 		pDef.name = "defParam";
 		pDef.in = "query";
 		Schema defSchema = new Schema();
-		defSchema.defaultValue = arazzo.PayloadValue.ofString("defVal");
+		defSchema.defaultValue = common.PayloadValue.ofString("defVal");
 		pDef.schema = ReferenceOr.ofValue(defSchema);
 		op5.parameters.add(ReferenceOr.ofValue(pDef));
 
@@ -264,7 +264,7 @@ public class MiscParseEmitTest {
 		pSchEx.name = "schExParam";
 		pSchEx.in = "query";
 		Schema schEx = new Schema();
-		schEx.example = arazzo.PayloadValue.ofString("schExVal");
+		schEx.example = common.PayloadValue.ofString("schExVal");
 		pSchEx.schema = ReferenceOr.ofValue(schEx);
 		op5.parameters.add(ReferenceOr.ofValue(pSchEx));
 
@@ -281,7 +281,7 @@ public class MiscParseEmitTest {
 		pBodyEx.in = "body";
 		Schema bodyExSchema = new Schema();
 		bodyExSchema.type = SchemaType.ofSingle("object");
-		bodyExSchema.example = arazzo.PayloadValue.ofString("{\"a\":1}");
+		bodyExSchema.example = common.PayloadValue.ofString("{\"a\":1}");
 		pBodyEx.schema = ReferenceOr.ofValue(bodyExSchema);
 		op5.parameters.add(ReferenceOr.ofValue(pBodyEx));
 
@@ -448,10 +448,10 @@ public class MiscParseEmitTest {
 		boolProp.type = SchemaType.ofSingle("boolean");
 		Schema enumProp = new Schema();
 		enumProp.type = SchemaType.ofSingle("string");
-		enumProp.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("ACTIVE"));
+		enumProp.enumValues = java.util.Arrays.asList(common.PayloadValue.ofString("ACTIVE"));
 		Schema exProp = new Schema();
 		exProp.type = SchemaType.ofSingle("string");
-		exProp.example = arazzo.PayloadValue.ofString("customEx");
+		exProp.example = common.PayloadValue.ofString("customEx");
 		itemSchema.properties.put("s", ReferenceOr.ofValue(strProp));
 		itemSchema.properties.put("i", ReferenceOr.ofValue(intProp));
 		itemSchema.properties.put("n", ReferenceOr.ofValue(numProp));
@@ -488,7 +488,7 @@ public class MiscParseEmitTest {
 		Response r201 = new Response();
 		r201.content = new java.util.HashMap<>();
 		MediaType mt201 = new MediaType();
-		mt201.example = "{\"created\":true}";
+		mt201.example = common.PayloadValue.ofString("{\"created\":true}");
 		r201.content.put("application/json", mt201);
 		postOp.responses.statusCodes.put("201", ReferenceOr.ofValue(r201));
 		pi2.post = postOp;
@@ -513,7 +513,7 @@ public class MiscParseEmitTest {
 		Response r204 = new Response();
 		r204.content = new java.util.HashMap<>();
 		MediaType mtScalarEx = new MediaType();
-		mtScalarEx.example = "scalarVal";
+		mtScalarEx.example = common.PayloadValue.ofString("scalarVal");
 		r204.content.put("application/json", mtScalarEx);
 		delOp.responses.statusCodes.put("200", ReferenceOr.ofValue(r204));
 		delOp.responses.statusCodes.put("204", ReferenceOr.ofValue(r204));
@@ -771,7 +771,9 @@ public class MiscParseEmitTest {
 		pp5.in = "path";
 		pi.parameters.add(ReferenceOr.ofValue(pp5));
 
-		tests.Emit.emit(api, null);
+		String emittedTests = tests.Emit.emit(api, null);
+		assertTrue(emittedTests.contains("class ApiIntegrationTest"));
+		assertNotNull(com.github.javaparser.StaticJavaParser.parse(emittedTests));
 	}
 
 	/**
@@ -784,21 +786,27 @@ public class MiscParseEmitTest {
 	public void testMocksEmitBranches() throws Exception {
 		openapi.OpenAPI api = new openapi.OpenAPI();
 		// Test missing info or title
-		mocks.Emit.emit(api, null);
+		String mockNoInfo = mocks.Emit.emit(api, null);
+		assertTrue(mockNoInfo.contains("class ApiMock"));
 
 		api.info = new openapi.Info();
-		mocks.Emit.emit(api, null);
+		String mockNoTitle = mocks.Emit.emit(api, null);
+		assertTrue(mockNoTitle.contains("class ApiMock"));
 
 		api.info.title = "MyApi";
-		mocks.Emit.emit(api, null);
+		String mockWithTitle = mocks.Emit.emit(api, null);
+		assertTrue(mockWithTitle.contains("class MyApiMock"));
 
 		// classDecl != null requires existing code with a class
-		mocks.Emit.emit(api, "class Mocks {\n}");
+		String mockExistingClass = mocks.Emit.emit(api, "class Mocks {\n}");
+		assertTrue(mockExistingClass.contains("class Mocks"));
 
-		// test where classDecl is null
-		mocks.Emit.emit(api, "interface Something {}");
+		// test where classDecl is an interface (not a class)
+		String mockInterface = mocks.Emit.emit(api, "interface Something {}");
+		assertTrue(mockInterface.contains("interface Something"));
 
 		// test where classDecl remains null (no class or interface)
-		mocks.Emit.emit(api, "enum SomeEnum {}");
+		String mockEnum = mocks.Emit.emit(api, "enum SomeEnum {}");
+		assertTrue(mockEnum.contains("enum SomeEnum"));
 	}
 }

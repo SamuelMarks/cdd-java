@@ -1,5 +1,7 @@
 package openapi;
 
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +9,7 @@ import java.util.Map;
 /**
  * MediaType object.
  */
-public class MediaType {
+public class MediaType extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -27,7 +29,7 @@ public class MediaType {
 	/**
 	 * The example property.
 	 */
-	public Object example;
+	public PayloadValue example;
 
 	/**
 	 * The examples property.
@@ -50,39 +52,13 @@ public class MediaType {
 	public Encoding itemEncoding;
 
 	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
-	 *
-	 * @return extensions
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Add extension.
-	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(schema, itemSchema, example, examples, encoding, prefixEncoding, itemEncoding,
 				extensions);
 	}

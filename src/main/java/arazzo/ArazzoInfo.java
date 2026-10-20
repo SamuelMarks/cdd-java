@@ -1,12 +1,13 @@
 package arazzo;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Arazzo Info Object providing metadata about the Arazzo description.
  */
-public class ArazzoInfo {
+public class ArazzoInfo extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -34,40 +35,13 @@ public class ArazzoInfo {
 	public String version;
 
 	/**
-	 * Specification vendor extensions ({@code ^x-}).
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Returns the vendor extensions map.
-	 *
-	 * @return The extensions map.
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Adds a vendor extension if its name starts with {@code "x-"}.
-	 *
-	 * @param name
-	 *            The extension property name.
-	 * @param value
-	 *            The extension value.
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		}
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(title, summary, description, version, extensions);
 	}
 

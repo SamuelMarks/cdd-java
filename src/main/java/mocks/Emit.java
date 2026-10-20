@@ -41,8 +41,7 @@ public class Emit {
 		CompilationUnit cu;
 		boolean isNew = false;
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 		} else {
 			StringBuilder sb = new StringBuilder();
 			sb.append("import com.sun.net.httpserver.HttpServer;\n");
@@ -228,11 +227,9 @@ public class Emit {
 	 *            The root {@link OpenAPI} model.
 	 */
 	private static void appendPathJavadoc(StringBuilder sb, String path, PathItem pi, OpenAPI model) {
-		appendOpJavadoc(sb, "GET", path, pi.get);
-		appendOpJavadoc(sb, "POST", path, pi.post);
-		appendOpJavadoc(sb, "PUT", path, pi.put);
-		appendOpJavadoc(sb, "DELETE", path, pi.delete);
-		appendOpJavadoc(sb, "PATCH", path, pi.patch);
+		for (java.util.Map.Entry<openapi.HttpVerb, Operation> opEntry : pi.getOperationsMap().entrySet()) {
+			appendOpJavadoc(sb, opEntry.getKey().name(), path, opEntry.getValue());
+		}
 	}
 
 	/**
@@ -248,9 +245,6 @@ public class Emit {
 	 *            The {@link Operation}, or {@code null}.
 	 */
 	private static void appendOpJavadoc(StringBuilder sb, String verb, String path, Operation op) {
-		if (op == null) {
-			return;
-		}
 		String opId = (op.operationId != null && !op.operationId.isEmpty()) ? op.operationId : "-";
 		int status = resolveStatusCode(op);
 		String desc = (op.description != null && !op.description.isEmpty())
@@ -268,15 +262,8 @@ public class Emit {
 	 * @return The first {@link Operation}, or {@code null}.
 	 */
 	private static Operation firstOperation(PathItem pi) {
-		if (pi.get != null)
-			return pi.get;
-		if (pi.post != null)
-			return pi.post;
-		if (pi.put != null)
-			return pi.put;
-		if (pi.delete != null)
-			return pi.delete;
-		return pi.patch;
+		java.util.Map<openapi.HttpVerb, Operation> ops = pi.getOperationsMap();
+		return ops.isEmpty() ? null : ops.values().iterator().next();
 	}
 
 	/**
@@ -349,10 +336,10 @@ public class Emit {
 	public static Object synthesizeSchemaValue(Schema schema, OpenAPI model) {
 		Schema resolved = dereferenceSchema(schema, model);
 		if (resolved.example != null) {
-			return arazzo.Emit.serializePayloadValue(resolved.example);
+			return common.PayloadValue.toJsonValue(resolved.example);
 		}
 		if (resolved.enumValues != null) {
-			return arazzo.Emit.serializePayloadValue(resolved.enumValues.get(0));
+			return common.PayloadValue.toJsonValue(resolved.enumValues.get(0));
 		}
 		String typeStr = resolved.type != null ? resolved.type.toString() : "object";
 		if ("array".equals(typeStr)) {
@@ -455,12 +442,6 @@ public class Emit {
 	 *         otherwise.
 	 */
 	private static boolean hasMember(ClassOrInterfaceDeclaration classDecl, String name) {
-		for (BodyDeclaration<?> member : classDecl.getMembers()) {
-			if (member instanceof MethodDeclaration) {
-				if (((MethodDeclaration) member).getNameAsString().equals(name))
-					return true;
-			}
-		}
-		return false;
+		return common.AstMergeUtils.hasMethod(classDecl, name);
 	}
 }

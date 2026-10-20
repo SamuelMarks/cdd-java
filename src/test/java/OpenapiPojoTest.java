@@ -47,10 +47,14 @@ public class OpenapiPojoTest {
 		Callback cb1 = new Callback();
 		Callback cb2 = new Callback();
 		Callback cbDiff = new Callback();
-		cbDiff.addProperty("x-ext", "extVal");
-		cbDiff.addProperty("http://expr", new PathItem());
-		cbDiff.addProperty("invalid", "val");
-		assertEquals(2, cbDiff.getProperties().size());
+		cbDiff.addExtension("x-ext", "extVal");
+		cbDiff.addPathItem("http://expr", new PathItem());
+		cbDiff.addPathItem("x-ignored", new PathItem());
+		cbDiff.addPathItem(null, new PathItem());
+		cbDiff.addPathItem("http://expr", null);
+		cbDiff.addExtension("invalid", "val");
+		assertEquals(1, cbDiff.getExtensions().size());
+		assertEquals(1, cbDiff.pathItems.size());
 		assertPojoContract(cb1, cb2, cbDiff);
 
 		Components comp1 = new Components();
@@ -154,7 +158,7 @@ public class OpenapiPojoTest {
 		MediaType mt1 = new MediaType();
 		MediaType mt2 = new MediaType();
 		MediaType mtDiff = new MediaType();
-		mtDiff.example = "ex";
+		mtDiff.example = common.PayloadValue.ofString("example");
 		mtDiff.addExtension("x-test", "v");
 		mtDiff.addExtension("invalid", "v");
 		assertNotNull(mtDiff.getExtensions());
@@ -217,11 +221,16 @@ public class OpenapiPojoTest {
 		Paths paths1 = new Paths();
 		Paths paths2 = new Paths();
 		Paths pathsDiff = new Paths();
-		pathsDiff.addProperty("x-ext", "extVal");
-		pathsDiff.addProperty("/path", new PathItem());
-		pathsDiff.addProperty("invalid", "val");
-		pathsDiff.addProperty("/invalid_type", "val");
-		assertEquals(2, pathsDiff.getProperties().size());
+		pathsDiff.addExtension("x-ext", "extVal");
+		pathsDiff.addExtension("x-bool", true);
+		pathsDiff.addExtension("x-num", 42);
+		pathsDiff.addPathItem("/path", new PathItem());
+		pathsDiff.addPathItem("invalid", new PathItem());
+		pathsDiff.addPathItem(null, new PathItem());
+		pathsDiff.addPathItem("/path", null);
+		pathsDiff.addExtension("invalid", "val");
+		assertEquals(3, pathsDiff.getExtensions().size());
+		assertEquals(1, pathsDiff.pathItems.size());
 		assertPojoContract(paths1, paths2, pathsDiff);
 
 		Reference ref1 = new Reference();
@@ -254,14 +263,18 @@ public class OpenapiPojoTest {
 		Responses resps1 = new Responses();
 		Responses resps2 = new Responses();
 		Responses respsDiff = new Responses();
-		respsDiff.addProperty("default", new Response());
-		respsDiff.addProperty("default", ReferenceOr.ofValue(new Response()));
-		respsDiff.addProperty("default", "ignore");
-		respsDiff.addProperty("x-ext", "extVal");
-		respsDiff.addProperty("200", new Response());
-		respsDiff.addProperty("201", ReferenceOr.ofValue(new Response()));
-		respsDiff.addProperty("invalid", "val");
-		assertEquals(3, respsDiff.getProperties().size());
+		respsDiff.addStatusCode("default", new Response());
+		respsDiff.addStatusCode("default", ReferenceOr.ofValue(new Response()));
+		respsDiff.addStatusCode("default", (Response) null);
+		respsDiff.addStatusCode("default", (ReferenceOr<Response>) null);
+		respsDiff.addStatusCode(null, new Response());
+		respsDiff.addStatusCode("x-ignored", new Response());
+		respsDiff.addExtension("x-ext", "extVal");
+		respsDiff.addStatusCode("200", new Response());
+		respsDiff.addStatusCode("201", ReferenceOr.ofValue(new Response()));
+		respsDiff.addExtension("invalid", "val");
+		assertEquals(1, respsDiff.getExtensions().size());
+		assertEquals(2, respsDiff.statusCodes.size());
 		assertNotNull(respsDiff.defaultResponse);
 		assertPojoContract(resps1, resps2, respsDiff);
 
@@ -410,9 +423,111 @@ public class OpenapiPojoTest {
 		assertEquals("abc123", IdentifierSanitizer.sanitizeAlphanumeric("abc_123!"));
 		assertEquals("", IdentifierSanitizer.sanitizeAlphanumeric(null));
 		assertEquals("", IdentifierSanitizer.escape(null));
-		assertEquals("Object", JavaTypeMapper.toJavaType("notSchema", api1, false));
-		assertEquals("Pet", JavaTypeMapper.toJavaType(ReferenceOr.ofRef("#/components/schemas/Pet"), api1, false));
+		assertEquals("Object", JavaTypeMapper.toJavaType((Object) "notSchema", api1, false));
+		assertEquals("Object", JavaTypeMapper.toJavaType((Object) sDiff, api1, false).equals("String") ? "Object" : "");
+		assertEquals("Object", JavaTypeMapper.toJavaType((ReferenceOr<Schema>) null, api1, false));
+		assertEquals("Object", JavaTypeMapper.toJavaType((Schema) null, api1, false));
+		assertEquals("Pet",
+				JavaTypeMapper.toJavaType(ReferenceOr.<Schema>ofRef("#/components/schemas/Pet"), api1, false));
 		assertEquals("String", JavaTypeMapper.toJavaType(ReferenceOr.ofValue(sDiff), api1, false));
+		assertEquals("String", TypeMapper.toJavaType(sDiff, api1, false));
+		assertEquals("String", TypeMapper.toJavaType(ReferenceOr.ofValue(sDiff), api1, false));
+		assertEquals("String", TypeMapper.toJavaType((Object) ReferenceOr.ofValue(sDiff), api1, false));
+		assertEquals("String", TypeMapper.toJavaType((Object) sDiff, api1, false));
+
+		// ReferenceOr.resolveRefString
+		Schema inlineRefSchema = new Schema();
+		inlineRefSchema.$ref = "#/components/schemas/Inline";
+		assertEquals("#/components/schemas/Foo", refWrapper.resolveRefString());
+		assertNull(ReferenceOr.ofRef(new Reference()).resolveRefString());
+		assertEquals("#/components/schemas/Inline", ReferenceOr.ofValue(inlineRefSchema).resolveRefString());
+		assertNull(valWrapper.resolveRefString());
+
+		// HttpVerb, ParameterLocation, ParameterStyle, SecuritySchemeType
+		for (HttpVerb v : HttpVerb.values()) {
+			assertEquals(v, HttpVerb.fromString(v.name()));
+			assertEquals(v, HttpVerb.fromString(v.specName));
+		}
+		assertNull(HttpVerb.fromString(null));
+		assertNull(HttpVerb.fromString("CUSTOM"));
+		assertEquals(HttpVerb.POST, HttpVerb.fromStringOrDefault("POST", HttpVerb.GET));
+		assertEquals(HttpVerb.GET, HttpVerb.fromStringOrDefault("CUSTOM", HttpVerb.GET));
+
+		for (ParameterLocation loc : ParameterLocation.values()) {
+			assertEquals(loc, ParameterLocation.fromString(loc.value));
+		}
+		assertNull(ParameterLocation.fromString(null));
+		assertNull(ParameterLocation.fromString("unknown"));
+
+		for (ParameterStyle st : ParameterStyle.values()) {
+			assertEquals(st, ParameterStyle.fromString(st.value));
+		}
+		assertNull(ParameterStyle.fromString(null));
+		assertNull(ParameterStyle.fromString("unknown"));
+
+		for (SecuritySchemeType sct : SecuritySchemeType.values()) {
+			assertEquals(sct, SecuritySchemeType.fromString(sct.value));
+		}
+		assertNull(SecuritySchemeType.fromString(null));
+		assertNull(SecuritySchemeType.fromString("unknown"));
+
+		Parameter typedParam = new Parameter();
+		typedParam.setLocation(ParameterLocation.QUERY);
+		assertEquals(ParameterLocation.QUERY, typedParam.getLocation());
+		typedParam.setLocation(null);
+		assertNull(typedParam.getLocation());
+		typedParam.setParameterStyle(ParameterStyle.FORM);
+		assertEquals(ParameterStyle.FORM, typedParam.getParameterStyle());
+		typedParam.setParameterStyle(null);
+		assertNull(typedParam.getParameterStyle());
+
+		Header typedHeader = new Header();
+		typedHeader.setParameterStyle(ParameterStyle.SIMPLE);
+		assertEquals(ParameterStyle.SIMPLE, typedHeader.getParameterStyle());
+		typedHeader.setParameterStyle(null);
+		assertNull(typedHeader.getParameterStyle());
+
+		Encoding typedEncoding = new Encoding();
+		typedEncoding.setParameterStyle(ParameterStyle.SPACE_DELIMITED);
+		assertEquals(ParameterStyle.SPACE_DELIMITED, typedEncoding.getParameterStyle());
+		typedEncoding.setParameterStyle(null);
+		assertNull(typedEncoding.getParameterStyle());
+
+		SecurityScheme typedSec = new SecurityScheme();
+		typedSec.setSchemeType(SecuritySchemeType.API_KEY);
+		assertEquals(SecuritySchemeType.API_KEY, typedSec.getSchemeType());
+		typedSec.setSchemeType(null);
+		assertNull(typedSec.getSchemeType());
+		typedSec.setLocation(ParameterLocation.HEADER);
+		assertEquals(ParameterLocation.HEADER, typedSec.getLocation());
+		typedSec.setLocation(null);
+		assertNull(typedSec.getLocation());
+
+		PathItem fullPi = new PathItem();
+		assertNull(fullPi.getOperation((HttpVerb) null));
+		assertNull(fullPi.getOperation((String) null));
+		assertNull(fullPi.getOperation("COPY"));
+		fullPi.setOperation((HttpVerb) null, new Operation());
+		fullPi.setOperation((String) null, new Operation());
+		for (HttpVerb v : HttpVerb.values()) {
+			Operation op = new Operation();
+			op.operationId = v.specName;
+			fullPi.setOperation(v.name(), op);
+			assertEquals(op, fullPi.getOperation(v));
+			assertEquals(op, fullPi.getOperation(v.specName));
+		}
+		assertEquals(HttpVerb.values().length, fullPi.getOperationsMap().size());
+		Operation copyOp = new Operation();
+		fullPi.setOperation("COPY", copyOp);
+		fullPi.setOperation("MOVE", copyOp);
+		assertEquals(copyOp, fullPi.getOperation("COPY"));
+
+		assertEquals("", common.JavadocMetadataCodec.encodeUnderscoreToken(null));
+		assertEquals("", common.JavadocMetadataCodec.decodeUnderscoreToken(null));
+		String rawToken = "a_b c%d";
+		String encodedToken = common.JavadocMetadataCodec.encodeUnderscoreToken(rawToken);
+		assertEquals("a%5Fb_c%25d", encodedToken);
+		assertEquals(rawToken, common.JavadocMetadataCodec.decodeUnderscoreToken(encodedToken));
 
 		// CddException
 		CddException cddEx1 = new CddException(CddException.ErrorCode.PARSE_ERROR, "bad input");

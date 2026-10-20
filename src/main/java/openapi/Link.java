@@ -1,5 +1,7 @@
 package openapi;
 
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +9,7 @@ import java.util.Map;
 /**
  * Link object.
  */
-public class Link {
+public class Link extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -27,12 +29,12 @@ public class Link {
 	/**
 	 * The parameters property.
 	 */
-	public Map<String, Object> parameters;
+	public Map<String, PayloadValue> parameters;
 
 	/**
 	 * The requestBody property.
 	 */
-	public Object requestBody;
+	public PayloadValue requestBody;
 
 	/**
 	 * The description property.
@@ -45,39 +47,13 @@ public class Link {
 	public Server server;
 
 	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
-	 *
-	 * @return extensions
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Add extension.
-	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(operationRef, operationId, parameters, requestBody, description, server,
 				extensions);
 	}

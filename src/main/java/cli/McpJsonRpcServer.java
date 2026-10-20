@@ -20,6 +20,31 @@ public class McpJsonRpcServer {
 	}
 
 	/**
+	 * Handles a single HTTP JSON-RPC 2.0 exchange on the embedded
+	 * {@link com.sun.net.httpserver.HttpServer}.
+	 *
+	 * @param exchange
+	 *            The incoming {@link com.sun.net.httpserver.HttpExchange}.
+	 * @throws java.io.IOException
+	 *             If reading the request or writing the response fails.
+	 */
+	public static void handleHttpExchange(com.sun.net.httpserver.HttpExchange exchange) throws java.io.IOException {
+		byte[] reqBytes = exchange.getRequestBody().readAllBytes();
+		String reqBody = new String(reqBytes, StandardCharsets.UTF_8).trim();
+		String resp = handleJsonRpc(reqBody);
+		if (resp != null) {
+			byte[] respBytes = resp.getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().set("Content-Type", "application/json");
+			exchange.sendResponseHeaders(200, respBytes.length);
+			try (java.io.OutputStream os = exchange.getResponseBody()) {
+				os.write(respBytes);
+			}
+		} else {
+			exchange.sendResponseHeaders(204, -1);
+		}
+	}
+
+	/**
 	 * Starts an HTTP JSON-RPC 2.0 / MCP server on the specified host and port, also
 	 * processing any lines buffered on standard input.
 	 *
@@ -37,21 +62,7 @@ public class McpJsonRpcServer {
 		}
 		com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer
 				.create(new java.net.InetSocketAddress(listen, port), 0);
-		server.createContext("/", exchange -> {
-			byte[] reqBytes = exchange.getRequestBody().readAllBytes();
-			String reqBody = new String(reqBytes, StandardCharsets.UTF_8).trim();
-			String resp = handleJsonRpc(reqBody);
-			if (resp != null) {
-				byte[] respBytes = resp.getBytes(StandardCharsets.UTF_8);
-				exchange.getResponseHeaders().set("Content-Type", "application/json");
-				exchange.sendResponseHeaders(200, respBytes.length);
-				try (java.io.OutputStream os = exchange.getResponseBody()) {
-					os.write(respBytes);
-				}
-			} else {
-				exchange.sendResponseHeaders(204, -1);
-			}
-		});
+		server.createContext("/", McpJsonRpcServer::handleHttpExchange);
 		server.start();
 		CddCli.activeHttpServer = server;
 		serveJsonRpcStdio();
@@ -115,7 +126,7 @@ public class McpJsonRpcServer {
 						|| "notifications/progress".equals(method) || "progress".equals(method)) {
 					return null;
 				} else if ("ping".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{},\"id\":" + idStr + "}";
+					return JsonRpcResponse.ofResult(idObj, new JSONObject()).toJsonString();
 				} else if ("tools/list".equals(method)) {
 					return buildMcpToolsList(idStr);
 				} else if ("resources/list".equals(method)) {
@@ -135,8 +146,8 @@ public class McpJsonRpcServer {
 						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/arazzo\",\"mimeType\":\"application/json\",\"text\":"
 								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
 					} else {
-						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Resource not found\"},\"id\":"
-								+ idStr + "}";
+						return JsonRpcResponse.ofError(idObj, JsonRpcError.INVALID_PARAMS, "Resource not found")
+								.toJsonString();
 					}
 				} else if ("tools/call".equals(method)) {
 					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
@@ -162,26 +173,26 @@ public class McpJsonRpcServer {
 						contentArr.put(content);
 						JSONObject resultObj = new JSONObject();
 						resultObj.put("content", contentArr);
-						return "{\"jsonrpc\":\"2.0\",\"result\":" + resultObj.toString() + ",\"id\":" + idStr + "}";
+						return JsonRpcResponse.ofResult(idObj, resultObj).toJsonString();
 					} else {
-						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Tool not found\"},\"id\":"
-								+ idStr + "}";
+						return JsonRpcResponse.ofError(idObj, JsonRpcError.METHOD_NOT_FOUND, "Tool not found")
+								.toJsonString();
 					}
 				} else if ("version".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.4\",\"id\":" + idStr + "}";
+					return JsonRpcResponse.ofResult(idObj, "0.0.4").toJsonString();
 				} else {
 					if (idObj == null)
 						return null;
-					return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":"
-							+ idStr + "}";
+					return JsonRpcResponse.ofError(idObj, JsonRpcError.METHOD_NOT_FOUND, "Method not found")
+							.toJsonString();
 				}
 			} else {
 				if (idObj == null)
 					return null;
-				return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"},\"id\":null}";
+				return JsonRpcResponse.ofError(null, JsonRpcError.INVALID_REQUEST, "Invalid Request").toJsonString();
 			}
 		} catch (Exception e) {
-			return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error\"},\"id\":null}";
+			return JsonRpcResponse.ofError(null, JsonRpcError.PARSE_ERROR, "Parse error").toJsonString();
 		}
 	}
 }

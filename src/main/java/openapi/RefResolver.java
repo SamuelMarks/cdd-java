@@ -53,6 +53,11 @@ public class RefResolver {
 	private static volatile HttpClient httpClient;
 
 	/**
+	 * Injected reference fetcher strategy.
+	 */
+	private final ReferenceFetcher fetcher;
+
+	/**
 	 * Returns the shared {@link HttpClient} instance, initializing it lazily on
 	 * first HTTP/HTTPS request.
 	 *
@@ -66,9 +71,46 @@ public class RefResolver {
 	}
 
 	/**
-	 * Default constructor.
+	 * Default reference fetcher supporting HTTP/HTTPS and local filesystem URIs.
+	 *
+	 * @param noFragmentUri
+	 *            The target {@link URI} without fragment.
+	 * @return The fetched specification string.
+	 * @throws Exception
+	 *             If fetching fails.
+	 */
+	public static String defaultFetch(URI noFragmentUri) throws Exception {
+		String uriStr = noFragmentUri.toString();
+		String scheme = noFragmentUri.getScheme();
+		if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+			HttpRequest req = HttpRequest.newBuilder(noFragmentUri).GET().build();
+			HttpResponse<String> res = getHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+			if (res.statusCode() >= 400) {
+				throw new CddException(CddException.ErrorCode.RESOLUTION_ERROR,
+						"Failed to fetch " + uriStr + ": HTTP " + res.statusCode());
+			}
+			return res.body();
+		}
+		Path path = "file".equalsIgnoreCase(scheme) ? Paths.get(noFragmentUri) : Paths.get(noFragmentUri.getPath());
+		return Files.readString(path);
+	}
+
+	/**
+	 * Default constructor using the standard HTTP and local filesystem
+	 * {@link ReferenceFetcher}.
 	 */
 	public RefResolver() {
+		this(RefResolver::defaultFetch);
+	}
+
+	/**
+	 * Constructs a {@code RefResolver} with a custom {@link ReferenceFetcher}.
+	 *
+	 * @param fetcher
+	 *            The {@link ReferenceFetcher} strategy.
+	 */
+	public RefResolver(ReferenceFetcher fetcher) {
+		this.fetcher = fetcher;
 	}
 
 	/**
@@ -91,25 +133,11 @@ public class RefResolver {
 			if (cache.containsKey(uriStr)) {
 				return cache.get(uriStr);
 			}
-			String content;
-			String scheme = noFragmentUri.getScheme();
-			if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-				HttpRequest req = HttpRequest.newBuilder(noFragmentUri).GET().build();
-				HttpResponse<String> res = getHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
-				if (res.statusCode() >= 400) {
-					throw new IOException("Failed to fetch " + uriStr + ": HTTP " + res.statusCode());
-				}
-				content = res.body();
-			} else {
-				Path path = "file".equalsIgnoreCase(scheme)
-						? Paths.get(noFragmentUri)
-						: Paths.get(noFragmentUri.getPath());
-				content = Files.readString(path);
-			}
+			String content = fetcher.fetch(noFragmentUri);
 			cache.put(uriStr, content);
 			return content;
 		} catch (Exception e) {
-			throw new IOException("Failed to resolve reference: " + ref, e);
+			throw new CddException(CddException.ErrorCode.RESOLUTION_ERROR, "Failed to resolve reference: " + ref, e);
 		}
 	}
 
@@ -131,7 +159,7 @@ public class RefResolver {
 		for (String part : parts) {
 			if (part.isEmpty())
 				continue;
-			part = part.replace("~1", "/").replace("~0", "~");
+			part = common.JsonPointerUtils.unescapePointerToken(part);
 			if (current instanceof JSONObject) {
 				current = ((JSONObject) current).opt(part);
 			} else if (current instanceof JSONArray) {
@@ -241,7 +269,8 @@ public class RefResolver {
 						targetBucket.put(finalName, resolvedComponent);
 						obj.put("$ref", "#/components/" + category + "/" + finalName);
 					} catch (Exception e) {
-						throw new IOException("Failed to bundle reference: " + ref, e);
+						throw new CddException(CddException.ErrorCode.RESOLUTION_ERROR,
+								"Failed to bundle reference: " + ref, e);
 					}
 				}
 			} else {

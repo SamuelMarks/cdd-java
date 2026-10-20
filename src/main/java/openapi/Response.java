@@ -1,12 +1,13 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Response object.
  */
-public class Response {
+public class Response extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -48,39 +49,13 @@ public class Response {
 	 */
 	public String summary;
 	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
-	 *
-	 * @return extensions
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Add extension.
-	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
-	}
-
-	/**
 	 * Returns all field values of this object for structural comparison and
 	 * hashing.
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(description, schema, headers, examples, content, links, summary, extensions);
 	}
 

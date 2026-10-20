@@ -1,13 +1,13 @@
 package servermain;
 
-import openapi.OpenAPI;
-import openapi.PathItem;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import java.util.Map;
+import openapi.OpenAPI;
 
 /**
  * Emitter for server main.
@@ -46,37 +46,26 @@ public class Emit {
 		mainMethod.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
 		mainMethod.setJavadocComment("Main method.");
 
-		StringBuilder sb = new StringBuilder();
-		sb.append("{\n");
-		sb.append("  DbConfig config = DbConfig.load();\n");
-		sb.append("  DaoFactory.init(config);\n");
-		sb.append("  if (config.ephemeral && System.getenv(\"SEED_DB\") != null) {\n");
-		sb.append("      Seeder.seedDatabase(DaoFactory.em);\n");
-		sb.append("  }\n");
-		sb.append(
-				"  Javalin app = Javalin.create(c -> { c.plugins.enableCors(cors -> { cors.add(it -> { it.anyHost(); }); }); }).start(8080);\n");
+		BlockStmt body = new BlockStmt();
+		body.addStatement(StaticJavaParser.parseStatement("DbConfig config = DbConfig.load();"));
+		body.addStatement(StaticJavaParser.parseStatement("DaoFactory.init(config);"));
+		body.addStatement(StaticJavaParser.parseStatement(
+				"if (config.ephemeral && System.getenv(\"SEED_DB\") != null) { Seeder.seedDatabase(DaoFactory.em); }"));
+		body.addStatement(StaticJavaParser.parseStatement(
+				"Javalin app = Javalin.create(c -> { c.plugins.enableCors(cors -> { cors.add(it -> { it.anyHost(); }); }); }).start(8080);"));
 
 		if (model.paths != null && model.paths.pathItems != null) {
 			java.util.Set<String> registered = new java.util.HashSet<>();
 			for (Map.Entry<String, openapi.PathItem> entry : model.paths.pathItems.entrySet()) {
-				String path = entry.getKey();
-				String[] parts = path.split("/");
-				String resourceName = "Root";
-				for (String p : parts) {
-					if (!p.isEmpty() && !p.startsWith("{")) {
-						resourceName = p.substring(0, 1).toUpperCase() + p.substring(1).replaceAll("[^a-zA-Z0-9]", "");
-						break;
-					}
-				}
+				String resourceName = serverroutes.Emit.getResourceName(entry.getKey());
 				String className = resourceName + "Routes";
 				if (registered.add(className)) {
-					sb.append("  ").append(className).append(".register(app, new DaoFactory());\n");
+					body.addStatement(StaticJavaParser.parseStatement(className + ".register(app, new DaoFactory());"));
 				}
 			}
 		}
 
-		sb.append("}\n");
-		mainMethod.setBody(StaticJavaParser.parseBlock(sb.toString()));
+		mainMethod.setBody(body);
 
 		files.put("servermain/Main.java", cu.toString());
 		return files;

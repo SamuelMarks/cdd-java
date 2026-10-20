@@ -94,6 +94,22 @@ public final class ReferenceOr<T> {
 	}
 
 	/**
+	 * Resolves the {@code $ref} URI string from either {@link #ref} or an inline
+	 * {@link Schema#$ref}, or returns {@code null} if neither is present.
+	 *
+	 * @return The resolved {@code $ref} URI string, or {@code null}.
+	 */
+	public String resolveRefString() {
+		if (ref != null && ref.ref != null) {
+			return ref.ref;
+		}
+		if (value instanceof Schema) {
+			return ((Schema) value).$ref;
+		}
+		return null;
+	}
+
+	/**
 	 * Compares this wrapper to another object for structural equality.
 	 *
 	 * @param o

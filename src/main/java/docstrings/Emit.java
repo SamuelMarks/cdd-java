@@ -39,22 +39,9 @@ public class Emit {
 				String path = entry.getKey();
 				PathItem pi = entry.getValue();
 				JSONObject pathMap = new JSONObject();
-				if (pi.get != null)
-					pathMap.put("get", createSnippet(pi.get, noImports, noWrapping));
-				if (pi.post != null)
-					pathMap.put("post", createSnippet(pi.post, noImports, noWrapping));
-				if (pi.put != null)
-					pathMap.put("put", createSnippet(pi.put, noImports, noWrapping));
-				if (pi.delete != null)
-					pathMap.put("delete", createSnippet(pi.delete, noImports, noWrapping));
-				if (pi.patch != null)
-					pathMap.put("patch", createSnippet(pi.patch, noImports, noWrapping));
-				if (pi.options != null)
-					pathMap.put("options", createSnippet(pi.options, noImports, noWrapping));
-				if (pi.head != null)
-					pathMap.put("head", createSnippet(pi.head, noImports, noWrapping));
-				if (pi.trace != null)
-					pathMap.put("trace", createSnippet(pi.trace, noImports, noWrapping));
+				for (Map.Entry<openapi.HttpVerb, Operation> opEntry : pi.getOperationsMap().entrySet()) {
+					pathMap.put(opEntry.getKey().specName, createSnippet(opEntry.getValue(), noImports, noWrapping));
+				}
 				if (pathMap.length() > 0) {
 					endpoints.put(path, pathMap);
 				}

@@ -1,5 +1,7 @@
 package openapi;
 
+import common.ExtensibleElement;
+import common.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +9,7 @@ import java.util.Map;
 /**
  * Items object for Swagger 2.0.
  */
-public class Items {
+public class Items extends ExtensibleElement {
 	/** Default constructor. */
 	public Items() {
 	}
@@ -21,7 +23,7 @@ public class Items {
 	/** The collectionFormat property. */
 	public String collectionFormat;
 	/** The defaultValue property. */
-	public Object defaultValue;
+	public PayloadValue defaultValue;
 	/** The maximum property. */
 	public Number maximum;
 	/** The exclusiveMaximum property. */
@@ -43,34 +45,9 @@ public class Items {
 	/** The uniqueItems property. */
 	public Boolean uniqueItems;
 	/** The enumValues property. */
-	public List<Object> enumValues;
+	public List<PayloadValue> enumValues;
 	/** The multipleOf property. */
 	public Number multipleOf;
-
-	/** Extensions. */
-	public Map<String, Object> extensions = new HashMap<>();
-
-	/**
-	 * Get extensions.
-	 *
-	 * @return extensions
-	 */
-	public Map<String, Object> getExtensions() {
-		return extensions;
-	}
-
-	/**
-	 * Add extension.
-	 *
-	 * @param name
-	 *            extension name
-	 * @param value
-	 *            extension value
-	 */
-	public void addExtension(String name, Object value) {
-		if (name.startsWith("x-"))
-			extensions.put(name, value);
-	}
 
 	/**
 	 * Returns all field values of this object for structural comparison and
@@ -78,7 +55,8 @@ public class Items {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(type, format, items, collectionFormat, defaultValue, maximum, exclusiveMaximum,
 				minimum, exclusiveMinimum, maxLength, minLength, pattern, maxItems, minItems, uniqueItems, enumValues,
 				multipleOf, extensions);

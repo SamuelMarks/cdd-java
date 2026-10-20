@@ -38,7 +38,7 @@ public class ClassesParseEmitTest {
 		Schema schema = api.components.schemas.get("MyEnum").value;
 		assertEquals(openapi.SchemaType.ofSingle("string"), schema.type);
 		assertEquals("My Enum", schema.description);
-		assertEquals(Arrays.asList(arazzo.PayloadValue.ofString("val_a"), arazzo.PayloadValue.ofString("VAL_B")),
+		assertEquals(Arrays.asList(common.PayloadValue.ofString("val_a"), common.PayloadValue.ofString("VAL_B")),
 				schema.enumValues);
 	}
 
@@ -88,7 +88,7 @@ public class ClassesParseEmitTest {
 			assertEquals("defaultMapping", schema.discriminator.extensions.values().iterator().next());
 		}
 
-		assertEquals(arazzo.PayloadValue.ofString("{ex}"), schema.example);
+		assertEquals(common.PayloadValue.ofString("{ex}"), schema.example);
 		assertNotNull(schema.externalDocs);
 		assertEquals("http://doc", schema.externalDocs.url);
 		assertEquals("doc_desc", schema.externalDocs.description);
@@ -105,7 +105,7 @@ public class ClassesParseEmitTest {
 		assertEquals("xppr", propSchema.xml.prefix);
 		assertFalse(propSchema.xml.attribute);
 		assertTrue(propSchema.xml.wrapped);
-		assertEquals(arazzo.PayloadValue.ofString("exprop"), propSchema.example);
+		assertEquals(common.PayloadValue.ofString("exprop"), propSchema.example);
 		assertEquals("http://pdoc", propSchema.externalDocs.url);
 		assertEquals("pdesc", propSchema.externalDocs.description);
 	}
@@ -247,14 +247,14 @@ public class ClassesParseEmitTest {
 
 		// Enum schema
 		Schema enumSchema = new Schema();
-		enumSchema.enumValues = Arrays.asList(arazzo.PayloadValue.ofString("A"), arazzo.PayloadValue.ofString("b-c"),
-				arazzo.PayloadValue.ofString("1D"), arazzo.PayloadValue.ofString(""));
+		enumSchema.enumValues = Arrays.asList(common.PayloadValue.ofString("A"), common.PayloadValue.ofString("b-c"),
+				common.PayloadValue.ofString("1D"), common.PayloadValue.ofString(""));
 		api.components.schemas.put("MyEnum", openapi.ReferenceOr.ofValue(enumSchema));
 
 		// Object schema
 		Schema objSchema = new Schema();
 		objSchema.description = "obj desc";
-		objSchema.example = arazzo.PayloadValue.ofString("ex");
+		objSchema.example = common.PayloadValue.ofString("ex");
 		objSchema.xml = new XML();
 		objSchema.xml.name = "xn";
 		objSchema.xml.namespace = "xns";
@@ -268,14 +268,14 @@ public class ClassesParseEmitTest {
 		objSchema.discriminator.propertyName = "type";
 		objSchema.discriminator.mapping = new HashMap<>();
 		objSchema.discriminator.mapping.put("a", "A");
-		objSchema.discriminator.extensions.put("defaultMapping", "A");
+		objSchema.discriminator.extensions.put("defaultMapping", common.PayloadValue.ofString("A"));
 
 		objSchema.properties = new HashMap<>();
 
 		Schema strProp = new Schema();
 		strProp.type = openapi.SchemaType.ofSingle("string");
 		strProp.description = "str prop";
-		strProp.example = arazzo.PayloadValue.ofString("ex prop");
+		strProp.example = common.PayloadValue.ofString("ex prop");
 		strProp.xml = new XML();
 		strProp.xml.name = "pxn";
 		strProp.xml.namespace = "pxns";
@@ -396,7 +396,7 @@ public class ClassesParseEmitTest {
 		api.components = new Components();
 		api.components.schemas = new HashMap<>();
 		Schema emptyEnum = new Schema();
-		emptyEnum.enumValues = Arrays.asList(arazzo.PayloadValue.ofString("V"));
+		emptyEnum.enumValues = Arrays.asList(common.PayloadValue.ofString("V"));
 		api.components.schemas.put("MyEnum", openapi.ReferenceOr.ofValue(emptyEnum));
 
 		String existing = "public enum MyEnum { OLD_V }\n";

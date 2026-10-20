@@ -1,5 +1,7 @@
 package arazzo;
 
+import common.PayloadValue;
+
 /**
  * Arazzo Reusable Object referencing a component definition in
  * {@code $components.parameters.*}, {@code $components.successActions.*}, or

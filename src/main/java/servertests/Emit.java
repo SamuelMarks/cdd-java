@@ -1,14 +1,15 @@
 package servertests;
 
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import java.util.Map;
 import openapi.OpenAPI;
 import openapi.PathItem;
 import openapi.Schema;
-import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.Modifier;
-import java.util.Map;
 
 /**
  * Emitter for server tests.
@@ -52,8 +53,10 @@ public class Emit {
 				MethodDeclaration md = testClass.addMethod("testInstantiation", Modifier.Keyword.PUBLIC);
 				md.addAnnotation("Test");
 				md.setJavadocComment("Test instantiation of " + className + ".");
-				md.setBody(StaticJavaParser
-						.parseBlock("{ " + className + " obj = new " + className + "(); assertNotNull(obj); }"));
+				BlockStmt body = new BlockStmt();
+				body.addStatement(StaticJavaParser.parseStatement(className + " obj = new " + className + "();"));
+				body.addStatement(StaticJavaParser.parseStatement("assertNotNull(obj);"));
+				md.setBody(body);
 
 				files.put("models/" + className + "Test.java", cu.toString());
 			}
@@ -63,15 +66,11 @@ public class Emit {
 		if (model.paths != null && model.paths.pathItems != null) {
 			for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 				String path = entry.getKey();
-				String resourceName = "Root";
-				String[] parts = path.split("/");
-				for (String p : parts) {
-					if (!p.isEmpty() && !p.startsWith("{")) {
-						resourceName = p.substring(0, 1).toUpperCase() + p.substring(1).replaceAll("[^a-zA-Z0-9]", "");
-						break;
-					}
-				}
+				PathItem pi = entry.getValue();
+				String resourceName = serverroutes.Emit.getResourceName(path);
 				String className = resourceName + "Routes";
+				String singularName = serverroutes.Emit.resolveEntityName(resourceName, pi, model);
+				boolean hasDao = serverroutes.Emit.hasEntityModel(singularName, model);
 
 				CompilationUnit cu = new CompilationUnit();
 				cu.setPackageDeclaration("routes");
@@ -79,6 +78,7 @@ public class Emit {
 				cu.addImport("static org.junit.Assert.*");
 				cu.addImport("io.javalin.Javalin");
 				cu.addImport("mocks.*");
+				cu.addImport("models.*");
 
 				ClassOrInterfaceDeclaration testClass = cu.addClass(className + "Test")
 						.setModifier(Modifier.Keyword.PUBLIC, true);
@@ -86,10 +86,22 @@ public class Emit {
 
 				MethodDeclaration md = testClass.addMethod("testWiring", Modifier.Keyword.PUBLIC);
 				md.addAnnotation("Test");
-				md.setJavadocComment("Test DAO factory wiring and Javalin route registration.");
-				md.setBody(StaticJavaParser.parseBlock("{ DaoFactory factory = new DaoFactory(); "
-						+ "assertNotNull(factory); " + "Javalin app = Javalin.create(); " + className
-						+ ".register(app, factory); " + "assertNotNull(app); }"));
+				md.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
+				md.setJavadocComment("Test DAO factory wiring, stub DAO CRUD, and Javalin route registration.");
+				BlockStmt body = new BlockStmt();
+				body.addStatement(StaticJavaParser.parseStatement("DaoFactory.useStub = true;"));
+				body.addStatement(StaticJavaParser.parseStatement("DaoFactory factory = new DaoFactory();"));
+				body.addStatement(StaticJavaParser.parseStatement("assertNotNull(factory);"));
+				if (hasDao) {
+					body.addStatement(
+							StaticJavaParser.parseStatement("assertNotNull(factory.get" + singularName + "Dao());"));
+					body.addStatement(StaticJavaParser
+							.parseStatement("assertNotNull(factory.get" + singularName + "Dao().list());"));
+				}
+				body.addStatement(StaticJavaParser.parseStatement("Javalin app = Javalin.create();"));
+				body.addStatement(StaticJavaParser.parseStatement(className + ".register(app, factory);"));
+				body.addStatement(StaticJavaParser.parseStatement("assertNotNull(app);"));
+				md.setBody(body);
 
 				files.put("routes/" + className + "Test.java", cu.toString());
 			}

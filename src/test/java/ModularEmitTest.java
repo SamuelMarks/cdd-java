@@ -120,8 +120,8 @@ public class ModularEmitTest {
 		assertEquals(0, servertests.Emit.emitModular(emptyApi).size());
 		emptyApi.components.schemas = new HashMap<>();
 		Schema enumSchema = new Schema();
-		enumSchema.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("a"),
-				arazzo.PayloadValue.ofString("b"));
+		enumSchema.enumValues = java.util.Arrays.asList(common.PayloadValue.ofString("a"),
+				common.PayloadValue.ofString("b"));
 		emptyApi.components.schemas.put("AnEnum", openapi.ReferenceOr.ofValue(enumSchema));
 
 		Map<String, String> classesModels = classes.Emit.emitModular(emptyApi);
@@ -215,13 +215,14 @@ public class ModularEmitTest {
 
 		Schema enumFieldProp = new Schema();
 		enumFieldProp.type = openapi.SchemaType.ofSingle("string");
-		enumFieldProp.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("VAL1"),
-				arazzo.PayloadValue.ofString("VAL2"));
+		enumFieldProp.enumValues = java.util.Arrays.asList(common.PayloadValue.ofString("VAL1"),
+				common.PayloadValue.ofString("VAL2"));
 		allTypes.properties.put("my_enum_prop", openapi.ReferenceOr.ofValue(enumFieldProp));
 
 		Schema fkProp = new Schema();
 		fkProp.$ref = "#/components/schemas/User";
 		allTypes.properties.put("user_id", openapi.ReferenceOr.ofValue(fkProp));
+		allTypes.properties.put("ref_post", openapi.ReferenceOr.ofRef("#/components/schemas/Post"));
 
 		emptyApi.components.schemas.put("AllTypes", openapi.ReferenceOr.ofValue(allTypes));
 		Map<String, String> seederCode = seeder.Emit.emitModular(emptyApi);
@@ -309,6 +310,11 @@ public class ModularEmitTest {
 		api.paths.pathItems.put("/nonRefBody", nonRefBodyPi);
 
 		serverroutes.Emit.emitModular(api);
+		assertFalse(serverroutes.Emit.hasEntityModel("User", new OpenAPI()));
+		OpenAPI emptyCompApi = new OpenAPI();
+		emptyCompApi.components = new Components();
+		assertFalse(serverroutes.Emit.hasEntityModel("User", emptyCompApi));
+		assertFalse(serverroutes.Emit.hasEntityModel("AnEnum", emptyApi));
 
 		String fullSeeder = seeder.Emit.emit(emptyApi, null);
 		assertTrue(fullSeeder.contains("class Seeder"));

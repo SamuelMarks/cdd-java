@@ -1,9 +1,20 @@
 package tests;
 
 import arazzo.Arazzo;
+import arazzo.ArazzoJavadocCodec;
+import arazzo.ArazzoResolver;
 import arazzo.Criterion;
 import arazzo.Step;
 import arazzo.Workflow;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.comments.LineComment;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.Statement;
 import java.util.List;
 import openapi.TypeMapper;
 
@@ -28,46 +39,53 @@ public class ArazzoTestEmitter {
 	 */
 	public static String emit(Arazzo spec) {
 		String className = workflows.Emit.deriveClassName(spec) + "IntegrationTest";
-		StringBuilder sb = new StringBuilder();
-		sb.append("import org.junit.Test;\n");
-		sb.append("import static org.junit.Assert.*;\n");
-		sb.append("import arazzo.RuntimeExpression;\n\n");
-		sb.append("/**\n");
-		sb.append(" * End-to-end workflow integration tests generated from Arazzo ")
-				.append(spec.arazzo != null ? spec.arazzo : "1.1.0").append(".\n");
-		workflows.Emit.appendSpecJavadoc(sb, " * ", spec);
-		sb.append(" */\n");
-		sb.append("public class ").append(className).append(" {\n");
-		sb.append("\t/** Default constructor. */\n");
-		sb.append("\tpublic ").append(className).append("() {\n\t}\n\n");
+		CompilationUnit cu = new CompilationUnit();
+		cu.addImport("org.junit.Test");
+		cu.addImport("org.junit.Assert", true, true);
+		cu.addImport("arazzo.RuntimeExpression");
 
-		List<Workflow> ordered = arazzo.ArazzoResolver.sortWorkflowsTopologically(spec);
+		ClassOrInterfaceDeclaration cls = cu.addClass(className, Modifier.Keyword.PUBLIC);
+		StringBuilder classDoc = new StringBuilder();
+		classDoc.append(" * End-to-end workflow integration tests generated from Arazzo ")
+				.append(spec.arazzo != null ? spec.arazzo : "1.1.0").append(".\n");
+		ArazzoJavadocCodec.appendSpecJavadoc(classDoc, " * ", spec);
+		cls.setJavadocComment(classDoc.toString());
+
+		ConstructorDeclaration ctor = cls.addConstructor(Modifier.Keyword.PUBLIC);
+		ctor.setJavadocComment(" Default constructor. ");
+
+		List<Workflow> ordered = ArazzoResolver.sortWorkflowsTopologically(spec);
 		for (Workflow wf : ordered) {
 			String mName = "test_" + TypeMapper.sanitizeIdentifier(wf.workflowId);
-			sb.append("\t/**\n");
-			sb.append("\t * E2E workflow test for ").append(wf.workflowId).append(".\n");
-			workflows.Emit.appendWorkflowJavadoc(sb, "\t * ", wf, spec);
-			sb.append("\t */\n");
-			sb.append("\t@Test\n");
-			sb.append("\tpublic void ").append(mName).append("() {\n");
-			sb.append("\t\tRuntimeExpression.Context ctx = new RuntimeExpression.Context();\n");
-			sb.append("\t\tctx.statusCode = 200;\n");
+			MethodDeclaration md = cls.addMethod(mName, Modifier.Keyword.PUBLIC);
+			md.addAnnotation("Test");
+			StringBuilder methodDoc = new StringBuilder();
+			methodDoc.append(" * E2E workflow test for ").append(wf.workflowId).append(".\n");
+			ArazzoJavadocCodec.appendWorkflowJavadoc(methodDoc, " * ", wf, spec);
+			md.setJavadocComment(methodDoc.toString());
+
+			BlockStmt body = new BlockStmt();
+			body.addStatement(StaticJavaParser
+					.parseStatement("RuntimeExpression.Context ctx = new RuntimeExpression.Context();"));
+			body.addStatement(StaticJavaParser.parseStatement("ctx.statusCode = 200;"));
 			if (wf.steps != null) {
 				for (Step s : wf.steps) {
-					sb.append("\t\t// Step: ").append(s.stepId).append("\n");
 					if (s.successCriteria != null) {
 						for (Criterion c : s.successCriteria) {
 							if (c.condition != null && c.condition.contains("200")) {
-								sb.append("\t\tassertEquals(200, ctx.statusCode);\n");
+								body.addStatement(
+										StaticJavaParser.parseStatement("assertEquals(200, ctx.statusCode);"));
 							}
 						}
 					}
-					sb.append("\t\tassertNotNull(\"").append(TypeMapper.escape(s.stepId)).append("\", ctx);\n");
+					Statement assertStmt = StaticJavaParser
+							.parseStatement("assertNotNull(\"" + TypeMapper.escape(s.stepId) + "\", ctx);");
+					assertStmt.setComment(new LineComment(" Step: " + s.stepId));
+					body.addStatement(assertStmt);
 				}
 			}
-			sb.append("\t}\n\n");
+			md.setBody(body);
 		}
-		sb.append("}\n");
-		return sb.toString();
+		return cu.toString();
 	}
 }

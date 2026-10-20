@@ -128,7 +128,7 @@ public class ArazzoResolver {
 			int hashIdx = step.operationPath.indexOf("#/paths/");
 			String pointer = step.operationPath.substring(hashIdx + "#/paths/".length());
 			int lastSlash = pointer.lastIndexOf('/');
-			String rawPath = pointer.substring(0, lastSlash).replace("~1", "/").replace("~0", "~");
+			String rawPath = common.JsonPointerUtils.unescapePointerToken(pointer.substring(0, lastSlash));
 			String verb = pointer.substring(lastSlash + 1).toUpperCase();
 			for (Map.Entry<String, OpenAPI> entry : openApiSources.entrySet()) {
 				OpenAPI api = entry.getValue();
@@ -263,8 +263,8 @@ public class ArazzoResolver {
 
 	/**
 	 * Topologically orders workflows in an {@link Arazzo} specification according
-	 * to their {@code dependsOn} declarations, throwing an
-	 * {@link IllegalStateException} if a dependency cycle is detected.
+	 * to their {@code dependsOn} declarations, throwing a
+	 * {@link openapi.CddException} if a dependency cycle is detected.
 	 *
 	 * @param spec
 	 *            The {@link Arazzo} specification.
@@ -280,9 +280,9 @@ public class ArazzoResolver {
 			byId.put(wf.workflowId, wf);
 		}
 		Set<String> visited = new HashSet<>();
-		Set<String> visiting = new HashSet<>();
+		List<String> visitingStack = new ArrayList<>();
 		for (Workflow wf : spec.workflows) {
-			visitWorkflow(wf, byId, visited, visiting, ordered);
+			visitWorkflow(wf, byId, visited, visitingStack, ordered);
 		}
 		return ordered;
 	}
@@ -296,29 +296,33 @@ public class ArazzoResolver {
 	 *            Map of all workflows by {@code workflowId}.
 	 * @param visited
 	 *            Set of permanently visited workflow IDs.
-	 * @param visiting
-	 *            Set of currently active workflow IDs on the recursion stack.
+	 * @param visitingStack
+	 *            Active recursion stack of workflow IDs for cycle path reporting.
 	 * @param ordered
 	 *            Output list of topologically sorted workflows.
 	 */
 	private static void visitWorkflow(Workflow wf, Map<String, Workflow> byId, Set<String> visited,
-			Set<String> visiting, List<Workflow> ordered) {
+			List<String> visitingStack, List<Workflow> ordered) {
 		if (visited.contains(wf.workflowId)) {
 			return;
 		}
-		if (visiting.contains(wf.workflowId)) {
-			throw new IllegalStateException("Circular workflow dependency detected at: " + wf.workflowId);
+		int cycleStart = visitingStack.indexOf(wf.workflowId);
+		if (cycleStart != -1) {
+			List<String> cyclePath = new ArrayList<>(visitingStack.subList(cycleStart, visitingStack.size()));
+			cyclePath.add(wf.workflowId);
+			throw new openapi.CddException(openapi.CddException.ErrorCode.VALIDATION_ERROR,
+					"Circular workflow dependency detected: " + String.join(" -> ", cyclePath));
 		}
-		visiting.add(wf.workflowId);
+		visitingStack.add(wf.workflowId);
 		if (wf.dependsOn != null) {
 			for (String depId : wf.dependsOn) {
 				Workflow dep = byId.get(depId);
 				if (dep != null) {
-					visitWorkflow(dep, byId, visited, visiting, ordered);
+					visitWorkflow(dep, byId, visited, visitingStack, ordered);
 				}
 			}
 		}
-		visiting.remove(wf.workflowId);
+		visitingStack.remove(visitingStack.size() - 1);
 		visited.add(wf.workflowId);
 		ordered.add(wf);
 	}
@@ -362,33 +366,6 @@ public class ArazzoResolver {
 	 * @return The corresponding {@link Operation}, or {@code null}.
 	 */
 	private static Operation getOperationByVerb(PathItem pi, String verb) {
-		if ("GET".equals(verb)) {
-			return pi.get;
-		}
-		if ("POST".equals(verb)) {
-			return pi.post;
-		}
-		if ("PUT".equals(verb)) {
-			return pi.put;
-		}
-		if ("DELETE".equals(verb)) {
-			return pi.delete;
-		}
-		if ("PATCH".equals(verb)) {
-			return pi.patch;
-		}
-		if ("OPTIONS".equals(verb)) {
-			return pi.options;
-		}
-		if ("HEAD".equals(verb)) {
-			return pi.head;
-		}
-		if ("TRACE".equals(verb)) {
-			return pi.trace;
-		}
-		if ("QUERY".equals(verb)) {
-			return pi.query;
-		}
-		return null;
+		return pi.getOperation(verb);
 	}
 }

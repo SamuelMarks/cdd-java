@@ -6,8 +6,8 @@ import arazzo.Criterion;
 import arazzo.FailureAction;
 import arazzo.OutputValue;
 import arazzo.PayloadReplacement;
-import arazzo.PayloadValue;
 import arazzo.ReusableOr;
+import common.PayloadValue;
 import arazzo.SourceDescription;
 import arazzo.Step;
 import arazzo.SuccessAction;
@@ -70,8 +70,7 @@ public class Emit {
 
 		String className = deriveClassName(spec);
 		if (existingSource != null && !existingSource.trim().isEmpty()) {
-			cu = StaticJavaParser.parse(existingSource);
-			LexicalPreservingPrinter.setup(cu);
+			cu = common.AstMergeUtils.parseLexicalPreserving(existingSource);
 			usingLpp = true;
 			classDecl = cu.findFirst(ClassOrInterfaceDeclaration.class).orElse(null);
 			if (classDecl == null) {
@@ -94,7 +93,7 @@ public class Emit {
 		if (spec.sourceDescriptions != null) {
 			for (SourceDescription sd : spec.sourceDescriptions) {
 				String fieldName = TypeMapper.sanitizeIdentifier(sd.name) + "Url";
-				if (!classDecl.getFieldByName(fieldName).isPresent()) {
+				if (!common.AstMergeUtils.hasField(classDecl, fieldName)) {
 					FieldDeclaration fd = classDecl.addFieldWithInitializer("String", fieldName,
 							StaticJavaParser.parseExpression("\"" + TypeMapper.escape(sd.url) + "\""),
 							Modifier.Keyword.PUBLIC);
@@ -138,31 +137,7 @@ public class Emit {
 	 *            The {@link Arazzo} specification.
 	 */
 	public static void appendSpecJavadoc(StringBuilder sb, String prefix, Arazzo spec) {
-		if (spec.$self != null) {
-			sb.append(prefix).append("@arazzoSelf ").append(spec.$self).append("\n");
-		}
-		if (spec.info != null) {
-			if (spec.info.title != null) {
-				sb.append(prefix).append("@infoTitle ").append(spec.info.title).append("\n");
-			}
-			if (spec.info.summary != null) {
-				sb.append(prefix).append("@infoSummary ").append(spec.info.summary).append("\n");
-			}
-			if (spec.info.description != null) {
-				sb.append(prefix).append("@infoDescription ").append(spec.info.description.replace("\n", " "))
-						.append("\n");
-			}
-			if (spec.info.version != null) {
-				sb.append(prefix).append("@infoVersion ").append(spec.info.version).append("\n");
-			}
-		}
-		if (spec.sourceDescriptions != null) {
-			for (SourceDescription sd : spec.sourceDescriptions) {
-				sb.append(prefix).append("@sourceDescription ").append(sd.name).append(" ")
-						.append(sd.type != null ? sd.type.getValue() : "openapi").append(" ").append(sd.url)
-						.append("\n");
-			}
-		}
+		arazzo.ArazzoJavadocCodec.appendSpecJavadoc(sb, prefix, spec);
 	}
 
 	/**
@@ -179,142 +154,7 @@ public class Emit {
 	 *            The root {@link Arazzo} specification.
 	 */
 	public static void appendWorkflowJavadoc(StringBuilder sb, String prefix, Workflow wf, Arazzo spec) {
-		sb.append(prefix).append("@workflowId ").append(wf.workflowId).append("\n");
-		if (wf.summary != null) {
-			sb.append(prefix).append("@workflowSummary ").append(wf.summary).append("\n");
-		}
-		if (wf.description != null) {
-			sb.append(prefix).append("@workflowDescription ").append(wf.description.replace("\n", " ")).append("\n");
-		}
-		if (wf.dependsOn != null) {
-			for (String dep : wf.dependsOn) {
-				sb.append(prefix).append("@dependsOn ").append(dep).append("\n");
-			}
-		}
-		Schema inSchema = arazzo.ArazzoResolver.resolveWorkflowInputs(wf, spec);
-		if (inSchema != null && inSchema.properties != null) {
-			for (Map.Entry<String, openapi.ReferenceOr<Schema>> prop : inSchema.properties.entrySet()) {
-				String pType = "string";
-				if (prop.getValue() != null && prop.getValue().value.type != null) {
-					pType = String.valueOf(prop.getValue().value.type);
-				}
-				sb.append(prefix).append("@workflowInput ").append(prop.getKey()).append(" ").append(pType)
-						.append("\n");
-			}
-		}
-		if (wf.parameters != null) {
-			for (ReusableOr<ArazzoParameter> wp : wf.parameters) {
-				ArazzoParameter resolved = arazzo.ArazzoResolver.resolveParameter(wp, spec);
-				if (resolved != null) {
-					String inVal = resolved.in != null ? resolved.in.getValue() : "query";
-					sb.append(prefix).append("@workflowParam ").append(inVal).append(" ").append(resolved.name)
-							.append(" ").append(formatPayloadTag(resolved.value)).append("\n");
-				}
-			}
-		}
-		if (wf.steps != null) {
-			for (Step s : wf.steps) {
-				String opId = s.operationId != null ? s.operationId : "-";
-				sb.append(prefix).append("@stepMeta ").append(s.stepId).append(" ").append(opId).append("\n");
-				if (s.parameters != null) {
-					for (ReusableOr<ArazzoParameter> sp : s.parameters) {
-						ArazzoParameter resolved = arazzo.ArazzoResolver.resolveParameter(sp, spec);
-						if (resolved != null) {
-							String inVal = resolved.in != null ? resolved.in.getValue() : "query";
-							sb.append(prefix).append("@stepParam ").append(s.stepId).append(" ").append(inVal)
-									.append(" ").append(resolved.name).append(" ")
-									.append(formatPayloadTag(resolved.value)).append("\n");
-						}
-					}
-				}
-				if (s.requestBody != null && s.requestBody.payload != null) {
-					sb.append(prefix).append("@stepBody ").append(s.stepId).append(" ")
-							.append(formatPayloadTag(s.requestBody.payload)).append("\n");
-				}
-				if (s.requestBody != null && s.requestBody.replacements != null) {
-					for (PayloadReplacement pr : s.requestBody.replacements) {
-						sb.append(prefix).append("@stepReplacement ").append(s.stepId).append(" ").append(pr.target)
-								.append(" ").append(formatPayloadTag(pr.value)).append("\n");
-					}
-				}
-				if (s.successCriteria != null) {
-					for (Criterion c : s.successCriteria) {
-						if (c.condition != null) {
-							String ctx = c.context != null ? c.context : "-";
-							String cType = c.type != null ? c.type.resolveEngineType().getValue() : "-";
-							sb.append(prefix).append("@stepCriterion ").append(s.stepId).append(" ").append(ctx)
-									.append(" ").append(cType).append(" ").append(c.condition).append("\n");
-						}
-					}
-				}
-				if (s.onSuccess != null) {
-					for (ReusableOr<SuccessAction> osa : s.onSuccess) {
-						SuccessAction sa = arazzo.ArazzoResolver.resolveSuccessAction(osa, spec);
-						if (sa != null && sa.type != null) {
-							String name = sa.name != null ? sa.name : "-";
-							String target = sa.stepId != null ? sa.stepId : "-";
-							sb.append(prefix).append("@stepOnSuccess ").append(s.stepId).append(" ")
-									.append(sa.type.getValue()).append(" ").append(name).append(" ").append(target)
-									.append("\n");
-						}
-					}
-				}
-				if (s.onFailure != null) {
-					for (ReusableOr<FailureAction> ofa : s.onFailure) {
-						FailureAction fa = arazzo.ArazzoResolver.resolveFailureAction(ofa, spec);
-						if (fa != null && fa.type != null) {
-							String name = fa.name != null ? fa.name : "-";
-							String target = fa.stepId != null ? fa.stepId : "-";
-							sb.append(prefix).append("@stepOnFailure ").append(s.stepId).append(" ")
-									.append(fa.type.getValue()).append(" ").append(name).append(" ").append(target)
-									.append("\n");
-						}
-					}
-				}
-				if (s.outputs != null) {
-					for (Map.Entry<String, OutputValue> so : s.outputs.entrySet()) {
-						OutputValue ov = so.getValue();
-						if (ov.isSelector()) {
-							sb.append(prefix).append("@stepOutput ").append(s.stepId).append(" ").append(so.getKey())
-									.append(" selector ").append(ov.selector.selector).append("\n");
-						} else {
-							sb.append(prefix).append("@stepOutput ").append(s.stepId).append(" ").append(so.getKey())
-									.append(" expr ").append(ov.expression).append("\n");
-						}
-					}
-				}
-			}
-		}
-		if (wf.outputs != null) {
-			for (Map.Entry<String, OutputValue> wo : wf.outputs.entrySet()) {
-				OutputValue ov = wo.getValue();
-				if (ov.isSelector()) {
-					sb.append(prefix).append("@workflowOutput ").append(wo.getKey()).append(" selector ")
-							.append(ov.selector.selector).append("\n");
-				} else {
-					sb.append(prefix).append("@workflowOutput ").append(wo.getKey()).append(" expr ")
-							.append(ov.expression).append("\n");
-				}
-			}
-		}
-	}
-
-	/**
-	 * Formats a {@link PayloadValue} as a typed Javadoc token ({@code str:...},
-	 * {@code num:...}, or {@code json:...}).
-	 *
-	 * @param pv
-	 *            The {@link PayloadValue} to format.
-	 * @return The formatted string token.
-	 */
-	private static String formatPayloadTag(PayloadValue pv) {
-		if (pv.isString()) {
-			return "str:" + pv.stringVal;
-		}
-		if (pv.isNumber()) {
-			return "num:" + pv.numberVal;
-		}
-		return "json:" + arazzo.Emit.serializePayloadValue(pv).toString();
+		arazzo.ArazzoJavadocCodec.appendWorkflowJavadoc(sb, prefix, wf, spec);
 	}
 
 	/**
@@ -691,11 +531,6 @@ public class Emit {
 	 * @return {@code true} if present.
 	 */
 	private static boolean hasMethod(ClassOrInterfaceDeclaration classDecl, String name) {
-		for (MethodDeclaration m : classDecl.getMethods()) {
-			if (m.getNameAsString().equals(name)) {
-				return true;
-			}
-		}
-		return false;
+		return common.AstMergeUtils.hasMethod(classDecl, name);
 	}
 }

@@ -84,7 +84,7 @@ public class CliParseEmitTest {
 		sch1.externalDocs = new ExternalDocumentation();
 		sch1.externalDocs.url = "url";
 		sch1.externalDocs.description = "desc";
-		sch1.enumValues = Arrays.asList(arazzo.PayloadValue.ofString("val1"), arazzo.PayloadValue.ofString("val2"));
+		sch1.enumValues = Arrays.asList(common.PayloadValue.ofString("val1"), common.PayloadValue.ofString("val2"));
 		api.components.schemas.put("Schema1", ReferenceOr.ofValue(sch1));
 		api.components.schemas.put("NullSchema", null);
 
@@ -185,11 +185,11 @@ public class CliParseEmitTest {
 		lnk1.operationId = "opId";
 		lnk1.operationRef = "opRef";
 		lnk1.description = "lnkDesc";
-		lnk1.requestBody = "reqBody";
+		lnk1.requestBody = common.PayloadValue.ofString("reqBody");
 		lnk1.server = new Server();
 		lnk1.server.url = "serverUrl";
 		lnk1.parameters = new HashMap<>();
-		lnk1.parameters.put("p1", "v1");
+		lnk1.parameters.put("p1", common.PayloadValue.ofString("v1"));
 		api.components.links.put("link1", ReferenceOr.ofValue(lnk1));
 		api.components.links.put("link2", null);
 
@@ -244,12 +244,12 @@ public class CliParseEmitTest {
 		p1.required = true;
 		p1.deprecated = true;
 		p1.description = "p1Desc";
-		p1.example = "p1Ex";
+		p1.example = common.PayloadValue.ofString("p1Ex");
 		p1.examples = new HashMap<>();
 		Example ex1 = new Example();
 		ex1.summary = "exSum";
 		ex1.description = "exDesc";
-		ex1.value = "exVal";
+		ex1.value = common.PayloadValue.ofString("exVal");
 		p1.examples.put("ex1", ReferenceOr.ofValue(ex1));
 		p1.examples.put("ex2", null); // branch coverage
 		op.parameters.add(ReferenceOr.ofValue(p1));
@@ -307,11 +307,11 @@ public class CliParseEmitTest {
 		lnk2.operationId = "opId";
 		lnk2.operationRef = "opRef";
 		lnk2.description = "lnkDesc";
-		lnk2.requestBody = "reqBody";
+		lnk2.requestBody = common.PayloadValue.ofString("reqBody");
 		lnk2.server = new Server();
 		lnk2.server.url = "serverUrl";
 		lnk2.parameters = new HashMap<>();
-		lnk2.parameters.put("p1", "v1");
+		lnk2.parameters.put("p1", common.PayloadValue.ofString("v1"));
 		r1.links.put("l1", ReferenceOr.ofValue(lnk2));
 
 		op.responses.statusCodes.put("200", ReferenceOr.ofValue(r1));
@@ -340,15 +340,53 @@ public class CliParseEmitTest {
 	public void testExhaustive() {
 		OpenAPI api = buildApi();
 		String generated = Emit.emitCli(api);
-		assertNotNull(generated);
+		assertNotNull(com.github.javaparser.StaticJavaParser.parse(generated));
 
 		OpenAPI parsed = Parse.parse(generated);
-		assertNotNull(parsed);
+		assertEquals(api.info, parsed.info);
+		assertEquals("http://example.com", parsed.servers.get(0).url);
+		assertEquals("prod", parsed.servers.get(0).name);
+		assertEquals("Production server", parsed.servers.get(0).description);
+		assertEquals("80", parsed.servers.get(0).variables.get("port").defaultValue);
+		assertEquals("Port", parsed.servers.get(0).variables.get("port").description);
+		assertEquals(api.components.schemas.get("Schema1").value.xml,
+				parsed.components.schemas.get("Schema1").value.xml);
+		assertEquals(api.components.schemas.get("Schema1").value.discriminator,
+				parsed.components.schemas.get("Schema1").value.discriminator);
+		assertEquals(api.components.schemas.get("SchemaXml2").value.xml,
+				parsed.components.schemas.get("SchemaXml2").value.xml);
+		assertEquals(api.components.securitySchemes.get("api_key"), parsed.components.securitySchemes.get("api_key"));
+		assertEquals(api.components.securitySchemes.get("bearerAuth"),
+				parsed.components.securitySchemes.get("bearerAuth"));
+		assertEquals(api.components.securitySchemes.get("mTLS").value.type,
+				parsed.components.securitySchemes.get("mTLS").value.type);
+		assertEquals(api.components.securitySchemes.get("oauth2").value.flows.authorizationCode,
+				parsed.components.securitySchemes.get("oauth2").value.flows.authorizationCode);
+		assertEquals(api.components.securitySchemes.get("oauth2").value.flows.deviceAuthorization,
+				parsed.components.securitySchemes.get("oauth2").value.flows.deviceAuthorization);
+		assertEquals(api.components.securitySchemes.get("oauth2").value.flows.implicit.authorizationUrl,
+				parsed.components.securitySchemes.get("oauth2").value.flows.implicit.authorizationUrl);
+		assertEquals(api.components.securitySchemes.get("oauth2").value.flows.password.tokenUrl,
+				parsed.components.securitySchemes.get("oauth2").value.flows.password.tokenUrl);
+		assertEquals(api.components.securitySchemes.get("oauth2").value.flows.clientCredentials.tokenUrl,
+				parsed.components.securitySchemes.get("oauth2").value.flows.clientCredentials.tokenUrl);
+		assertEquals(api.components.securitySchemes.get("openIdConnect"),
+				parsed.components.securitySchemes.get("openIdConnect"));
+		assertEquals(api.components.links.get("link1"), parsed.components.links.get("link1"));
+		assertEquals(9, parsed.paths.pathItems.get("/test").getOperationsMap().size());
+		Operation parsedGet = parsed.paths.pathItems.get("/test").get;
+		assertEquals("opId", parsedGet.operationId);
+		assertEquals(common.PayloadValue.ofString("p1Ex"), parsedGet.parameters.get(0).value.example);
+		assertEquals(common.PayloadValue.ofString("exVal"),
+				parsedGet.parameters.get(0).value.examples.get("ex1").value.value);
+		assertEquals(common.PayloadValue.ofString("reqBody"),
+				parsedGet.responses.statusCodes.get("200").value.links.get("l1").value.requestBody);
 
 		// Parse nulls and empty fields to hit remaining edge cases
 		String minimal = "private static void printHelp() {\n    }\n";
 		OpenAPI minParsed = Parse.parse(minimal);
-		assertNotNull(minParsed);
+		assertNull(minParsed.info);
+		assertNull(minParsed.paths);
 
 		// Manual lines to parse
 		String extra = "private static void printHelp() {\n"
@@ -386,13 +424,15 @@ public class CliParseEmitTest {
 				+ "        System.out.println(\"      ResponseEncodingItemEncoding default application/json enc1 application/json\");\n"
 				+ "    }\n";
 		OpenAPI extraParsed = Parse.parse(extra);
-		assertNotNull(extraParsed);
+		assertEquals("Min API", extraParsed.info.title);
+		assertEquals("http://a", extraParsed.servers.get(0).url);
+		assertEquals("v", extraParsed.servers.get(0).variables.get("var").defaultValue);
 
 		// Try edge cases: emit with completely empty API
 		OpenAPI emptyApi = new OpenAPI();
 		emptyApi.components = new Components(); // hit components != null but everything inside is null
 		emptyApi.paths = new Paths(); // hit paths != null but pathItems is null
-		Emit.emitCli(emptyApi);
+		assertTrue(Emit.emitCli(emptyApi).contains("class SdkCli"));
 
 		emptyApi.paths.pathItems = new HashMap<>();
 		PathItem emptyPi = new PathItem();
@@ -400,7 +440,7 @@ public class CliParseEmitTest {
 		emptyApi.paths.pathItems.put("/empty", emptyPi);
 
 		String emptyGenerated = Emit.emitCli(emptyApi);
-		assertNotNull(emptyGenerated);
+		assertNotNull(Parse.parse(emptyGenerated).paths.pathItems.get("/empty").post);
 
 		// Try edge cases: emit with objects present but inner properties null
 		OpenAPI nullProps = new OpenAPI();
@@ -476,7 +516,9 @@ public class CliParseEmitTest {
 		nullProps.paths.pathItems.put("/null", nullPi);
 
 		String nullGenerated = Emit.emitCli(nullProps);
-		assertNotNull(nullGenerated);
+		assertNotNull(com.github.javaparser.StaticJavaParser.parse(nullGenerated));
+		assertTrue(nullGenerated.contains("Component schemas nullSch"));
+		assertTrue(nullGenerated.contains("Operation: get /null"));
 
 		// Try with false booleans and empty nested objects
 		OpenAPI falseProps = new OpenAPI();
@@ -532,7 +574,9 @@ public class CliParseEmitTest {
 		falseProps.paths.pathItems.put("/false", falsePi);
 
 		String falseGenerated = Emit.emitCli(falseProps);
-		assertNotNull(falseGenerated);
+		OpenAPI falseRoundTrip = Parse.parse(falseGenerated);
+		assertFalse(falseRoundTrip.components.schemas.get("f1").value.xml.attribute);
+		assertFalse(falseRoundTrip.components.schemas.get("f1").value.xml.wrapped);
 
 		String cliEdge = "private static void printHelp() {\n"
 				+ "        System.out.println(\"Server Object url: http://a name:  description: \");\n"
@@ -557,7 +601,8 @@ public class CliParseEmitTest {
 				+ "        System.out.println(\"      Link l1 operationId=o1 operationRef=o2 description=\\\"d\\\" requestBody=\\\"rb\\\" serverUrl=\\\"http://s\\\"\");\n"
 				+ "    }\n";
 		OpenAPI edgeApi = Parse.parse(cliEdge);
-		assertNotNull(edgeApi);
+		assertEquals("http://a", edgeApi.servers.get(0).url);
+		assertEquals("v", edgeApi.servers.get(0).variables.get("var").defaultValue);
 
 		// Symmetric round-trip test for response content encodings and StaticJavaParser
 		// compilation

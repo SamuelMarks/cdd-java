@@ -97,16 +97,10 @@ public class Emit {
 			for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 				String path = entry.getKey();
 				PathItem pi = entry.getValue();
-				if (pi.get != null)
-					appendJUnitTest(sb, clientClass, "GET", path, pi.get, pi.parameters, model);
-				if (pi.post != null)
-					appendJUnitTest(sb, clientClass, "POST", path, pi.post, pi.parameters, model);
-				if (pi.put != null)
-					appendJUnitTest(sb, clientClass, "PUT", path, pi.put, pi.parameters, model);
-				if (pi.delete != null)
-					appendJUnitTest(sb, clientClass, "DELETE", path, pi.delete, pi.parameters, model);
-				if (pi.patch != null)
-					appendJUnitTest(sb, clientClass, "PATCH", path, pi.patch, pi.parameters, model);
+				for (Map.Entry<openapi.HttpVerb, Operation> opEntry : pi.getOperationsMap().entrySet()) {
+					appendJUnitTest(sb, clientClass, opEntry.getKey().name(), path, opEntry.getValue(), pi.parameters,
+							model);
+				}
 			}
 		}
 		sb.append("}\n");

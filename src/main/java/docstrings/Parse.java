@@ -46,17 +46,7 @@ public class Parse {
 				if (ep.has("operationId")) {
 					op.operationId = ep.getString("operationId");
 				}
-				if ("POST".equals(method)) {
-					item.post = op;
-				} else if ("PUT".equals(method)) {
-					item.put = op;
-				} else if ("DELETE".equals(method)) {
-					item.delete = op;
-				} else if ("PATCH".equals(method)) {
-					item.patch = op;
-				} else {
-					item.get = op;
-				}
+				item.setOperation(openapi.HttpVerb.fromStringOrDefault(method, openapi.HttpVerb.GET), op);
 			}
 		}
 		return api;

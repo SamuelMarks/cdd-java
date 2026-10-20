@@ -46,7 +46,7 @@ public class ArazzoTestParser {
 
 		for (ClassOrInterfaceDeclaration cls : cu.findAll(ClassOrInterfaceDeclaration.class)) {
 			if (cls.getJavadocComment().isPresent()) {
-				workflows.Parse.parseSpecJavadoc(cls.getJavadocComment().get().getContent(), spec);
+				arazzo.ArazzoJavadocCodec.parseSpecJavadoc(cls.getJavadocComment().get().getContent(), spec);
 			}
 		}
 
@@ -64,7 +64,7 @@ public class ArazzoTestParser {
 			wf.workflowId = mName.startsWith("test_") ? mName.substring(5) : mName;
 			wf.steps = new ArrayList<>();
 			if (m.getJavadocComment().isPresent()) {
-				workflows.Parse.parseWorkflowJavadoc(m.getJavadocComment().get().getContent(), wf);
+				arazzo.ArazzoJavadocCodec.parseWorkflowJavadoc(m.getJavadocComment().get().getContent(), wf);
 			}
 			if (wf.steps.isEmpty()) {
 				for (MethodCallExpr call : m.findAll(MethodCallExpr.class)) {

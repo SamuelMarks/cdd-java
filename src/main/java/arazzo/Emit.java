@@ -1,5 +1,6 @@
 package arazzo;
 
+import common.PayloadValue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -562,30 +563,7 @@ public class Emit {
 	 * @return The serialized JSON value.
 	 */
 	public static Object serializePayloadValue(PayloadValue pv) {
-		if (pv.isNull()) {
-			return JSONObject.NULL;
-		}
-		if (pv.isBoolean()) {
-			return pv.booleanVal;
-		}
-		if (pv.isNumber()) {
-			return pv.numberVal;
-		}
-		if (pv.isObject()) {
-			JSONObject jo = new JSONObject();
-			for (Map.Entry<String, PayloadValue> e : pv.objectVal.entrySet()) {
-				jo.put(e.getKey(), serializePayloadValue(e.getValue()));
-			}
-			return jo;
-		}
-		if (pv.isArray()) {
-			JSONArray ja = new JSONArray();
-			for (PayloadValue item : pv.arrayVal) {
-				ja.put(serializePayloadValue(item));
-			}
-			return ja;
-		}
-		return pv.stringVal;
+		return PayloadValue.toJsonValue(pv);
 	}
 
 	/**
@@ -650,10 +628,10 @@ public class Emit {
 	 * @param extensions
 	 *            The extensions map.
 	 */
-	private static void putExtensions(JSONObject obj, Map<String, Object> extensions) {
+	private static void putExtensions(JSONObject obj, Map<String, PayloadValue> extensions) {
 		if (isNonEmpty(extensions)) {
-			for (Map.Entry<String, Object> e : extensions.entrySet()) {
-				obj.put(e.getKey(), e.getValue());
+			for (Map.Entry<String, PayloadValue> e : extensions.entrySet()) {
+				obj.put(e.getKey(), PayloadValue.toJsonValue(e.getValue()));
 			}
 		}
 	}

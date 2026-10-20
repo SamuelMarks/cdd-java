@@ -1,6 +1,7 @@
 import static org.junit.Assert.*;
 
 import arazzo.*;
+import common.PayloadValue;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import openapi.ReferenceOr;

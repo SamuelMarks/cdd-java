@@ -208,8 +208,9 @@ public class RouteJavadocEmitter {
 					String exDesc = ex.description != null ? ex.description : "";
 					docBuilder.append(" * @").append(tagPrefix).append("ContentExamples ").append(statusPrefix)
 							.append(mtStr).append(" ").append(exEntry.getKey()).append(" ")
-							.append(exSummary.replace(" ", "_")).append("|").append(exDesc.replace(" ", "_"))
-							.append("|").append(exValue).append("\n");
+							.append(common.JavadocMetadataCodec.encodeUnderscoreToken(exSummary)).append("|")
+							.append(common.JavadocMetadataCodec.encodeUnderscoreToken(exDesc)).append("|")
+							.append(exValue).append("\n");
 				}
 			}
 		}

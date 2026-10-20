@@ -1,6 +1,7 @@
 import static org.junit.Assert.*;
 
 import arazzo.*;
+import common.PayloadValue;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -530,9 +531,15 @@ public class ArazzoRuntimeExpressionTest {
 		try {
 			ArazzoResolver.sortWorkflowsTopologically(spec);
 			fail("Expected cycle exception");
-		} catch (IllegalStateException expected) {
-			assertTrue(expected.getMessage().contains("Circular workflow dependency"));
+		} catch (openapi.CddException expected) {
+			assertEquals(openapi.CddException.ErrorCode.VALIDATION_ERROR, expected.errorCode);
+			assertTrue(expected.getMessage().contains("wfA -> wfB -> wfA"));
 		}
+
+		assertEquals("", common.JsonPointerUtils.unescapePointerToken(null));
+		assertEquals("/a~b", common.JsonPointerUtils.unescapePointerToken("~1a~0b"));
+		assertEquals("", common.JsonPointerUtils.escapePointerToken(null));
+		assertEquals("~1a~0b", common.JsonPointerUtils.escapePointerToken("/a~b"));
 
 		Files.deleteIfExists(oasFile.toPath());
 		Files.deleteIfExists(tmpDir.toPath());

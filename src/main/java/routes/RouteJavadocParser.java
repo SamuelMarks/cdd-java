@@ -1,5 +1,6 @@
 package routes;
 
+import common.PayloadValue;
 import java.util.ArrayList;
 import openapi.OpenAPI;
 import openapi.Operation;
@@ -179,28 +180,7 @@ public class RouteJavadocParser {
 	 *            The {@link Operation} to assign.
 	 */
 	public static void assignCallbackVerb(PathItem pi, String verb, Operation op) {
-		switch (verb) {
-			case "get" :
-				pi.get = op;
-				break;
-			case "post" :
-				pi.post = op;
-				break;
-			case "put" :
-				pi.put = op;
-				break;
-			case "delete" :
-				pi.delete = op;
-				break;
-			case "patch" :
-				pi.patch = op;
-				break;
-			case "query" :
-				pi.query = op;
-				break;
-			default :
-				break;
-		}
+		pi.setOperation(openapi.HttpVerb.fromString(verb), op);
 	}
 
 	/**
@@ -451,14 +431,14 @@ public class RouteJavadocParser {
 							k -> openapi.ReferenceOr.ofValue(new openapi.Link())).value;
 					if (link.parameters == null)
 						link.parameters = new java.util.HashMap<>();
-					link.parameters.put(parts[1], parts.length > 2 ? parts[2] : "");
+					link.parameters.put(parts[1], PayloadValue.ofString(parts.length > 2 ? parts[2] : ""));
 				}
 			} else if (tagName.equals("componentLinkRequestBody")) {
 				String[] parts = tagContent.split("\\s+", 2);
 				if (parts.length > 1) {
 					openapi.Link link = api.components.links.computeIfAbsent(parts[0],
 							k -> openapi.ReferenceOr.ofValue(new openapi.Link())).value;
-					link.requestBody = parts[1];
+					link.requestBody = PayloadValue.ofString(parts[1]);
 				}
 			} else if (tagName.equals("componentCallback")) {
 				String[] parts = tagContent.split("\\s+", 3);
@@ -590,11 +570,15 @@ public class RouteJavadocParser {
 		if (pipeStr != null) {
 			String[] exParts = pipeStr.split("\\|", -1);
 			if (!exParts[0].isEmpty())
-				exObj.summary = replaceUnderscores ? exParts[0].replace("_", " ") : exParts[0];
+				exObj.summary = replaceUnderscores
+						? common.JavadocMetadataCodec.decodeUnderscoreToken(exParts[0])
+						: exParts[0];
 			if (exParts.length > 1 && !exParts[1].isEmpty())
-				exObj.description = replaceUnderscores ? exParts[1].replace("_", " ") : exParts[1];
+				exObj.description = replaceUnderscores
+						? common.JavadocMetadataCodec.decodeUnderscoreToken(exParts[1])
+						: exParts[1];
 			if (exParts.length > 2 && !exParts[2].isEmpty())
-				exObj.value = exParts[2];
+				exObj.value = PayloadValue.ofString(exParts[2]);
 		}
 		return exObj;
 	}
@@ -626,7 +610,7 @@ public class RouteJavadocParser {
 			sch.type = openapi.SchemaType.ofSingle(parts[1]);
 			mt.schema = openapi.ReferenceOr.ofValue(sch);
 		} else if (suffix.equals("ContentExample") && parts.length > 1) {
-			mt.example = parts[1];
+			mt.example = PayloadValue.ofString(parts[1]);
 		} else if (suffix.equals("ContentItemSchema") && parts.length > 1) {
 			openapi.Schema sch = new openapi.Schema();
 			sch.type = openapi.SchemaType.ofSingle(parts[1]);
@@ -704,7 +688,7 @@ public class RouteJavadocParser {
 					openapi.Operation cbOp = new openapi.Operation();
 					cbOp.description = "Callback operation";
 					assignCallbackVerb(cbPath, cbMethod, cbOp);
-					cb.addProperty(cbExpr, cbPath);
+					cb.addPathItem(cbExpr, cbPath);
 					op.callbacks.put(cbName, openapi.ReferenceOr.ofValue(cb));
 				}
 			} else if (tagName.equals("tag")) {
@@ -823,7 +807,7 @@ public class RouteJavadocParser {
 						sch.type = openapi.SchemaType.ofSingle(parts[2]);
 						h.schema = openapi.ReferenceOr.ofValue(sch);
 					} else if (tagName.equals("responseHeaderExample") && parts.length > 2) {
-						h.example = parts[2];
+						h.example = PayloadValue.ofString(parts[2]);
 					} else if (tagName.equals("responseHeaderContent") && parts.length > 2) {
 						h.content = new java.util.HashMap<>();
 						h.content.put(parts[2], new openapi.MediaType());
@@ -864,9 +848,9 @@ public class RouteJavadocParser {
 					} else if (tagName.equals("responseLinkParam") && parts.length > 2) {
 						if (l.parameters == null)
 							l.parameters = new java.util.HashMap<>();
-						l.parameters.put(parts[2], parts.length > 3 ? parts[3] : "");
+						l.parameters.put(parts[2], PayloadValue.ofString(parts.length > 3 ? parts[3] : ""));
 					} else if (tagName.equals("responseLinkRequestBody") && parts.length > 2) {
-						l.requestBody = parts[2];
+						l.requestBody = PayloadValue.ofString(parts[2]);
 					}
 				}
 			}

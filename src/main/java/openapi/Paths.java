@@ -1,12 +1,13 @@
 package openapi;
 
+import common.ExtensibleElement;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Paths object.
  */
-public class Paths {
+public class Paths extends ExtensibleElement {
 	/**
 	 * Default constructor.
 	 */
@@ -17,38 +18,20 @@ public class Paths {
 	 * Path items.
 	 */
 	public Map<String, PathItem> pathItems = new HashMap<>();
-	/**
-	 * Extensions.
-	 */
-	public Map<String, Object> extensions = new HashMap<>();
 
 	/**
-	 * Add property.
+	 * Adds a path template and its associated {@link PathItem} if the path starts
+	 * with {@code "/"}.
 	 *
-	 * @param name
-	 *            Name
-	 * @param value
-	 *            Value
+	 * @param path
+	 *            The relative path template starting with {@code "/"}.
+	 * @param pathItem
+	 *            The {@link PathItem} definition.
 	 */
-	public void addProperty(String name, Object value) {
-		if (name.startsWith("x-")) {
-			extensions.put(name, value);
-		} else if (name.startsWith("/")) {
-			if (value instanceof PathItem) {
-				pathItems.put(name, (PathItem) value);
-			}
+	public void addPathItem(String path, PathItem pathItem) {
+		if (path != null && path.startsWith("/") && pathItem != null) {
+			pathItems.put(path, pathItem);
 		}
-	}
-
-	/**
-	 * Get properties.
-	 *
-	 * @return properties
-	 */
-	public Map<String, Object> getProperties() {
-		Map<String, Object> props = new HashMap<>(extensions);
-		props.putAll(pathItems);
-		return props;
 	}
 
 	/**
@@ -57,7 +40,8 @@ public class Paths {
 	 *
 	 * @return The list of field values.
 	 */
-	private java.util.List<Object> fieldValues() {
+	@Override
+	protected java.util.List<Object> fieldValues() {
 		return java.util.Arrays.asList(pathItems, extensions);
 	}
 

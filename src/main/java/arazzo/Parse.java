@@ -1,5 +1,6 @@
 package arazzo;
 
+import common.PayloadValue;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -569,32 +570,7 @@ public class Parse {
 	 * @return The parsed {@link PayloadValue}.
 	 */
 	public static PayloadValue parsePayloadValue(Object raw) {
-		if (raw == null || JSONObject.NULL.equals(raw)) {
-			return PayloadValue.ofNull();
-		}
-		if (raw instanceof Boolean) {
-			return PayloadValue.ofBoolean((Boolean) raw);
-		}
-		if (raw instanceof Number) {
-			return PayloadValue.ofNumber((Number) raw);
-		}
-		if (raw instanceof JSONObject) {
-			JSONObject jo = (JSONObject) raw;
-			Map<String, PayloadValue> map = new LinkedHashMap<>();
-			for (String k : jo.keySet()) {
-				map.put(k, parsePayloadValue(jo.get(k)));
-			}
-			return PayloadValue.ofObject(map);
-		}
-		if (raw instanceof JSONArray) {
-			JSONArray ja = (JSONArray) raw;
-			List<PayloadValue> list = new ArrayList<>();
-			for (int i = 0; i < ja.length(); i++) {
-				list.add(parsePayloadValue(ja.get(i)));
-			}
-			return PayloadValue.ofArray(list);
-		}
-		return PayloadValue.ofString(String.valueOf(raw));
+		return PayloadValue.fromJsonValue(raw);
 	}
 
 	/**
@@ -666,17 +642,10 @@ public class Parse {
 	 * @param target
 	 *            The target extensions map.
 	 */
-	private static void copyExtensions(JSONObject src, Map<String, Object> target) {
+	private static void copyExtensions(JSONObject src, Map<String, PayloadValue> target) {
 		for (String k : src.keySet()) {
 			if (k.startsWith("x-")) {
-				Object v = src.get(k);
-				if (v instanceof JSONObject) {
-					target.put(k, ((JSONObject) v).toMap());
-				} else if (v instanceof JSONArray) {
-					target.put(k, ((JSONArray) v).toList());
-				} else {
-					target.put(k, v);
-				}
+				target.put(k, PayloadValue.fromJsonValue(src.get(k)));
 			}
 		}
 	}

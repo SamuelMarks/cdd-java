@@ -47,22 +47,19 @@ public class MainBranchTest {
 				"target/tmp_out_2"});
 		assertTrue(new File("target/tmp_out_2/src/main/java/Sdk.java").exists());
 
-		// Test Main exitHandler when cdd.test is not "true"
-		String prevTestProp = System.getProperty("cdd.test");
+		// Test Main exitHandler and CliContext
 		java.util.function.Consumer<Integer> prevExit = Main.exitHandler;
 		final int[] exitCode = new int[]{-1};
 		try {
-			System.setProperty("cdd.test", "false");
 			Main.exitHandler = code -> exitCode[0] = code;
 			Main.main(new String[]{"unknown_command"});
 			assertEquals(1, exitCode[0]);
+			cli.CliContext defaultCtx = cli.CliContext.createDefault();
+			assertNotNull(defaultCtx.envProvider);
+			assertNotNull(defaultCtx.workspaceDir);
+			assertNotNull(defaultCtx.exitHandler);
 		} finally {
 			Main.exitHandler = prevExit;
-			if (prevTestProp != null) {
-				System.setProperty("cdd.test", prevTestProp);
-			} else {
-				System.clearProperty("cdd.test");
-			}
 		}
 	}
 }

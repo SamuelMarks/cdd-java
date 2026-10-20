@@ -1,6 +1,7 @@
 import static org.junit.Assert.*;
 
 import arazzo.*;
+import common.PayloadValue;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -53,7 +54,7 @@ public class ArazzoPojoTest {
 		aDiff.$self = "https://example.com/arazzo.json";
 		aDiff.addExtension("x-custom", "val");
 		aDiff.addExtension("ignored", "val");
-		assertEquals("val", aDiff.getExtensions().get("x-custom"));
+		assertEquals(PayloadValue.ofString("val"), aDiff.getExtensions().get("x-custom"));
 		assertFalse(aDiff.getExtensions().containsKey("ignored"));
 		assertPojoContract(a1, a2, aDiff);
 

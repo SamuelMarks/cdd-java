@@ -115,16 +115,6 @@ public class Parse {
 	 *            The {@link Operation} to assign.
 	 */
 	private static void assignOperation(PathItem item, String verb, Operation op) {
-		if ("POST".equals(verb)) {
-			item.post = op;
-		} else if ("PUT".equals(verb)) {
-			item.put = op;
-		} else if ("DELETE".equals(verb)) {
-			item.delete = op;
-		} else if ("PATCH".equals(verb)) {
-			item.patch = op;
-		} else {
-			item.get = op;
-		}
+		item.setOperation(openapi.HttpVerb.fromStringOrDefault(verb, openapi.HttpVerb.GET), op);
 	}
 }
