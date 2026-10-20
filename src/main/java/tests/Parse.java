@@ -69,7 +69,8 @@ public class Parse {
 				}
 			}
 		} catch (Exception e) {
-			// ignore
+			java.util.logging.Logger.getLogger(Parse.class.getName())
+					.fine("Skipping unparseable test source: " + e.getMessage());
 		}
 		return api;
 	}

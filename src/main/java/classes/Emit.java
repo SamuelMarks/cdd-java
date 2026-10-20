@@ -38,7 +38,7 @@ public class Emit {
 		if (model.components == null || model.components.schemas == null)
 			return files;
 
-		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+		for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			if (className.equals("Emit") || className.equals("Parse")) {
 				continue;
@@ -53,7 +53,7 @@ public class Emit {
 			cu.addImport("java.util.List");
 			cu.addImport("java.util.Map");
 
-			emitClass(cu, className, entry.getValue(), model);
+			emitClass(cu, className, entry.getValue().value, model);
 
 			// For enums, set Modifier to PUBLIC
 			cu.getEnumByName(className).ifPresent(e -> e.setModifier(Modifier.Keyword.PUBLIC, true));
@@ -115,12 +115,12 @@ public class Emit {
 	 */
 	public static void emitSchemasInto(CompilationUnit cu, OpenAPI model) {
 		if (model.components != null && model.components.schemas != null) {
-			for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 				String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 				if (className.equals("Emit") || className.equals("Parse")) {
 					continue;
 				}
-				emitClass(cu, className, entry.getValue(), model);
+				emitClass(cu, className, entry.getValue().value, model);
 			}
 		}
 	}
@@ -147,8 +147,8 @@ public class Emit {
 			} else {
 				enumDecl.getEntries().clear();
 			}
-			List<Object> enumValues = schemaMap.enumValues;
-			for (Object val : enumValues) {
+			List<arazzo.PayloadValue> enumValues = schemaMap.enumValues;
+			for (arazzo.PayloadValue val : enumValues) {
 				String valStr = String.valueOf(val);
 				String safeName = valStr.replaceAll("[^a-zA-Z0-9_]", "_").toUpperCase();
 				if (safeName.isEmpty() || Character.isDigit(safeName.charAt(0)))
@@ -209,9 +209,9 @@ public class Emit {
 		if (classDoc.length() > 0) {
 			classDecl.setJavadocComment(classDoc.toString().trim());
 		}
-		Map<String, Object> properties = schemaMap.properties;
+		Map<String, openapi.ReferenceOr<Schema>> properties = schemaMap.properties;
 		if (properties != null) {
-			for (Map.Entry<String, Object> prop : properties.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> prop : properties.entrySet()) {
 				String propName = prop.getKey();
 				String safePropName = propName.replaceAll("[^a-zA-Z0-9_]", "_");
 				if (Character.isDigit(safePropName.charAt(0)))
@@ -224,8 +224,8 @@ public class Emit {
 				if (!classDecl.getFieldByName(safePropName).isPresent()) {
 					FieldDeclaration fd = classDecl.addField(type, safePropName, Modifier.Keyword.PUBLIC);
 					fd.addAnnotation(StaticJavaParser.parseAnnotation("@JsonProperty(\"" + propName + "\")"));
-					if (prop.getValue() instanceof Schema) {
-						Schema propMap = (Schema) prop.getValue();
+					Schema propMap = prop.getValue() != null ? prop.getValue().value : null;
+					if (propMap != null) {
 						StringBuilder fieldDoc = new StringBuilder();
 						if (propMap.description != null && !propMap.description.isEmpty()) {
 							fieldDoc.append(propMap.description);
@@ -274,8 +274,8 @@ public class Emit {
 	 *            The root {@link OpenAPI} model.
 	 * @return The resolved Java type string.
 	 */
-	private static String resolveType(Object schemaObj, OpenAPI model) {
-		if (schemaObj instanceof Schema && ((Schema) schemaObj).$ref != null) {
+	private static String resolveType(openapi.ReferenceOr<Schema> schemaObj, OpenAPI model) {
+		if (schemaObj != null && schemaObj.value.$ref != null) {
 			return "Object";
 		}
 		return openapi.TypeMapper.toJavaType(schemaObj, model, false);

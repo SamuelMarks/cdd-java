@@ -1,13 +1,15 @@
 package openapi;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import arazzo.PayloadValue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * Parses OpenAPI 3.2.0 and Swagger 2.0 descriptions into the {@link OpenAPI}
@@ -116,7 +118,9 @@ public class Parse {
 				} else if (api.components.schemas == null) {
 					api.components.schemas = new HashMap<>();
 				}
-				api.components.schemas.putAll(api.definitions);
+				for (Map.Entry<String, Schema> defEntry : api.definitions.entrySet()) {
+					api.components.schemas.put(defEntry.getKey(), parseSchemaFromRefOrValue(defEntry.getValue()));
+				}
 			}
 			if (root.has("parameters")) {
 				api.parameters = parseTypedParameterMap(root.getJSONObject("parameters"));
@@ -132,6 +136,99 @@ public class Parse {
 		} catch (Exception e) {
 			throw new IOException("Failed to parse OpenAPI: " + e.getMessage(), e);
 		}
+	}
+
+	/**
+	 * Converts a parsed {@link Schema} into a {@link ReferenceOr} wrapper (wrapping
+	 * as a {@link Reference} if only {@code $ref} is populated, or as an inline
+	 * {@link Schema} value otherwise).
+	 *
+	 * @param s
+	 *            The parsed {@link Schema}.
+	 * @return The corresponding {@link ReferenceOr} wrapper.
+	 */
+	private static ReferenceOr<Schema> parseSchemaFromRefOrValue(Schema s) {
+		if (s.$ref != null) {
+			Reference r = new Reference();
+			r.ref = s.$ref;
+			r.summary = s.title;
+			r.description = s.description;
+			return ReferenceOr.ofRef(r);
+		}
+		return ReferenceOr.ofValue(s);
+	}
+
+	/**
+	 * Parses a {@link Reference} object from JSON.
+	 *
+	 * @param obj
+	 *            The JSON object containing {@code $ref}.
+	 * @return The parsed {@link Reference}.
+	 */
+	private static Reference parseReference(JSONObject obj) {
+		Reference r = new Reference();
+		r.ref = optStr(obj, "$ref");
+		r.summary = optStr(obj, "summary");
+		r.description = optStr(obj, "description");
+		copyExtensions(obj, r.extensions);
+		return r;
+	}
+
+	/**
+	 * Parses a {@link JSONObject} into a {@link ReferenceOr} wrapper using the
+	 * provided inline parser when {@code $ref} is not present.
+	 *
+	 * @param <T>
+	 *            The target OpenAPI element type.
+	 * @param obj
+	 *            The JSON object to parse.
+	 * @param parser
+	 *            The inline parser function.
+	 * @return The parsed {@link ReferenceOr} wrapper.
+	 */
+	private static <T> ReferenceOr<T> parseRefOr(JSONObject obj, Function<JSONObject, T> parser) {
+		if (!obj.isNull("$ref")) {
+			return ReferenceOr.ofRef(parseReference(obj));
+		}
+		return ReferenceOr.ofValue(parser.apply(obj));
+	}
+
+	/**
+	 * Parses a map of {@link ReferenceOr} elements from a {@link JSONObject}.
+	 *
+	 * @param <T>
+	 *            The target OpenAPI element type.
+	 * @param mapObj
+	 *            The JSON object mapping keys to element definitions or references.
+	 * @param parser
+	 *            The inline parser function.
+	 * @return The parsed map of {@link ReferenceOr} wrappers.
+	 */
+	private static <T> Map<String, ReferenceOr<T>> parseRefOrMap(JSONObject mapObj, Function<JSONObject, T> parser) {
+		Map<String, ReferenceOr<T>> map = new HashMap<>();
+		for (String k : mapObj.keySet()) {
+			map.put(k, parseRefOr(mapObj.getJSONObject(k), parser));
+		}
+		return map;
+	}
+
+	/**
+	 * Parses a list of {@link ReferenceOr} elements from a {@link JSONArray}.
+	 *
+	 * @param <T>
+	 *            The target OpenAPI element type.
+	 * @param arr
+	 *            The JSON array containing element definitions or references.
+	 * @param parser
+	 *            The inline parser function.
+	 * @return The parsed list of {@link ReferenceOr} wrappers.
+	 */
+	private static <T> List<ReferenceOr<T>> parseRefOrList(JSONArray arr, Function<JSONObject, T> parser) {
+		List<ReferenceOr<T>> list = new ArrayList<>();
+		for (int i = 0; i < arr.length(); i++) {
+			list.add(parseRefOr(arr.getJSONObject(i), parser));
+		}
+		return list;
 	}
 
 	/**
@@ -197,6 +294,83 @@ public class Parse {
 	 */
 	private static Object optVal(JSONObject obj, String key) {
 		return !obj.isNull(key) ? unwrapJson(obj.get(key)) : null;
+	}
+
+	/**
+	 * Reads a {@link PayloadValue} property if present and non-null.
+	 *
+	 * @param obj
+	 *            The source JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @return The parsed {@link PayloadValue} or {@code null}.
+	 */
+	private static PayloadValue optPayloadVal(JSONObject obj, String key) {
+		return !obj.isNull(key) ? arazzo.Parse.parsePayloadValue(obj.get(key)) : null;
+	}
+
+	/**
+	 * Reads a list of {@link PayloadValue} items from a JSONObject property if
+	 * present.
+	 *
+	 * @param obj
+	 *            The source JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @return The parsed list of {@link PayloadValue} items or {@code null}.
+	 */
+	private static List<PayloadValue> optPayloadValList(JSONObject obj, String key) {
+		if (obj.isNull(key)) {
+			return null;
+		}
+		JSONArray arr = obj.getJSONArray(key);
+		List<PayloadValue> res = new ArrayList<>();
+		for (int i = 0; i < arr.length(); i++) {
+			res.add(arazzo.Parse.parsePayloadValue(arr.get(i)));
+		}
+		return res;
+	}
+
+	/**
+	 * Reads an {@link ExclusiveBound} property (boolean or number) if present and
+	 * non-null.
+	 *
+	 * @param obj
+	 *            The source JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @return The parsed {@link ExclusiveBound} or {@code null}.
+	 */
+	private static ExclusiveBound optExclusiveBound(JSONObject obj, String key) {
+		if (obj.isNull(key)) {
+			return null;
+		}
+		Object raw = obj.get(key);
+		if (raw instanceof Boolean) {
+			return ExclusiveBound.ofBoolean((Boolean) raw);
+		}
+		return ExclusiveBound.ofNumber(obj.getNumber(key));
+	}
+
+	/**
+	 * Reads an {@link AdditionalProperties} constraint (boolean or schema/ref) if
+	 * present and non-null.
+	 *
+	 * @param obj
+	 *            The source JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @return The parsed {@link AdditionalProperties} or {@code null}.
+	 */
+	private static AdditionalProperties optAdditionalProperties(JSONObject obj, String key) {
+		if (obj.isNull(key)) {
+			return null;
+		}
+		Object raw = obj.get(key);
+		if (raw instanceof JSONObject) {
+			return AdditionalProperties.ofRefOrSchema(parseRefOr((JSONObject) raw, Parse::parseSchema));
+		}
+		return AdditionalProperties.ofBoolean(obj.getBoolean(key));
 	}
 
 	/**
@@ -492,7 +666,7 @@ public class Parse {
 		}
 		pi.servers = parseServers(piObj);
 		if (piObj.has("parameters")) {
-			pi.parameters = parseParameters(piObj.getJSONArray("parameters"));
+			pi.parameters = parseRefOrList(piObj.getJSONArray("parameters"), Parse::parseParameter);
 		}
 		copyExtensions(piObj, pi.extensions);
 		return pi;
@@ -519,16 +693,16 @@ public class Parse {
 			op.externalDocs = parseExternalDocs(obj.getJSONObject("externalDocs"));
 		}
 		if (obj.has("parameters")) {
-			op.parameters = parseParameters(obj.getJSONArray("parameters"));
+			op.parameters = parseRefOrList(obj.getJSONArray("parameters"), Parse::parseParameter);
 		}
 		if (obj.has("requestBody")) {
-			op.requestBody = parseRequestBody(obj.getJSONObject("requestBody"));
+			op.requestBody = parseRefOr(obj.getJSONObject("requestBody"), Parse::parseRequestBody);
 		}
 		if (obj.has("responses")) {
 			op.responses = parseResponses(obj.getJSONObject("responses"));
 		}
 		if (obj.has("callbacks")) {
-			op.callbacks = parseCallbackMap(obj.getJSONObject("callbacks"));
+			op.callbacks = parseRefOrMap(obj.getJSONObject("callbacks"), Parse::parseCallback);
 		}
 		if (obj.has("security")) {
 			op.security = parseSecurityRequirements(obj.getJSONArray("security"));
@@ -581,14 +755,14 @@ public class Parse {
 	private static MediaType parseMediaType(JSONObject mtObj) {
 		MediaType mt = new MediaType();
 		if (mtObj.has("schema")) {
-			mt.schema = parseSchema(mtObj.getJSONObject("schema"));
+			mt.schema = parseRefOr(mtObj.getJSONObject("schema"), Parse::parseSchema);
 		}
 		if (mtObj.has("itemSchema")) {
-			mt.itemSchema = parseSchema(mtObj.getJSONObject("itemSchema"));
+			mt.itemSchema = parseRefOr(mtObj.getJSONObject("itemSchema"), Parse::parseSchema);
 		}
 		mt.example = optVal(mtObj, "example");
 		if (mtObj.has("examples")) {
-			mt.examples = parseExampleObjMap(mtObj.getJSONObject("examples"));
+			mt.examples = parseRefOrMap(mtObj.getJSONObject("examples"), Parse::parseExample);
 		}
 		if (mtObj.has("encoding")) {
 			mt.encoding = parseEncodingMap(mtObj.getJSONObject("encoding"));
@@ -647,7 +821,7 @@ public class Parse {
 		enc.explode = optBool(eObj, "explode");
 		enc.allowReserved = optBool(eObj, "allowReserved");
 		if (eObj.has("headers")) {
-			enc.headers = parseHeaderObjMap(eObj.getJSONObject("headers"));
+			enc.headers = parseRefOrMap(eObj.getJSONObject("headers"), Parse::parseHeader);
 		}
 		if (eObj.has("encoding")) {
 			enc.encoding = parseEncodingMap(eObj.getJSONObject("encoding"));
@@ -676,9 +850,9 @@ public class Parse {
 			if (rKey.startsWith("x-")) {
 				responses.extensions.put(rKey, unwrapJson(respObj.get(rKey)));
 			} else if ("default".equals(rKey)) {
-				responses.defaultResponse = parseResponse(respObj.getJSONObject(rKey));
+				responses.defaultResponse = parseRefOr(respObj.getJSONObject(rKey), Parse::parseResponse);
 			} else {
-				responses.statusCodes.put(rKey, parseResponse(respObj.getJSONObject(rKey)));
+				responses.statusCodes.put(rKey, parseRefOr(respObj.getJSONObject(rKey), Parse::parseResponse));
 			}
 		}
 		return responses;
@@ -696,38 +870,22 @@ public class Parse {
 		r.summary = optStr(ro, "summary");
 		r.description = optStr(ro, "description");
 		if (ro.has("schema")) {
-			r.schema = parseSchema(ro.getJSONObject("schema"));
+			r.schema = parseRefOr(ro.getJSONObject("schema"), Parse::parseSchema);
 		}
 		if (ro.has("headers")) {
-			r.headers = parseHeaderObjMap(ro.getJSONObject("headers"));
+			r.headers = parseRefOrMap(ro.getJSONObject("headers"), Parse::parseHeader);
 		}
 		if (ro.has("examples")) {
-			r.examples = parseExampleObjMap(ro.getJSONObject("examples"));
+			r.examples = parseRefOrMap(ro.getJSONObject("examples"), Parse::parseExample);
 		}
 		if (ro.has("content")) {
 			r.content = parseMediaTypeMap(ro.getJSONObject("content"));
 		}
 		if (ro.has("links")) {
-			r.links = parseTypedLinkMap(ro.getJSONObject("links"));
+			r.links = parseRefOrMap(ro.getJSONObject("links"), Parse::parseLink);
 		}
 		copyExtensions(ro, r.extensions);
 		return r;
-	}
-
-	/**
-	 * Parses a JSON array of parameter definitions into a list of {@link Parameter}
-	 * objects.
-	 *
-	 * @param arr
-	 *            The JSON array of parameters.
-	 * @return A list of parsed parameter objects.
-	 */
-	private static List<Object> parseParameters(JSONArray arr) {
-		List<Object> list = new ArrayList<>();
-		for (int i = 0; i < arr.length(); i++) {
-			list.add(parseParameter(arr.getJSONObject(i)));
-		}
-		return list;
 	}
 
 	/**
@@ -768,11 +926,11 @@ public class Parse {
 		p.enumValues = optObjList(pObj, "enum");
 		p.multipleOf = optNum(pObj, "multipleOf");
 		if (pObj.has("schema")) {
-			p.schema = parseSchema(pObj.getJSONObject("schema"));
+			p.schema = parseRefOr(pObj.getJSONObject("schema"), Parse::parseSchema);
 		}
 		p.example = optVal(pObj, "example");
 		if (pObj.has("examples")) {
-			p.examples = parseTypedExampleMap(pObj.getJSONObject("examples"));
+			p.examples = parseRefOrMap(pObj.getJSONObject("examples"), Parse::parseExample);
 		}
 		if (pObj.has("content")) {
 			p.content = parseMediaTypeMap(pObj.getJSONObject("content"));
@@ -817,11 +975,11 @@ public class Parse {
 		h.enumValues = optObjList(hObj, "enum");
 		h.multipleOf = optNum(hObj, "multipleOf");
 		if (hObj.has("schema")) {
-			h.schema = parseSchema(hObj.getJSONObject("schema"));
+			h.schema = parseRefOr(hObj.getJSONObject("schema"), Parse::parseSchema);
 		}
 		h.example = optVal(hObj, "example");
 		if (hObj.has("examples")) {
-			h.examples = parseExampleObjMap(hObj.getJSONObject("examples"));
+			h.examples = parseRefOrMap(hObj.getJSONObject("examples"), Parse::parseExample);
 		}
 		if (hObj.has("content")) {
 			h.content = parseMediaTypeMap(hObj.getJSONObject("content"));
@@ -916,10 +1074,6 @@ public class Parse {
 		for (String k : cbObj.keySet()) {
 			if (k.startsWith("x-")) {
 				cb.extensions.put(k, unwrapJson(cbObj.get(k)));
-			} else if ("$ref".equals(k)) {
-				PathItem refPi = new PathItem();
-				refPi.ref = cbObj.getString(k);
-				cb.pathItems.put(k, refPi);
 			} else {
 				cb.pathItems.put(k, parsePathItem(cbObj.getJSONObject(k)));
 			}
@@ -1016,41 +1170,41 @@ public class Parse {
 	private static Components parseComponents(JSONObject compObj) {
 		Components comp = new Components();
 		if (compObj.has("schemas")) {
-			comp.schemas = parseSchemaMap(compObj.getJSONObject("schemas"));
+			comp.schemas = parseRefOrMap(compObj.getJSONObject("schemas"), Parse::parseSchema);
 		}
 		if (compObj.has("responses")) {
-			comp.responses = new HashMap<>(parseTypedResponseMap(compObj.getJSONObject("responses")));
+			comp.responses = parseRefOrMap(compObj.getJSONObject("responses"), Parse::parseResponse);
 		}
 		if (compObj.has("parameters")) {
-			comp.parameters = new HashMap<>(parseTypedParameterMap(compObj.getJSONObject("parameters")));
+			comp.parameters = parseRefOrMap(compObj.getJSONObject("parameters"), Parse::parseParameter);
 		}
 		if (compObj.has("examples")) {
-			comp.examples = parseExampleObjMap(compObj.getJSONObject("examples"));
+			comp.examples = parseRefOrMap(compObj.getJSONObject("examples"), Parse::parseExample);
 		}
 		if (compObj.has("requestBodies")) {
-			comp.requestBodies = new HashMap<>();
-			JSONObject rbMap = compObj.getJSONObject("requestBodies");
-			for (String k : rbMap.keySet()) {
-				comp.requestBodies.put(k, parseRequestBody(rbMap.getJSONObject(k)));
-			}
+			comp.requestBodies = parseRefOrMap(compObj.getJSONObject("requestBodies"), Parse::parseRequestBody);
 		}
 		if (compObj.has("headers")) {
-			comp.headers = parseHeaderObjMap(compObj.getJSONObject("headers"));
+			comp.headers = parseRefOrMap(compObj.getJSONObject("headers"), Parse::parseHeader);
 		}
 		if (compObj.has("securitySchemes")) {
-			comp.securitySchemes = new HashMap<>(parseTypedSecuritySchemeMap(compObj.getJSONObject("securitySchemes")));
+			comp.securitySchemes = parseRefOrMap(compObj.getJSONObject("securitySchemes"), Parse::parseSecurityScheme);
 		}
 		if (compObj.has("links")) {
-			comp.links = new HashMap<>(parseTypedLinkMap(compObj.getJSONObject("links")));
+			comp.links = parseRefOrMap(compObj.getJSONObject("links"), Parse::parseLink);
 		}
 		if (compObj.has("callbacks")) {
-			comp.callbacks = parseCallbackMap(compObj.getJSONObject("callbacks"));
+			comp.callbacks = parseRefOrMap(compObj.getJSONObject("callbacks"), Parse::parseCallback);
 		}
 		if (compObj.has("pathItems")) {
-			comp.pathItems = parsePathItemMap(compObj.getJSONObject("pathItems"));
+			JSONObject piMapObj = compObj.getJSONObject("pathItems");
+			comp.pathItems = new HashMap<>();
+			for (String piKey : piMapObj.keySet()) {
+				comp.pathItems.put(piKey, ReferenceOr.ofValue(parsePathItem(piMapObj.getJSONObject(piKey))));
+			}
 		}
 		if (compObj.has("mediaTypes")) {
-			comp.mediaTypes = new HashMap<>(parseMediaTypeMap(compObj.getJSONObject("mediaTypes")));
+			comp.mediaTypes = parseRefOrMap(compObj.getJSONObject("mediaTypes"), Parse::parseMediaType);
 		}
 		copyExtensions(compObj, comp.extensions);
 		return comp;
@@ -1069,36 +1223,6 @@ public class Parse {
 			map.put(sKey, parseSchema(schemasObj.getJSONObject(sKey)));
 		}
 		return map;
-	}
-
-	/**
-	 * Parses a map of {@link Schema} objects stored in an Object-valued map.
-	 *
-	 * @param schemasObj
-	 *            The JSON object.
-	 * @return The parsed map.
-	 */
-	private static Map<String, Object> parseSchemaObjMap(JSONObject schemasObj) {
-		Map<String, Object> map = new HashMap<>();
-		for (String sKey : schemasObj.keySet()) {
-			map.put(sKey, parseSchema(schemasObj.getJSONObject(sKey)));
-		}
-		return map;
-	}
-
-	/**
-	 * Parses a list of {@link Schema} objects stored in an Object-valued list.
-	 *
-	 * @param arr
-	 *            The JSON array.
-	 * @return The parsed list.
-	 */
-	private static List<Object> parseSchemaObjList(JSONArray arr) {
-		List<Object> list = new ArrayList<>();
-		for (int i = 0; i < arr.length(); i++) {
-			list.add(parseSchema(arr.getJSONObject(i)));
-		}
-		return list;
 	}
 
 	/**
@@ -1147,86 +1271,6 @@ public class Parse {
 	}
 
 	/**
-	 * Parses a map of {@link Example} objects from JSON.
-	 *
-	 * @param obj
-	 *            The JSON object.
-	 * @return The parsed example map.
-	 */
-	private static Map<String, Example> parseTypedExampleMap(JSONObject obj) {
-		Map<String, Example> map = new HashMap<>();
-		for (String k : obj.keySet()) {
-			map.put(k, parseExample(obj.getJSONObject(k)));
-		}
-		return map;
-	}
-
-	/**
-	 * Parses a map of {@link Example} objects into an Object-valued map.
-	 *
-	 * @param obj
-	 *            The JSON object.
-	 * @return The parsed example map.
-	 */
-	private static Map<String, Object> parseExampleObjMap(JSONObject obj) {
-		Map<String, Object> map = new HashMap<>();
-		for (String k : obj.keySet()) {
-			Object raw = obj.get(k);
-			if (raw instanceof JSONObject) {
-				map.put(k, parseExample((JSONObject) raw));
-			} else {
-				map.put(k, unwrapJson(raw));
-			}
-		}
-		return map;
-	}
-
-	/**
-	 * Parses a map of {@link Header} objects into an Object-valued map.
-	 *
-	 * @param obj
-	 *            The JSON object.
-	 * @return The parsed header map.
-	 */
-	private static Map<String, Object> parseHeaderObjMap(JSONObject obj) {
-		Map<String, Object> map = new HashMap<>();
-		for (String k : obj.keySet()) {
-			map.put(k, parseHeader(obj.getJSONObject(k)));
-		}
-		return map;
-	}
-
-	/**
-	 * Parses a map of {@link Link} objects from JSON.
-	 *
-	 * @param obj
-	 *            The JSON object.
-	 * @return The parsed link map.
-	 */
-	private static Map<String, Link> parseTypedLinkMap(JSONObject obj) {
-		Map<String, Link> map = new HashMap<>();
-		for (String k : obj.keySet()) {
-			map.put(k, parseLink(obj.getJSONObject(k)));
-		}
-		return map;
-	}
-
-	/**
-	 * Parses a map of {@link Callback} objects into an Object-valued map.
-	 *
-	 * @param obj
-	 *            The JSON object.
-	 * @return The parsed callback map.
-	 */
-	private static Map<String, Object> parseCallbackMap(JSONObject obj) {
-		Map<String, Object> map = new HashMap<>();
-		for (String k : obj.keySet()) {
-			map.put(k, parseCallback(obj.getJSONObject(k)));
-		}
-		return map;
-	}
-
-	/**
 	 * Parses a JSON object into an OpenAPI {@link Schema} instance.
 	 *
 	 * @param sObj
@@ -1238,16 +1282,20 @@ public class Parse {
 		s.$ref = optStr(sObj, "$ref");
 		if (!sObj.isNull("type")) {
 			Object tRaw = sObj.get("type");
-			s.type = tRaw instanceof JSONArray ? ((JSONArray) tRaw).toList() : sObj.getString("type");
+			if (tRaw instanceof JSONArray) {
+				s.type = SchemaType.ofMultiple(optStrList(sObj, "type"));
+			} else {
+				s.type = SchemaType.ofSingle(sObj.getString("type"));
+			}
 		}
 		s.title = optStr(sObj, "title");
 		s.format = optStr(sObj, "format");
 		s.description = optStr(sObj, "description");
 		s.multipleOf = optNum(sObj, "multipleOf");
 		s.maximum = optNum(sObj, "maximum");
-		s.exclusiveMaximum = optNum(sObj, "exclusiveMaximum");
+		s.exclusiveMaximum = optExclusiveBound(sObj, "exclusiveMaximum");
 		s.minimum = optNum(sObj, "minimum");
-		s.exclusiveMinimum = optNum(sObj, "exclusiveMinimum");
+		s.exclusiveMinimum = optExclusiveBound(sObj, "exclusiveMinimum");
 		s.maxLength = optInt(sObj, "maxLength");
 		s.minLength = optInt(sObj, "minLength");
 		s.pattern = optStr(sObj, "pattern");
@@ -1257,32 +1305,29 @@ public class Parse {
 		s.maxProperties = optInt(sObj, "maxProperties");
 		s.minProperties = optInt(sObj, "minProperties");
 		s.required = optStrList(sObj, "required");
-		s.enumValues = optObjList(sObj, "enum");
+		s.enumValues = optPayloadValList(sObj, "enum");
 		if (sObj.has("allOf"))
-			s.allOf = parseSchemaObjList(sObj.getJSONArray("allOf"));
+			s.allOf = parseRefOrList(sObj.getJSONArray("allOf"), Parse::parseSchema);
 		if (sObj.has("anyOf"))
-			s.anyOf = parseSchemaObjList(sObj.getJSONArray("anyOf"));
+			s.anyOf = parseRefOrList(sObj.getJSONArray("anyOf"), Parse::parseSchema);
 		if (sObj.has("oneOf"))
-			s.oneOf = parseSchemaObjList(sObj.getJSONArray("oneOf"));
+			s.oneOf = parseRefOrList(sObj.getJSONArray("oneOf"), Parse::parseSchema);
 		if (sObj.has("not"))
-			s.not = parseSchema(sObj.getJSONObject("not"));
+			s.not = parseRefOr(sObj.getJSONObject("not"), Parse::parseSchema);
 		if (sObj.has("items")) {
-			s.items = parseSchema(sObj.getJSONObject("items"));
+			s.items = parseRefOr(sObj.getJSONObject("items"), Parse::parseSchema);
 		}
 		if (sObj.has("properties")) {
-			s.properties = parseSchemaObjMap(sObj.getJSONObject("properties"));
+			s.properties = parseRefOrMap(sObj.getJSONObject("properties"), Parse::parseSchema);
 		}
-		if (!sObj.isNull("additionalProperties")) {
-			Object apRaw = sObj.get("additionalProperties");
-			s.additionalProperties = apRaw instanceof JSONObject ? parseSchema((JSONObject) apRaw) : unwrapJson(apRaw);
-		}
-		s.defaultValue = optVal(sObj, "default");
-		s.constValue = optVal(sObj, "const");
+		s.additionalProperties = optAdditionalProperties(sObj, "additionalProperties");
+		s.defaultValue = optPayloadVal(sObj, "default");
+		s.constValue = optPayloadVal(sObj, "const");
 		s.readOnly = optBool(sObj, "readOnly");
 		s.writeOnly = optBool(sObj, "writeOnly");
 		s.deprecated = optBool(sObj, "deprecated");
-		s.example = optVal(sObj, "example");
-		s.examples = optObjList(sObj, "examples");
+		s.example = optPayloadVal(sObj, "example");
+		s.examples = optPayloadValList(sObj, "examples");
 		if (sObj.has("externalDocs")) {
 			s.externalDocs = parseExternalDocs(sObj.getJSONObject("externalDocs"));
 		}
@@ -1321,7 +1366,7 @@ public class Parse {
 			}
 		}
 		if (sObj.has("$defs")) {
-			s.defs = parseSchemaObjMap(sObj.getJSONObject("$defs"));
+			s.defs = parseRefOrMap(sObj.getJSONObject("$defs"), Parse::parseSchema);
 		}
 		if (sObj.has("dependentRequired")) {
 			s.dependentRequired = new HashMap<>();
@@ -1331,27 +1376,21 @@ public class Parse {
 			}
 		}
 		if (sObj.has("dependentSchemas")) {
-			s.dependentSchemas = parseSchemaObjMap(sObj.getJSONObject("dependentSchemas"));
+			s.dependentSchemas = parseRefOrMap(sObj.getJSONObject("dependentSchemas"), Parse::parseSchema);
 		}
 		if (sObj.has("propertyNames")) {
-			s.propertyNames = parseSchema(sObj.getJSONObject("propertyNames"));
+			s.propertyNames = parseRefOr(sObj.getJSONObject("propertyNames"), Parse::parseSchema);
 		}
 		if (sObj.has("patternProperties")) {
-			s.patternProperties = parseSchemaObjMap(sObj.getJSONObject("patternProperties"));
+			s.patternProperties = parseRefOrMap(sObj.getJSONObject("patternProperties"), Parse::parseSchema);
 		}
-		if (!sObj.isNull("unevaluatedProperties")) {
-			Object upRaw = sObj.get("unevaluatedProperties");
-			s.unevaluatedProperties = upRaw instanceof JSONObject ? parseSchema((JSONObject) upRaw) : unwrapJson(upRaw);
-		}
-		if (!sObj.isNull("unevaluatedItems")) {
-			Object uiRaw = sObj.get("unevaluatedItems");
-			s.unevaluatedItems = uiRaw instanceof JSONObject ? parseSchema((JSONObject) uiRaw) : unwrapJson(uiRaw);
-		}
+		s.unevaluatedProperties = optAdditionalProperties(sObj, "unevaluatedProperties");
+		s.unevaluatedItems = optAdditionalProperties(sObj, "unevaluatedItems");
 		if (sObj.has("prefixItems")) {
-			s.prefixItems = parseSchemaObjList(sObj.getJSONArray("prefixItems"));
+			s.prefixItems = parseRefOrList(sObj.getJSONArray("prefixItems"), Parse::parseSchema);
 		}
 		if (sObj.has("contains")) {
-			s.contains = parseSchema(sObj.getJSONObject("contains"));
+			s.contains = parseRefOr(sObj.getJSONObject("contains"), Parse::parseSchema);
 		}
 		s.minContains = optInt(sObj, "minContains");
 		s.maxContains = optInt(sObj, "maxContains");

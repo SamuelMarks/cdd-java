@@ -1,7 +1,6 @@
 package openapi;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -17,57 +16,57 @@ public class Components {
 	/**
 	 * The schemas property.
 	 */
-	public Map<String, Schema> schemas;
+	public Map<String, ReferenceOr<Schema>> schemas;
 
 	/**
 	 * The responses property.
 	 */
-	public Map<String, Object> responses;
+	public Map<String, ReferenceOr<Response>> responses;
 
 	/**
 	 * The parameters property.
 	 */
-	public Map<String, Object> parameters;
+	public Map<String, ReferenceOr<Parameter>> parameters;
 
 	/**
 	 * The examples property.
 	 */
-	public Map<String, Object> examples;
+	public Map<String, ReferenceOr<Example>> examples;
 
 	/**
 	 * The requestBodies property.
 	 */
-	public Map<String, Object> requestBodies;
+	public Map<String, ReferenceOr<RequestBody>> requestBodies;
 
 	/**
 	 * The headers property.
 	 */
-	public Map<String, Object> headers;
+	public Map<String, ReferenceOr<Header>> headers;
 
 	/**
 	 * The securitySchemes property.
 	 */
-	public Map<String, Object> securitySchemes;
+	public Map<String, ReferenceOr<SecurityScheme>> securitySchemes;
 
 	/**
 	 * The links property.
 	 */
-	public Map<String, Object> links;
+	public Map<String, ReferenceOr<Link>> links;
 
 	/**
 	 * The callbacks property.
 	 */
-	public Map<String, Object> callbacks;
+	public Map<String, ReferenceOr<Callback>> callbacks;
 
 	/**
 	 * The pathItems property.
 	 */
-	public Map<String, PathItem> pathItems;
+	public Map<String, ReferenceOr<PathItem>> pathItems;
 
 	/**
 	 * The mediaTypes property.
 	 */
-	public Map<String, Object> mediaTypes;
+	public Map<String, ReferenceOr<MediaType>> mediaTypes;
 
 	/**
 	 * Extensions.
@@ -97,15 +96,32 @@ public class Components {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(schemas, responses, parameters, examples, requestBodies, headers,
+				securitySchemes, links, callbacks, pathItems, mediaTypes, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Components)) {
+			return false;
+		}
+		return fieldValues().equals(((Components) o).fieldValues());
 	}
 
 	/**
@@ -115,7 +131,7 @@ public class Components {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -125,6 +141,6 @@ public class Components {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Components" + fieldValues();
 	}
 }

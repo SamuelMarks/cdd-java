@@ -17,12 +17,12 @@ public class MediaType {
 	/**
 	 * The schema property.
 	 */
-	public Object schema;
+	public ReferenceOr<Schema> schema;
 
 	/**
 	 * The itemSchema property.
 	 */
-	public Object itemSchema;
+	public ReferenceOr<Schema> itemSchema;
 
 	/**
 	 * The example property.
@@ -32,7 +32,7 @@ public class MediaType {
 	/**
 	 * The examples property.
 	 */
-	public Map<String, Object> examples;
+	public Map<String, ReferenceOr<Example>> examples;
 
 	/**
 	 * The encoding property.
@@ -77,15 +77,32 @@ public class MediaType {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(schema, itemSchema, example, examples, encoding, prefixEncoding, itemEncoding,
+				extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof MediaType)) {
+			return false;
+		}
+		return fieldValues().equals(((MediaType) o).fieldValues());
 	}
 
 	/**
@@ -95,7 +112,7 @@ public class MediaType {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -105,6 +122,6 @@ public class MediaType {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "MediaType" + fieldValues();
 	}
 }

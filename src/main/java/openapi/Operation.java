@@ -58,12 +58,12 @@ public class Operation {
 	/**
 	 * The parameters property.
 	 */
-	public List<Object> parameters;
+	public List<ReferenceOr<Parameter>> parameters;
 
 	/**
 	 * The requestBody property.
 	 */
-	public Object requestBody;
+	public ReferenceOr<RequestBody> requestBody;
 
 	/**
 	 * The responses property.
@@ -73,7 +73,7 @@ public class Operation {
 	/**
 	 * The callbacks property.
 	 */
-	public Map<String, Object> callbacks;
+	public Map<String, ReferenceOr<Callback>> callbacks;
 
 	/**
 	 * The deprecated property.
@@ -118,15 +118,32 @@ public class Operation {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(tags, summary, description, consumes, produces, schemes, externalDocs,
+				operationId, parameters, requestBody, responses, callbacks, deprecated, security, servers, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Operation)) {
+			return false;
+		}
+		return fieldValues().equals(((Operation) o).fieldValues());
 	}
 
 	/**
@@ -136,7 +153,7 @@ public class Operation {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -146,6 +163,6 @@ public class Operation {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Operation" + fieldValues();
 	}
 }

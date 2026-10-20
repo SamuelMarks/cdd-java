@@ -1,17 +1,24 @@
-import org.junit.Test;
 import static org.junit.Assert.*;
+
 import openapi.OpenAPI;
+import org.junit.Test;
 
 /**
  * Fuzz and boundary tests for {@link routes.Parse} and {@link cli.Parse} on
  * valid and malformed input strings.
  */
 public class StringFuzzTest {
+	/**
+	 * Default constructor.
+	 */
+	public StringFuzzTest() {
+	}
 
 	/**
 	 * Verifies that {@link routes.Parse#parse(String)} cleanly handles both valid
 	 * HTTP client route snippets and arbitrary/malformed Java snippets without
-	 * throwing exceptions, always returning a valid {@link OpenAPI} model.
+	 * throwing exceptions, and accurately extracts Info, License, Contact, and
+	 * OpenAPI version metadata.
 	 */
 	@Test
 	public void fuzzRoutes() {
@@ -50,6 +57,19 @@ public class StringFuzzTest {
 			OpenAPI api = routes.Parse.parse(input);
 			assertNotNull("Expected non-null OpenAPI for input: " + input, api);
 			assertNotNull("Expected non-null paths for input: " + input, api.paths);
+			if (input.contains("@licenseName MIT")) {
+				assertEquals("MIT", api.info.license.name);
+				assertEquals("MIT", api.info.license.identifier);
+			}
+			if (input.contains("@openapiVersion 3.2.0")) {
+				assertEquals("3.2.0", api.openapi);
+				assertEquals("https://example.com/openapi.json", api.$self);
+			}
+			if (input.contains("@contactName Support")) {
+				assertEquals("Support", api.info.contact.name);
+				assertEquals("support@example.com", api.info.contact.email);
+				assertEquals("https://example.com/tos", api.info.termsOfService);
+			}
 		}
 	}
 

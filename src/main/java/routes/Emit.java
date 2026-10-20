@@ -52,16 +52,7 @@ public class Emit {
 			sb.append("import java.io.IOException;\n");
 			sb.append("import java.net.URLEncoder;\n");
 			sb.append("import java.nio.charset.StandardCharsets;\n\n");
-			StringBuilder classDoc = new StringBuilder();
-			classDoc.append("/**\n * Auto-generated client for ").append(title).append(".\n");
-			if (model.openapi != null)
-				classDoc.append(" * @openapiVersion ").append(model.openapi).append("\n");
-			if (model.$self != null)
-				classDoc.append(" * @openapiSelf ").append(model.$self).append("\n");
-			if (model.jsonSchemaDialect != null)
-				classDoc.append(" * @jsonSchemaDialect ").append(model.jsonSchemaDialect).append("\n");
-			classDoc.append(" */\n");
-			sb.append(classDoc.toString());
+			sb.append(RouteJavadocEmitter.buildClassJavadoc(title, model));
 			sb.append("public class ").append(title).append("Client {\n");
 			sb.append("    private final HttpClient httpClient;\n");
 			sb.append("    private final String baseUrl;\n\n");
@@ -195,10 +186,10 @@ public class Emit {
 				first = false;
 			}
 			if (item.parameters != null) {
-				for (Object o : item.parameters) {
+				for (openapi.ReferenceOr<Parameter> o : item.parameters) {
 					if (!first)
 						sb.append(", ");
-					String pName = ((Parameter) o).name;
+					String pName = o.value.name;
 					if (!isNonEmpty(pName))
 						pName = "param";
 					sb.append("String ").append(pName.replaceAll("[^a-zA-Z0-9_]", ""));
@@ -248,8 +239,8 @@ public class Emit {
 		sb.append("    if (\"").append(tName).append("\".equals(toolName)) { ").append(methodName).append("(");
 		boolean first = true;
 		if (op.parameters != null) {
-			for (Object pObj : op.parameters) {
-				Parameter p = (Parameter) pObj;
+			for (openapi.ReferenceOr<Parameter> pObj : op.parameters) {
+				Parameter p = pObj.value;
 				if (p.name == null || p.name.replaceAll("[^a-zA-Z0-9_]", "").isEmpty())
 					continue;
 				if (!first)
@@ -300,19 +291,18 @@ public class Emit {
 	 * @param callbacks
 	 *            The map of callback names to {@link openapi.Callback} definitions.
 	 */
-	private static void emitCallbacksToAST(ClassOrInterfaceDeclaration classDecl, Map<String, Object> callbacks) {
-		for (Map.Entry<String, Object> cbEntry : callbacks.entrySet()) {
-			openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
+	private static void emitCallbacksToAST(ClassOrInterfaceDeclaration classDecl,
+			Map<String, openapi.ReferenceOr<openapi.Callback>> callbacks) {
+		for (Map.Entry<String, openapi.ReferenceOr<openapi.Callback>> cbEntry : callbacks.entrySet()) {
+			openapi.Callback cb = cbEntry.getValue().value;
 			String safeName = cbEntry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			String interfaceName = safeName + "CallbackHandler";
 
 			if (!hasMember(classDecl, interfaceName)) {
 				StringBuilder sb = new StringBuilder();
 				sb.append("public interface ").append(interfaceName).append(" {\n");
-				if (cb.pathItems != null) {
-					for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
-						appendOnPostMethod(sb, piEntry.getValue());
-					}
+				for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
+					appendOnPostMethod(sb, piEntry.getValue());
 				}
 				sb.append("}\n");
 				classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
@@ -369,13 +359,13 @@ public class Emit {
 
 		java.util.List<Parameter> allParams = new java.util.ArrayList<>();
 		if (item.parameters != null) {
-			for (Object po : item.parameters) {
-				allParams.add((Parameter) po);
+			for (openapi.ReferenceOr<Parameter> po : item.parameters) {
+				allParams.add(po.value);
 			}
 		}
 		if (op.parameters != null) {
-			for (Object po : op.parameters) {
-				Parameter p = (Parameter) po;
+			for (openapi.ReferenceOr<Parameter> po : op.parameters) {
+				Parameter p = po.value;
 				boolean exists = false;
 				for (Parameter e : allParams) {
 					if (java.util.Objects.equals(e.name, p.name) && java.util.Objects.equals(e.in, p.in)) {
@@ -393,9 +383,10 @@ public class Emit {
 			for (openapi.SecurityRequirement req : secReqs) {
 				if (req.requirements != null) {
 					for (String secName : req.requirements.keySet()) {
-						Object schemeObj = model.components.securitySchemes.get(secName);
-						if (schemeObj instanceof openapi.SecurityScheme) {
-							openapi.SecurityScheme scheme = (openapi.SecurityScheme) schemeObj;
+						openapi.ReferenceOr<openapi.SecurityScheme> schemeRefOr = model.components.securitySchemes
+								.get(secName);
+						if (schemeRefOr != null) {
+							openapi.SecurityScheme scheme = schemeRefOr.value;
 							if ("apiKey".equals(scheme.type) && scheme.name != null && scheme.in != null) {
 								addSecurityParamIfAbsent(allParams, scheme.name, scheme.in,
 										"Security credential for " + secName);
@@ -443,63 +434,7 @@ public class Emit {
 			docBuilder.append(" * @param requestBody The request body payload\n");
 		}
 
-		if (op.callbacks != null && !op.callbacks.isEmpty()) {
-			for (Map.Entry<String, Object> cbEntry : op.callbacks.entrySet()) {
-				openapi.Callback cb = (openapi.Callback) cbEntry.getValue();
-				if (cb.pathItems != null) {
-					for (Map.Entry<String, PathItem> piEntry : cb.pathItems.entrySet()) {
-						String method = "POST";
-						if (item.get != null)
-							method = "GET";
-						else if (item.put != null)
-							method = "PUT";
-						else if (item.delete != null)
-							method = "DELETE";
-						else if (item.patch != null)
-							method = "PATCH";
-						else if (item.query != null)
-							method = "QUERY";
-						docBuilder.append(" * @callback ").append(cbEntry.getKey()).append(" ").append(piEntry.getKey())
-								.append(" ").append(method).append("\n");
-					}
-				}
-			}
-		}
-
-		if (isNonEmpty(item.ref)) {
-			docBuilder.append(" * @pathRef ").append(path).append(" ").append(item.ref).append("\n");
-		}
-		if (isNonEmpty(item.summary)) {
-			docBuilder.append(" * @pathSummary ").append(path).append(" ").append(item.summary.replace("\n", " "))
-					.append("\n");
-		}
-		if (isNonEmpty(item.description)) {
-			docBuilder.append(" * @pathDescription ").append(path).append(" ")
-					.append(item.description.replace("\n", " ")).append("\n");
-		}
-
-		if (op.requestBody instanceof openapi.RequestBody) {
-			openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
-			appendMediaTypeJavadocTags(docBuilder, "requestBody", "", rb.content);
-		}
-
-		if (op.responses != null && op.responses.statusCodes != null) {
-			for (java.util.Map.Entry<String, Object> rEntry : op.responses.statusCodes.entrySet()) {
-				String statusCode = rEntry.getKey();
-				openapi.Response r = (openapi.Response) rEntry.getValue();
-				appendMediaTypeJavadocTags(docBuilder, "response", statusCode + " ", r.content);
-			}
-		}
-
-		if (op.responses != null && op.responses.defaultResponse instanceof openapi.Response) {
-			openapi.Response r = (openapi.Response) op.responses.defaultResponse;
-			appendMediaTypeJavadocTags(docBuilder, "response", "default ", r.content);
-		}
-
-		docBuilder.append(" * @return HttpResponse\n");
-		docBuilder.append(" * @throws IOException on error\n");
-		docBuilder.append(" * @throws InterruptedException on error\n");
-		docBuilder.append(" */\n");
+		RouteJavadocEmitter.appendOperationJavadocTags(docBuilder, path, op, item);
 
 		StringBuilder sb = new StringBuilder();
 		sb.append(docBuilder.toString());
@@ -556,101 +491,6 @@ public class Emit {
 		sb.append("}\n");
 
 		classDecl.addMember(StaticJavaParser.parseBodyDeclaration(sb.toString()));
-	}
-
-	/**
-	 * Appends Javadoc tags describing a map of {@link openapi.MediaType} entries
-	 * for either a request body or a response.
-	 *
-	 * @param docBuilder
-	 *            The target Javadoc {@link StringBuilder}.
-	 * @param tagPrefix
-	 *            Either {@code "requestBody"} or {@code "response"}.
-	 * @param statusPrefix
-	 *            Empty string for request bodies, or {@code "<statusCode> "} for
-	 *            responses.
-	 * @param contentMap
-	 *            The media type map to serialize into Javadoc tags.
-	 */
-	@SuppressWarnings("unchecked")
-	private static void appendMediaTypeJavadocTags(StringBuilder docBuilder, String tagPrefix, String statusPrefix,
-			Map<String, openapi.MediaType> contentMap) {
-		if (contentMap == null) {
-			return;
-		}
-		for (java.util.Map.Entry<String, openapi.MediaType> mEntry : contentMap.entrySet()) {
-			String mtStr = mEntry.getKey();
-			openapi.MediaType mt = mEntry.getValue();
-			docBuilder.append(" * @").append(tagPrefix).append("Content ").append(statusPrefix).append(mtStr)
-					.append("\n");
-			if (mt.schema instanceof java.util.Map) {
-				java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.schema;
-				if (schMap.containsKey("type")) {
-					docBuilder.append(" * @").append(tagPrefix).append("ContentSchema ").append(statusPrefix)
-							.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
-				}
-			}
-			if (mt.itemSchema instanceof java.util.Map) {
-				java.util.Map<String, Object> schMap = (java.util.Map<String, Object>) mt.itemSchema;
-				if (schMap.containsKey("type")) {
-					docBuilder.append(" * @").append(tagPrefix).append("ContentItemSchema ").append(statusPrefix)
-							.append(mtStr).append(" ").append(schMap.get("type")).append("\n");
-				}
-			}
-			if (mt.prefixEncoding != null) {
-				for (openapi.Encoding enc : mt.prefixEncoding) {
-					if (enc.contentType != null) {
-						docBuilder.append(" * @").append(tagPrefix).append("ContentPrefixEncoding ")
-								.append(statusPrefix).append(mtStr).append(" ").append(enc.contentType).append("\n");
-					}
-				}
-			}
-			if (mt.itemEncoding != null && mt.itemEncoding.contentType != null) {
-				docBuilder.append(" * @").append(tagPrefix).append("ContentItemEncoding ").append(statusPrefix)
-						.append(mtStr).append(" ").append(mt.itemEncoding.contentType).append("\n");
-			}
-			if (mt.encoding != null) {
-				for (java.util.Map.Entry<String, openapi.Encoding> encEntry : mt.encoding.entrySet()) {
-					String encKey = encEntry.getKey();
-					openapi.Encoding enc = encEntry.getValue();
-					if (enc.contentType != null) {
-						docBuilder.append(" * @").append(tagPrefix).append("Encoding ").append(statusPrefix)
-								.append(mtStr).append(" ").append(encKey).append(" ").append(enc.contentType)
-								.append("\n");
-					}
-					if (enc.prefixEncoding != null) {
-						for (openapi.Encoding pEnc : enc.prefixEncoding) {
-							if (pEnc.contentType != null) {
-								docBuilder.append(" * @").append(tagPrefix).append("EncodingPrefixEncoding ")
-										.append(statusPrefix).append(mtStr).append(" ").append(encKey).append(" ")
-										.append(pEnc.contentType).append("\n");
-							}
-						}
-					}
-					if (enc.itemEncoding != null && enc.itemEncoding.contentType != null) {
-						docBuilder.append(" * @").append(tagPrefix).append("EncodingItemEncoding ").append(statusPrefix)
-								.append(mtStr).append(" ").append(encKey).append(" ")
-								.append(enc.itemEncoding.contentType).append("\n");
-					}
-				}
-			}
-			if (mt.example != null) {
-				docBuilder.append(" * @").append(tagPrefix).append("ContentExample ").append(statusPrefix).append(mtStr)
-						.append(" ").append(mt.example).append("\n");
-			}
-			if (mt.examples != null) {
-				for (java.util.Map.Entry<String, Object> exEntry : mt.examples.entrySet()) {
-					openapi.Example ex = (openapi.Example) exEntry.getValue();
-					String exValue = ex.value != null ? ex.value.toString() : "";
-					String exSummary = ex.summary != null ? ex.summary : "";
-					String exDesc = ex.description != null ? ex.description : "";
-					docBuilder.append(" * @").append(tagPrefix).append("ContentExamples ").append(statusPrefix)
-							.append(mtStr).append(" ").append(exEntry.getKey()).append(" ")
-							.append(exSummary.replace(" ", "_")).append("|").append(exDesc.replace(" ", "_"))
-							.append("|").append(exValue).append("\n");
-				}
-			}
-		}
 	}
 
 	/**
@@ -773,14 +613,14 @@ public class Emit {
 		body.append("    java.util.Map<String, Object> properties = new java.util.HashMap<>();\n");
 		body.append("    java.util.List<String> required = new java.util.ArrayList<>();\n");
 		if (op.parameters != null) {
-			for (Object pObj : op.parameters) {
-				openapi.Parameter p = (openapi.Parameter) pObj;
+			for (openapi.ReferenceOr<Parameter> pObj : op.parameters) {
+				openapi.Parameter p = pObj.value;
 				appendMcpProperty(body, p.name, p.description, p.required);
 			}
 		}
 		if (op.requestBody != null) {
-			openapi.RequestBody rb = (openapi.RequestBody) op.requestBody;
-			appendMcpProperty(body, "requestBody", rb.description, rb.required);
+			openapi.RequestBody rb = op.requestBody.value;
+			appendMcpProperty(body, "requestBody", rb != null ? rb.description : null, rb != null ? rb.required : null);
 		}
 		body.append("    inputSchema.put(\"properties\", properties);\n");
 		body.append("    inputSchema.put(\"required\", required);\n");
@@ -842,18 +682,13 @@ public class Emit {
 				.append("(");
 		boolean first = true;
 		if (op.parameters != null) {
-			int pIdx = 0;
-			for (Object po : op.parameters) {
-				openapi.Parameter p = (openapi.Parameter) po;
-				String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
-				if (pName.isEmpty())
-					pName = "param";
+			for (openapi.ReferenceOr<Parameter> po : op.parameters) {
+				openapi.Parameter p = po.value;
 				if (!first)
 					body.append(", ");
 				body.append("arguments.get(\"").append(p.name).append("\") != null ? arguments.get(\"").append(p.name)
 						.append("\").toString() : null");
 				first = false;
-				pIdx++;
 			}
 		}
 		boolean hasBody = (op.requestBody != null);
@@ -897,11 +732,9 @@ public class Emit {
 		String resolvedPath = path;
 		if (op.parameters != null) {
 			int pIdx = 0;
-			for (Object po : op.parameters) {
-				openapi.Parameter p = (openapi.Parameter) po;
+			for (openapi.ReferenceOr<Parameter> po : op.parameters) {
+				openapi.Parameter p = po.value;
 				String pName = p.name != null ? p.name.replaceAll("[^a-zA-Z0-9_]", "") : ("p" + pIdx);
-				if (pName.isEmpty())
-					pName = "param";
 				md.addParameter("String", pName);
 				if ("path".equals(p.in)) {
 					resolvedPath = resolvedPath.replace("{" + p.name + "}", "\" + " + pName + " + \"");

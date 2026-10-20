@@ -33,11 +33,11 @@ public class Emit {
 
 		// Model Tests
 		if (model.components != null && model.components.schemas != null) {
-			for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 				String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 				if (className.equals("Emit") || className.equals("Parse"))
 					continue;
-				if (entry.getValue().enumValues != null)
+				if (entry.getValue().value.enumValues != null)
 					continue;
 
 				CompilationUnit cu = new CompilationUnit();
@@ -77,6 +77,7 @@ public class Emit {
 				cu.setPackageDeclaration("routes");
 				cu.addImport("org.junit.Test");
 				cu.addImport("static org.junit.Assert.*");
+				cu.addImport("io.javalin.Javalin");
 				cu.addImport("mocks.*");
 
 				ClassOrInterfaceDeclaration testClass = cu.addClass(className + "Test")
@@ -85,9 +86,10 @@ public class Emit {
 
 				MethodDeclaration md = testClass.addMethod("testWiring", Modifier.Keyword.PUBLIC);
 				md.addAnnotation("Test");
-				md.setJavadocComment("Test DAO factory wiring and composability.");
-				md.setBody(StaticJavaParser
-						.parseBlock("{ DaoFactory factory = new DaoFactory(); assertNotNull(factory); }"));
+				md.setJavadocComment("Test DAO factory wiring and Javalin route registration.");
+				md.setBody(StaticJavaParser.parseBlock("{ DaoFactory factory = new DaoFactory(); "
+						+ "assertNotNull(factory); " + "Javalin app = Javalin.create(); " + className
+						+ ".register(app, factory); " + "assertNotNull(app); }"));
 
 				files.put("routes/" + className + "Test.java", cu.toString());
 			}

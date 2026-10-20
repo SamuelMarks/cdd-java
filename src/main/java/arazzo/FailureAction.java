@@ -3,7 +3,6 @@ package arazzo;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import openapi.TypeMapper;
 
 /**
  * Arazzo Failure Action Object defining error handling, retry policies, and
@@ -90,15 +89,32 @@ public class FailureAction {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(name, type, workflowId, stepId, parameters, retryAfter, retryLimit, criteria,
+				extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof FailureAction)) {
+			return false;
+		}
+		return fieldValues().equals(((FailureAction) o).fieldValues());
 	}
 
 	/**
@@ -108,7 +124,7 @@ public class FailureAction {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -118,6 +134,6 @@ public class FailureAction {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "FailureAction" + fieldValues();
 	}
 }

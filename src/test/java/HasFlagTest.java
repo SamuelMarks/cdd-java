@@ -1,48 +1,59 @@
-import org.junit.Test;
 import static org.junit.Assert.*;
-import java.lang.reflect.Method;
+
 import cli.CddCli;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.Test;
 
 /**
  * Unit tests for CLI flag and argument resolution helpers in {@link CddCli}.
  */
 public class HasFlagTest {
 	/**
-	 * Verifies {@code hasFlag}, {@code getArg}, and {@code findJavaFiles} behavior.
-	 *
-	 * @throws Exception
-	 *             If reflective invocation fails.
+	 * Default constructor.
+	 */
+	public HasFlagTest() {
+	}
+
+	/**
+	 * Verifies {@link CddCli#hasFlag}, {@link CddCli#getArg}, and
+	 * {@link CddCli#findJavaFiles} behavior directly without reflection.
 	 */
 	@Test
-	public void testHasFlag() throws Exception {
-		Method hasFlag = CddCli.class.getDeclaredMethod("hasFlag", String[].class, String.class, String.class,
-				String.class);
-		hasFlag.setAccessible(true);
+	public void testHasFlag() {
+		assertTrue(CddCli.hasFlag(new String[]{"other", "-t"}, "-t", "--test", "ENV"));
+		assertTrue(CddCli.hasFlag(new String[]{"other", "--test"}, "-t", "--test", "ENV"));
+		assertFalse(CddCli.hasFlag(new String[]{"other"}, "-t", "--test", null));
+		assertFalse(CddCli.hasFlag(new String[]{}, "--test", "--test", null));
+		assertFalse(CddCli.hasFlag(new String[]{}, "--test", "--test", "DOES_NOT_EXIST_XYZ"));
 
-		// args has it (both shortFlag and longFlag and non-matching arg)
-		assertTrue((Boolean) hasFlag.invoke(null, new String[]{"other", "-t"}, "-t", "--test", "ENV"));
-		assertTrue((Boolean) hasFlag.invoke(null, new String[]{"other", "--test"}, "-t", "--test", "ENV"));
-		assertFalse((Boolean) hasFlag.invoke(null, new String[]{"other"}, "-t", "--test", null));
+		assertEquals("val", CddCli.getArg(new String[]{"-t", "val"}, "-t", "--test", null));
+		assertEquals("val2", CddCli.getArg(new String[]{"--test", "val2"}, "-t", "--test", null));
+		assertNull(CddCli.getArg(new String[]{}, "-t", "--test", null));
+		assertNull(CddCli.getArg(new String[]{}, "-t", "--test", "DOES_NOT_EXIST_XYZ"));
 
-		// args doesn't have it, env is null
-		assertFalse((Boolean) hasFlag.invoke(null, new String[]{}, "--test", "--test", null));
-
-		// envVar not found (tests null branch of env != null)
-		assertFalse((Boolean) hasFlag.invoke(null, new String[]{}, "--test", "--test", "DOES_NOT_EXIST_XYZ"));
-
-		Method getArg = CddCli.class.getDeclaredMethod("getArg", String[].class, String.class, String.class,
-				String.class);
-		getArg.setAccessible(true);
-		assertEquals("val", getArg.invoke(null, new String[]{"-t", "val"}, "-t", "--test", null));
-		assertEquals("val2", getArg.invoke(null, new String[]{"--test", "val2"}, "-t", "--test", null));
-		assertNull(getArg.invoke(null, new String[]{}, "-t", "--test", null));
-		assertNull(getArg.invoke(null, new String[]{}, "-t", "--test", "DOES_NOT_EXIST_XYZ"));
-
-		Method findJavaFiles = CddCli.class.getDeclaredMethod("findJavaFiles", java.io.File.class,
-				java.util.List.class);
-		findJavaFiles.setAccessible(true);
-		java.util.List<java.io.File> list = new java.util.ArrayList<>();
-		findJavaFiles.invoke(null, new java.io.File("pom.xml"), list);
+		List<File> list = new ArrayList<>();
+		CddCli.findJavaFiles(new File("pom.xml"), list);
 		assertTrue(list.isEmpty());
+
+		assertNotNull(new cli.CliArguments(null));
+		cli.CliArguments parsed = cli.CliArguments.parse(new String[]{"from_openapi", "-i", "in.json"});
+		assertEquals("from_openapi", parsed.command());
+		assertEquals("to_sdk", parsed.subCommand("to_sdk"));
+		assertEquals("in.json", parsed.getArg("-i", "--input", null));
+		assertFalse(parsed.hasFlag("-h", "--help", null));
+		assertNull(new cli.CliArguments(null).command());
+		assertEquals("to_sdk", new cli.CliArguments(new String[]{"from_openapi"}).subCommand("to_sdk"));
+
+		assertNotNull(new cli.ProjectScaffolder());
+		assertNotNull(new cli.SyncCommand());
+		assertNotNull(new cli.McpJsonRpcServer());
+		assertNotNull(new cli.CliHelpCodec());
+		assertNotNull(new routes.RouteJavadocEmitter());
+		assertNotNull(new routes.RouteJavadocParser());
+		assertTrue(cli.ProjectScaffolder.generatePomXml().contains("<project"));
+		assertTrue(cli.ProjectScaffolder.generateGithubActionsCi().contains("name: CI"));
+		assertTrue(cli.McpJsonRpcServer.buildMcpToolsList("1").contains("cdd_generate"));
 	}
 }

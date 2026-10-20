@@ -1,17 +1,24 @@
-import org.junit.Test;
 import static org.junit.Assert.*;
+
 import java.lang.reflect.Field;
 import java.util.*;
 import openapi.*;
+import org.junit.Test;
 
 /**
  * Property-based fuzzer test verifying AST emitters and parsers handle sparse
- * and null-populated OpenAPI models cleanly.
+ * and null-populated OpenAPI models cleanly and produce valid Java source code.
  */
 public class AstFuzzerTest {
 	/**
+	 * Default constructor.
+	 */
+	public AstFuzzerTest() {
+	}
+
+	/**
 	 * Fuzzes fields on a populated OpenAPI model and verifies route and class
-	 * emission never fails.
+	 * emission produces parseable Java code.
 	 *
 	 * @throws Exception
 	 *             If reflection or emission fails.
@@ -35,44 +42,49 @@ public class AstFuzzerTest {
 		Parameter p = new Parameter();
 		p.name = "qp";
 		p.in = "query";
-		p.schema = new Schema();
-		p.schema.type = "string";
-		pi.get.parameters.add(p);
+		Schema pSchema = new Schema();
+		pSchema.type = SchemaType.ofSingle("string");
+		p.schema = ReferenceOr.ofValue(pSchema);
+		pi.get.parameters.add(ReferenceOr.ofValue(p));
 
-		pi.get.requestBody = new RequestBody();
-		((RequestBody) pi.get.requestBody).content = new HashMap<>();
+		RequestBody rb = new RequestBody();
+		rb.content = new HashMap<>();
 		MediaType mt = new MediaType();
-		mt.itemSchema = new HashMap<String, Object>();
-		((Map<String, Object>) mt.itemSchema).put("type", "string");
-		((RequestBody) pi.get.requestBody).content.put("application/json", mt);
+		Schema itemSch = new Schema();
+		itemSch.type = SchemaType.ofSingle("string");
+		mt.itemSchema = ReferenceOr.ofValue(itemSch);
+		rb.content.put("application/json", mt);
+		pi.get.requestBody = ReferenceOr.ofValue(rb);
 
 		pi.get.responses = new Responses();
 		pi.get.responses.statusCodes = new HashMap<>();
 		Response resp = new Response();
 		resp.description = "ok";
-		pi.get.responses.statusCodes.put("200", resp);
+		pi.get.responses.statusCodes.put("200", ReferenceOr.ofValue(resp));
 
 		pi.get.callbacks = new HashMap<>();
-		pi.get.callbacks.put("cb", new Callback());
+		pi.get.callbacks.put("cb", ReferenceOr.ofValue(new Callback()));
 
 		pi.get.tags = Arrays.asList("tag1");
 
 		api.components = new Components();
 		api.components.schemas = new HashMap<>();
 		Schema sch = new Schema();
-		sch.type = "object";
+		sch.type = SchemaType.ofSingle("object");
 		sch.properties = new HashMap<>();
-		sch.properties.put("prop", new Schema());
-		api.components.schemas.put("TestSchema", sch);
+		sch.properties.put("prop", ReferenceOr.ofValue(new Schema()));
+		api.components.schemas.put("TestSchema", ReferenceOr.ofValue(sch));
 
 		fuzzObject(api, () -> {
 			String res = routes.Emit.emit(api, null);
-			assertNotNull(res);
+			assertTrue(res.contains("class "));
+			assertNotNull(routes.Parse.parse(res));
 		});
 
 		fuzzObject(api, () -> {
 			String res = classes.Emit.emit(api, null);
 			assertNotNull(res);
+			assertNotNull(classes.Parse.parse(res));
 		});
 
 		String sampleSource = "public class T {}";
@@ -99,6 +111,9 @@ public class AstFuzzerTest {
 			return;
 
 		for (Field f : clazz.getFields()) {
+			if (java.lang.reflect.Modifier.isFinal(f.getModifiers())) {
+				continue;
+			}
 			Object orig = f.get(obj);
 			if (orig != null) {
 				f.set(obj, null);

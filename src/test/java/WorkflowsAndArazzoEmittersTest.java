@@ -60,18 +60,25 @@ public class WorkflowsAndArazzoEmittersTest {
 		wf.dependsOn = Arrays.asList("authFlow", "externalFlow");
 
 		Schema inSchema = new Schema();
-		inSchema.type = "object";
+		inSchema.type = openapi.SchemaType.ofSingle("object");
 		inSchema.properties = new LinkedHashMap<>();
 		Schema petIdProp = new Schema();
-		petIdProp.type = "integer";
-		inSchema.properties.put("petId", petIdProp);
+		petIdProp.type = openapi.SchemaType.ofSingle("integer");
+		Schema qtyProp = new Schema();
+		qtyProp.type = openapi.SchemaType.ofSingle("integer");
+		inSchema.properties.put("petId", ReferenceOr.ofValue(petIdProp));
+		inSchema.properties.put("quantity", ReferenceOr.ofValue(qtyProp));
 		wf.inputs = ReferenceOr.ofValue(inSchema);
 
 		ArazzoParameter wfParam = new ArazzoParameter();
 		wfParam.name = "X-Trace";
 		wfParam.in = ParameterIn.HEADER;
 		wfParam.value = PayloadValue.ofString("trace-1");
-		wf.parameters = Collections.singletonList(ReusableOr.ofItem(wfParam));
+		ArazzoParameter wfParam2 = new ArazzoParameter();
+		wfParam2.name = "X-Env";
+		wfParam2.in = ParameterIn.HEADER;
+		wfParam2.value = PayloadValue.ofString("prod");
+		wf.parameters = Arrays.asList(ReusableOr.ofItem(wfParam), ReusableOr.ofItem(wfParam2));
 
 		Step s1 = new Step();
 		s1.stepId = "checkPet";
@@ -84,23 +91,41 @@ public class WorkflowsAndArazzoEmittersTest {
 		pQuery.name = "mode";
 		pQuery.in = ParameterIn.QUERY;
 		pQuery.value = PayloadValue.ofNumber(1);
-		s1.parameters = Arrays.asList(ReusableOr.ofItem(pPath), ReusableOr.ofItem(pQuery));
+		ArazzoParameter pDouble = new ArazzoParameter();
+		pDouble.name = "weight";
+		pDouble.in = ParameterIn.QUERY;
+		pDouble.value = PayloadValue.ofNumber(1.5);
+		s1.parameters = Arrays.asList(ReusableOr.ofItem(pPath), ReusableOr.ofItem(pQuery), ReusableOr.ofItem(pDouble));
 		s1.requestBody = new ArazzoRequestBody();
 		s1.requestBody.payload = PayloadValue.ofObject(Collections.singletonMap("k", PayloadValue.ofString("v")));
+		PayloadReplacement repl1 = new PayloadReplacement();
+		repl1.target = "/k";
+		repl1.value = PayloadValue.ofString("v2");
+		PayloadReplacement repl2 = new PayloadReplacement();
+		repl2.target = "/k2";
+		repl2.value = PayloadValue.ofString("v3");
+		s1.requestBody.replacements = Arrays.asList(repl1, repl2);
 		Criterion c1 = new Criterion();
 		c1.context = "$statusCode";
 		c1.condition = "$statusCode == 200";
-		s1.successCriteria = Collections.singletonList(c1);
+		Criterion c2 = new Criterion();
+		c2.condition = "$statusCode != 500";
+		c2.type = CriterionTypeOrExpression.ofSimple(CriterionEngineType.SIMPLE);
+		s1.successCriteria = Arrays.asList(c1, c2);
 		SuccessAction saGoto = new SuccessAction();
 		saGoto.name = "next";
 		saGoto.type = SuccessActionType.GOTO;
 		saGoto.stepId = "submitOrder";
-		s1.onSuccess = Collections.singletonList(ReusableOr.ofItem(saGoto));
+		SuccessAction saAnon = new SuccessAction();
+		saAnon.type = SuccessActionType.END;
+		s1.onSuccess = Arrays.asList(ReusableOr.ofItem(saGoto), ReusableOr.ofItem(saAnon));
 		FailureAction faGoto = new FailureAction();
 		faGoto.name = "fallback";
 		faGoto.type = FailureActionType.GOTO;
 		faGoto.stepId = "submitOrder";
-		s1.onFailure = Collections.singletonList(ReusableOr.ofItem(faGoto));
+		FailureAction faAnon = new FailureAction();
+		faAnon.type = FailureActionType.END;
+		s1.onFailure = Arrays.asList(ReusableOr.ofItem(faGoto), ReusableOr.ofItem(faAnon));
 		s1.outputs = new LinkedHashMap<>();
 		s1.outputs.put("petStatus", OutputValue.ofExpression("$response.body#/status"));
 		Selector sel = new Selector();
@@ -128,23 +153,27 @@ public class WorkflowsAndArazzoEmittersTest {
 
 	/**
 	 * Verifies {@link workflows.Emit} and {@link workflows.Parse} round-tripping,
-	 * LexicalPreservingPrinter updates, and fallback AST parsing.
+	 * LexicalPreservingPrinter updates, and fallback AST parsing without Base64
+	 * Javadoc embedding.
 	 */
 	@Test
-	public void testWorkflowsEmitAndParse() {
+	public void testWorkflowsEmitAndParse() throws Exception {
 		assertNotNull(new workflows.Emit());
 		assertNotNull(new workflows.Parse());
 
 		Arazzo spec = buildSampleArazzo();
+		String specJson = arazzo.Emit.toString(spec);
+		Arazzo specFromJson = arazzo.Parse.fromString(specJson);
+		assertEquals(spec, specFromJson);
+
 		String javaCode = workflows.Emit.emit(spec);
+		assertFalse(javaCode.contains("arazzoSpecBase64"));
 		assertTrue(javaCode.contains("class PetstoreOrderWorkflows"));
 		assertTrue(javaCode.contains("PlaceOrderFlowInputs"));
 		assertTrue(javaCode.contains("PlaceOrderFlowOutputs"));
 
 		Arazzo roundTripped = workflows.Parse.parse(javaCode);
-		assertEquals(spec.info, roundTripped.info);
-		assertEquals(spec.workflows.size(), roundTripped.workflows.size());
-		assertEquals(spec.workflows.get(1).workflowId, roundTripped.workflows.get(1).workflowId);
+		assertEquals(spec, roundTripped);
 
 		Map<String, OpenAPI> sources = Collections.singletonMap("petstore", new OpenAPI());
 		String updatedCode = workflows.Emit.emit(spec, sources, javaCode);
@@ -153,22 +182,38 @@ public class WorkflowsAndArazzoEmittersTest {
 		Map<String, String> modular = workflows.Emit.emitModular(spec, sources);
 		assertTrue(modular.containsKey("workflows/PetstoreOrderWorkflows.java"));
 
-		// Test structural AST fallback when @arazzoSpecBase64 is absent or corrupted
-		String strippedCode = javaCode.replace("@arazzoSpecBase64 ", "@arazzoSpecBase64 !invalid!");
+		// Test structural AST fallback when step Javadoc tags are absent
+		String strippedCode = javaCode.replace("@stepMeta ", "@ignoredMeta ").replace("@workflowInput ", "@ignoredIn ")
+				.replace("@workflowOutput ", "@ignoredOut ");
 		Arazzo astParsed = workflows.Parse.parse(strippedCode);
 		assertEquals("Petstore Order", astParsed.info.title);
 		assertEquals(2, astParsed.workflows.size());
+		assertEquals(2, astParsed.workflows.get(1).steps.size());
 
-		String manualWorkflowCode = "/**\n" + " * Manual workflow class.\n" + " */\n"
-				+ "public class ManualWorkflows {\n" + "    public static class CustomIn { public String query; }\n"
-				+ "    public static class CustomOut { public String res; }\n"
+		String manualWorkflowCode = "/**\n" + " * Manual workflow class.\n" + " * @sourceDescription malformed\n"
+				+ " */\n" + "public class ManualWorkflows {\n"
+				+ "    public static class CustomIn { public String query; }\n"
+				+ "    public static class CustomOut { public String res; }\n" + "    /**\n"
+				+ "     * @workflowInput bad\n" + "     * @workflowParam bad\n" + "     * @stepMeta bad\n"
+				+ "     * @stepParam missing in n str:v\n" + "     * @stepParam bad\n"
+				+ "     * @stepBody missing str:v\n" + "     * @stepBody bad\n"
+				+ "     * @stepReplacement missing /t str:v\n" + "     * @stepReplacement bad\n"
+				+ "     * @stepCriterion missing - - c\n" + "     * @stepCriterion bad\n"
+				+ "     * @stepOnSuccess missing end - -\n" + "     * @stepOnSuccess bad\n"
+				+ "     * @stepOnFailure missing end - -\n" + "     * @stepOnFailure bad\n"
+				+ "     * @stepOutput missing k expr v\n" + "     * @stepOutput bad\n" + "     * @workflowOutput bad\n"
+				+ "     * @stepMeta sNoBody -\n" + "     * @stepReplacement sNoBody /ptr str:val\n"
+				+ "     * @workflowParam query bare rawToken\n" + "     */\n"
 				+ "    public CustomOut runCustom(CustomIn in) {\n" + "        put(\"k\", \"v\");\n"
 				+ "        fetchFirst();\n" + "        fetchSecond();\n" + "        return new CustomOut();\n"
-				+ "    }\n" + "}\n";
+				+ "    }\n" + "    public void runCallsOnly() {\n" + "        put(\"k\", \"v\");\n"
+				+ "        fetchFirst();\n" + "    }\n" + "}\n";
 		Arazzo manualParsed = workflows.Parse.parse(manualWorkflowCode);
-		assertEquals(1, manualParsed.workflows.size());
+		assertEquals(2, manualParsed.workflows.size());
 		assertEquals("runCustom", manualParsed.workflows.get(0).workflowId);
-		assertEquals(2, manualParsed.workflows.get(0).steps.size());
+		assertEquals(1, manualParsed.workflows.get(0).steps.size());
+		assertNull(manualParsed.workflows.get(0).steps.get(0).operationId);
+		assertEquals(1, manualParsed.workflows.get(1).steps.size());
 
 		// Edge cases for workflows.Emit
 		Arazzo emptySpec = new Arazzo();
@@ -192,7 +237,14 @@ public class WorkflowsAndArazzoEmittersTest {
 
 		Workflow wfMinimal = new Workflow();
 		wfMinimal.workflowId = "minWf";
-		wfMinimal.parameters = Collections.singletonList(ReusableOr.ofReference("$components.parameters.missing"));
+		Schema nullPropsSchema = new Schema();
+		nullPropsSchema.type = openapi.SchemaType.ofSingle("object");
+		wfMinimal.inputs = ReferenceOr.ofValue(nullPropsSchema);
+		ArazzoParameter paramNoIn = new ArazzoParameter();
+		paramNoIn.name = "q1";
+		paramNoIn.value = PayloadValue.ofString("v1");
+		wfMinimal.parameters = Arrays.asList(ReusableOr.ofItem(paramNoIn),
+				ReusableOr.ofReference("$components.parameters.missing"));
 		wfMinimal.steps = Collections.emptyList();
 		Workflow wfNullSteps = new Workflow();
 		wfNullSteps.workflowId = "nullStepsWf";
@@ -202,7 +254,10 @@ public class WorkflowsAndArazzoEmittersTest {
 		cookieParam.name = "sid";
 		cookieParam.in = ParameterIn.COOKIE;
 		cookieParam.value = PayloadValue.ofString("c1");
-		stepMinimal.parameters = Arrays.asList(ReusableOr.ofItem(cookieParam),
+		ArazzoParameter stepParamNoIn = new ArazzoParameter();
+		stepParamNoIn.name = "q2";
+		stepParamNoIn.value = PayloadValue.ofString("v2");
+		stepMinimal.parameters = Arrays.asList(ReusableOr.ofItem(cookieParam), ReusableOr.ofItem(stepParamNoIn),
 				ReusableOr.ofReference("$components.parameters.missing"));
 		stepMinimal.requestBody = new ArazzoRequestBody();
 		Criterion critWithType = new Criterion();
@@ -211,10 +266,12 @@ public class WorkflowsAndArazzoEmittersTest {
 		stepMinimal.successCriteria = Collections.singletonList(critWithType);
 		SuccessAction saNoTarget = new SuccessAction();
 		saNoTarget.type = SuccessActionType.GOTO;
-		stepMinimal.onSuccess = Collections.singletonList(ReusableOr.ofItem(saNoTarget));
+		SuccessAction saNullType = new SuccessAction();
+		stepMinimal.onSuccess = Arrays.asList(ReusableOr.ofItem(saNoTarget), ReusableOr.ofItem(saNullType));
 		FailureAction faNoTarget = new FailureAction();
 		faNoTarget.type = FailureActionType.END;
-		stepMinimal.onFailure = Collections.singletonList(ReusableOr.ofItem(faNoTarget));
+		FailureAction faNullType = new FailureAction();
+		stepMinimal.onFailure = Arrays.asList(ReusableOr.ofItem(faNoTarget), ReusableOr.ofItem(faNullType));
 
 		Step stepUnresolvedActions = new Step();
 		stepUnresolvedActions.stepId = "stUnres";
@@ -231,10 +288,17 @@ public class WorkflowsAndArazzoEmittersTest {
 		Workflow wfWithSteps = new Workflow();
 		wfWithSteps.workflowId = "stepsWf";
 		Schema emptyPropsSchema = new Schema();
-		emptyPropsSchema.type = "object";
+		emptyPropsSchema.type = openapi.SchemaType.ofSingle("object");
+		emptyPropsSchema.properties = new LinkedHashMap<>();
+		emptyPropsSchema.properties.put("untypedProp", ReferenceOr.ofValue(new Schema()));
+		emptyPropsSchema.properties.put("nonSchemaProp", null);
 		wfWithSteps.inputs = ReferenceOr.ofValue(emptyPropsSchema);
 		wfWithSteps.steps = Arrays.asList(stepMinimal, stepUnresolvedActions, stepEmptyActions);
 		emptySpec.workflows = Arrays.asList(wfMinimal, wfNullSteps, wfWithSteps);
+
+		String emittedDirect = workflows.Emit.emit(emptySpec);
+		Arazzo parsedDirect = workflows.Parse.parse(emittedDirect);
+		assertEquals(3, parsedDirect.workflows.size());
 
 		String emittedMinimal = workflows.Emit.emit(emptySpec, Collections.emptyMap(), "package custom;\n");
 		assertTrue(emittedMinimal.contains("CustomWorkflows"));
@@ -244,7 +308,7 @@ public class WorkflowsAndArazzoEmittersTest {
 
 	/**
 	 * Verifies {@link cli.ArazzoCliEmitter} and {@link cli.ArazzoCliParser}
-	 * round-tripping and structural fallback parsing.
+	 * round-tripping and structural fallback parsing without Base64 embedding.
 	 */
 	@Test
 	public void testArazzoCliEmitterAndParser() {
@@ -255,19 +319,16 @@ public class WorkflowsAndArazzoEmittersTest {
 		Map<String, String> mod = cli.ArazzoCliEmitter.emitModular(spec);
 		String cliCode = mod.get("cli/WorkflowCli.java");
 		assertNotNull(cliCode);
+		assertFalse(cliCode.contains("arazzoSpecBase64"));
+		assertFalse(cliCode.contains("ArazzoSpecBase64"));
 
 		Arazzo rt = cli.ArazzoCliParser.parseWorkflowCli(cliCode);
-		assertEquals(spec.info.title, rt.info.title);
-		assertEquals(spec.workflows.size(), rt.workflows.size());
+		assertEquals(spec, rt);
 
-		// Test fallback to printHelp() string literals when Javadoc base64 is removed
-		String noJavadocB64 = cliCode.replace("@arazzoSpecBase64 ", "@arazzoSpecBase64 !bad!");
-		Arazzo rtFromHelp = cli.ArazzoCliParser.parseWorkflowCli(noJavadocB64);
-		assertEquals(spec.info.title, rtFromHelp.info.title);
-
-		// Test fallback to individual Title/Version/Source/Workflow/Input/Step lines
-		String noB64AtAll = noJavadocB64.replace("ArazzoSpecBase64: ", "ArazzoSpecBase64: !bad!");
-		Arazzo rtLines = cli.ArazzoCliParser.parseWorkflowCli(noB64AtAll);
+		// Test fallback to printHelp() string literals when Javadoc tags are absent
+		String noJavadocWf = cliCode.replace("@workflowId ", "@ignoredWf ").replace("@sourceDescription ",
+				"@ignoredSd ");
+		Arazzo rtLines = cli.ArazzoCliParser.parseWorkflowCli(noJavadocWf);
 		assertEquals("Petstore Order", rtLines.info.title);
 		assertEquals("1.1.0", rtLines.info.version);
 		assertEquals(1, rtLines.sourceDescriptions.size());
@@ -286,8 +347,8 @@ public class WorkflowsAndArazzoEmittersTest {
 		wfEmpty.workflowId = "w1";
 		Schema inSchemaMulti = new Schema();
 		inSchemaMulti.properties = new LinkedHashMap<>();
-		inSchemaMulti.properties.put("p1", new Schema());
-		inSchemaMulti.properties.put("p2", new Schema());
+		inSchemaMulti.properties.put("p1", ReferenceOr.ofValue(new Schema()));
+		inSchemaMulti.properties.put("p2", ReferenceOr.ofValue(new Schema()));
 		wfEmpty.inputs = ReferenceOr.ofValue(inSchemaMulti);
 		Workflow wfNoProps = new Workflow();
 		wfNoProps.workflowId = "w2";
@@ -306,7 +367,8 @@ public class WorkflowsAndArazzoEmittersTest {
 
 	/**
 	 * Verifies {@link tests.ArazzoTestEmitter}, {@link tests.ArazzoTestParser},
-	 * {@link mocks.ArazzoMockEmitter}, and {@link mocks.ArazzoMockParser}.
+	 * {@link mocks.ArazzoMockEmitter}, and {@link mocks.ArazzoMockParser} without
+	 * Base64 Javadoc embedding.
 	 */
 	@Test
 	public void testArazzoTestAndMockEmittersAndParsers() {
@@ -317,13 +379,14 @@ public class WorkflowsAndArazzoEmittersTest {
 
 		Arazzo spec = buildSampleArazzo();
 		String testCode = tests.ArazzoTestEmitter.emit(spec);
+		assertFalse(testCode.contains("arazzoSpecBase64"));
 		assertTrue(testCode.contains("test_placeOrderFlow"));
 
 		Arazzo rtTest = tests.ArazzoTestParser.parse(testCode);
-		assertEquals(spec.info.title, rtTest.info.title);
+		assertEquals(spec, rtTest);
 
-		String testNoB64 = testCode.replace("@arazzoSpecBase64 ", "@arazzoSpecBase64 !bad!");
-		Arazzo rtTestAst = tests.ArazzoTestParser.parse(testNoB64);
+		String testNoStepMeta = testCode.replace("@stepMeta ", "@ignoredStep ");
+		Arazzo rtTestAst = tests.ArazzoTestParser.parse(testNoStepMeta);
 		assertEquals(2, rtTestAst.workflows.size());
 
 		Arazzo minTestSpec = new Arazzo();
@@ -345,13 +408,14 @@ public class WorkflowsAndArazzoEmittersTest {
 
 		Map<String, String> mockMod = mocks.ArazzoMockEmitter.emitModular(spec);
 		String mockCode = mockMod.values().iterator().next();
+		assertFalse(mockCode.contains("arazzoSpecBase64"));
 		assertTrue(mockCode.contains("mock_placeOrderFlow"));
 
 		Arazzo rtMock = mocks.ArazzoMockParser.parse(mockCode);
-		assertEquals(spec.info.title, rtMock.info.title);
+		assertEquals(spec, rtMock);
 
-		String mockNoB64 = mockCode.replace("@arazzoSpecBase64 ", "@arazzoSpecBase64 !bad!");
-		Arazzo rtMockAst = mocks.ArazzoMockParser.parse(mockNoB64);
+		String mockNoStepMeta = mockCode.replace("@stepMeta ", "@ignoredStep ");
+		Arazzo rtMockAst = mocks.ArazzoMockParser.parse(mockNoStepMeta);
 		assertEquals(2, rtMockAst.workflows.size());
 
 		Arazzo emptyMockSpec = new Arazzo();

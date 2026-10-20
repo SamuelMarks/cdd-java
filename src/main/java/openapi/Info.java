@@ -77,15 +77,32 @@ public class Info {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(title, summary, description, termsOfService, contact, license, version,
+				extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Info)) {
+			return false;
+		}
+		return fieldValues().equals(((Info) o).fieldValues());
 	}
 
 	/**
@@ -95,7 +112,7 @@ public class Info {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -105,6 +122,6 @@ public class Info {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Info" + fieldValues();
 	}
 }

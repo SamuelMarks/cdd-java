@@ -1,17 +1,25 @@
-import org.junit.Test;
-import java.util.regex.*;
-import java.util.*;
+import static org.junit.Assert.*;
+
 import cli.Parse;
+import java.util.*;
+import java.util.regex.*;
 import openapi.*;
+import org.junit.Test;
 
 /**
  * Fuzzes {@link cli.Parse} with isolated, contextual, and malformed help output
- * lines.
+ * lines and asserts model invariants.
  */
 public class CliParseFuzzTest {
 	/**
+	 * Default constructor.
+	 */
+	public CliParseFuzzTest() {
+	}
+
+	/**
 	 * Verifies {@link cli.Parse#parse(String)} handles individual and combined CLI
-	 * help output lines cleanly.
+	 * help output lines cleanly and preserves round-tripped fields.
 	 *
 	 * @throws Exception
 	 *             If parsing fails unexpectedly.
@@ -52,16 +60,16 @@ public class CliParseFuzzTest {
 		sch.discriminator = new Discriminator();
 		sch.discriminator.mapping = new HashMap<>();
 		sch.xml = new XML();
-		api.components.schemas.put("test", sch);
+		api.components.schemas.put("test", ReferenceOr.ofValue(sch));
 
 		api.components.responses = new HashMap<>();
-		api.components.responses.put("res", new Object());
+		api.components.responses.put("res", ReferenceOr.ofValue(new Response()));
 		api.components.parameters = new HashMap<>();
-		api.components.parameters.put("param", new Object());
+		api.components.parameters.put("param", ReferenceOr.ofValue(new Parameter()));
 		api.components.requestBodies = new HashMap<>();
-		api.components.requestBodies.put("rb", new Object());
+		api.components.requestBodies.put("rb", ReferenceOr.ofValue(new RequestBody()));
 		api.components.headers = new HashMap<>();
-		api.components.headers.put("h", new Object());
+		api.components.headers.put("h", ReferenceOr.ofValue(new Header()));
 
 		api.components.securitySchemes = new HashMap<>();
 		SecurityScheme ss = new SecurityScheme();
@@ -83,7 +91,7 @@ public class CliParseFuzzTest {
 		ss.flows.clientCredentials = new OAuthFlow();
 		ss.flows.authorizationCode = new OAuthFlow();
 		ss.flows.deviceAuthorization = new OAuthFlow();
-		api.components.securitySchemes.put("ss", ss);
+		api.components.securitySchemes.put("ss", ReferenceOr.ofValue(ss));
 
 		api.components.links = new HashMap<>();
 		Link lnk = new Link();
@@ -95,13 +103,13 @@ public class CliParseFuzzTest {
 		lnk.server.url = "http";
 		lnk.parameters = new HashMap<>();
 		lnk.parameters.put("p", "p");
-		api.components.links.put("l", lnk);
+		api.components.links.put("l", ReferenceOr.ofValue(lnk));
 		api.components.callbacks = new HashMap<>();
-		api.components.callbacks.put("cb", new Object());
+		api.components.callbacks.put("cb", ReferenceOr.ofValue(new Callback()));
 		api.components.pathItems = new HashMap<>();
-		api.components.pathItems.put("pi", new PathItem());
+		api.components.pathItems.put("pi", ReferenceOr.ofValue(new PathItem()));
 		api.components.mediaTypes = new HashMap<>();
-		api.components.mediaTypes.put("mt", new Object());
+		api.components.mediaTypes.put("mt", ReferenceOr.ofValue(new MediaType()));
 
 		api.paths = new Paths();
 		api.paths.pathItems = new HashMap<>();
@@ -110,16 +118,16 @@ public class CliParseFuzzTest {
 		pi.get.tags = Arrays.asList("t1");
 		pi.get.externalDocs = new ExternalDocumentation();
 		pi.get.callbacks = new HashMap<>();
-		pi.get.callbacks.put("cb", new Callback());
+		pi.get.callbacks.put("cb", ReferenceOr.ofValue(new Callback()));
 		pi.get.parameters = new ArrayList<>();
 		Parameter p = new Parameter();
 		p.examples = new HashMap<>();
-		p.examples.put("ex", new Example());
-		pi.get.parameters.add(p);
+		p.examples.put("ex", ReferenceOr.ofValue(new Example()));
+		pi.get.parameters.add(ReferenceOr.ofValue(p));
 		RequestBody rb = new RequestBody();
 		rb.content = new HashMap<>();
 		MediaType mt = new MediaType();
-		mt.itemSchema = new HashMap<>();
+		mt.itemSchema = ReferenceOr.ofValue(new Schema());
 		mt.prefixEncoding = Arrays.asList(new Encoding());
 		mt.itemEncoding = new Encoding();
 		mt.encoding = new HashMap<>();
@@ -128,23 +136,27 @@ public class CliParseFuzzTest {
 		enc.itemEncoding = new Encoding();
 		mt.encoding.put("e", enc);
 		rb.content.put("application/json", mt);
-		pi.get.requestBody = rb;
+		pi.get.requestBody = ReferenceOr.ofValue(rb);
 
 		pi.get.responses = new Responses();
 		pi.get.responses.statusCodes = new HashMap<>();
 		Response r = new Response();
 		r.headers = new HashMap<>();
-		r.headers.put("h", new Header());
+		r.headers.put("h", ReferenceOr.ofValue(new Header()));
 		r.links = new HashMap<>();
-		r.links.put("l", new Link());
-		pi.get.responses.statusCodes.put("200", r);
-		pi.get.responses.defaultResponse = r;
+		r.links.put("l", ReferenceOr.ofValue(new Link()));
+		pi.get.responses.statusCodes.put("200", ReferenceOr.ofValue(r));
+		pi.get.responses.defaultResponse = ReferenceOr.ofValue(r);
 		api.paths.pathItems.put("/test", pi);
 
 		String content = cli.Emit.emitCli(api);
+		OpenAPI fullParsed = Parse.parse(content);
+		assertEquals("test", fullParsed.info.title);
+		assertEquals("1.0", fullParsed.info.version);
+		assertNotNull(fullParsed.paths.pathItems.get("/test"));
 
 		Matcher hm = Pattern.compile("(?s)private static void printHelp\\(\\) \\{(.*?)\\n    \\}").matcher(content);
-		org.junit.Assert.assertTrue("hm.find() failed to find printHelp!", hm.find());
+		assertTrue("hm.find() failed to find printHelp!", hm.find());
 
 		String helpBody = hm.group(1);
 		Matcher lm = Pattern.compile("System\\.out\\.println\\(\"((?:[^\"]|\\\\\")*)\"\\);").matcher(helpBody);
@@ -164,8 +176,7 @@ public class CliParseFuzzTest {
 				"System.out.println(\"  Discriminator propertyName=p mapping=a=b defaultMapping=d\");",
 				"System.out.println(\"  Discriminator propertyName= mapping= defaultMapping=\");",
 				"System.out.println(\"  Discriminator propertyName=null mapping=null defaultMapping=null\");",
-				"System.out.println(\"  Discriminator propertyName=p mapping=bad defaultMapping=d\");", // bad mapping
-																										// split
+				"System.out.println(\"  Discriminator propertyName=p mapping=bad defaultMapping=d\");",
 				"System.out.println(\"  XML name=n namespace=ns prefix=p attribute=true wrapped=true\");",
 				"System.out.println(\"  XML name= namespace= prefix= attribute= wrapped=\");",
 				"System.out.println(\"  XML name=null namespace=null prefix=null attribute=null wrapped=null\");",
@@ -189,8 +200,8 @@ public class CliParseFuzzTest {
 				"System.out.println(\"    Returns default\");", "System.out.println(\"      Header h1\");",
 				"System.out.println(\"      Link l1\");",
 				"System.out.println(\"      RequestBodyContentItemSchema ct type\");",
-				"System.out.println(\"      RequestBodyContentItemSchema ct\");", // length 1
-				"System.out.println(\"      RequestBodyContentItemSchema unknown type\");", // missing key
+				"System.out.println(\"      RequestBodyContentItemSchema ct\");",
+				"System.out.println(\"      RequestBodyContentItemSchema unknown type\");",
 				"System.out.println(\"      RequestBodyContentItemEncoding ct type\");",
 				"System.out.println(\"      RequestBodyContentItemEncoding ct\");",
 				"System.out.println(\"      RequestBodyContentItemEncoding unknown type\");",
@@ -217,7 +228,7 @@ public class CliParseFuzzTest {
 				"System.out.println(\"      ResponseEncodingPrefixEncoding 200 unknown p1 type\");",
 				"System.out.println(\"      ResponseEncodingItemEncoding 200 ct p1 type\");",
 				"System.out.println(\"      ResponseEncodingItemEncoding 200 ct p1\");",
-				"System.out.println(\"      ResponseEncodingItemEncoding 200 unknown p1 type\");",};
+				"System.out.println(\"      ResponseEncodingItemEncoding 200 unknown p1 type\");"};
 
 		for (String l : customLines) {
 			lines.add(l);
@@ -226,7 +237,8 @@ public class CliParseFuzzTest {
 		for (String line : lines) {
 			String isolated = "public class SdkCli {\n" + "    private static void printHelp() {\n" + "        " + line
 					+ "\n" + "        " + line + "\n" + "    }\n" + "}";
-			Parse.parse(isolated);
+			OpenAPI isoApi = Parse.parse(isolated);
+			assertNotNull(isoApi);
 
 			String withContext = "public class SdkCli {\n" + "    private static void printHelp() {\n"
 					+ "        System.out.println(\"Component schemas S1\");\n"
@@ -239,13 +251,17 @@ public class CliParseFuzzTest {
 					+ "        System.out.println(\"    Returns 200: [Content-Types: ct]\");\n"
 					+ "        System.out.println(\"    Returns default: [Content-Types: default]\");\n" + "        "
 					+ line + "\n" + "        " + line + "\n" + "    }\n" + "}";
+			OpenAPI ctxApi = Parse.parse(withContext);
+			assertNotNull(ctxApi.paths.pathItems.get("/p"));
+
 			String withMissingContext = "public class SdkCli {\n" + "    private static void printHelp() {\n"
 					+ "        System.out.println(\"Operation: get /p\");\n"
 					+ "        System.out.println(\"    --requestBody\");\n"
 					+ "        System.out.println(\"    Returns 200:\");\n"
 					+ "        System.out.println(\"    Returns default:\");\n" + "        " + line + "\n" + "    }\n"
 					+ "}";
-			Parse.parse(withMissingContext);
+			OpenAPI missingCtxApi = Parse.parse(withMissingContext);
+			assertNotNull(missingCtxApi.paths.pathItems.get("/p"));
 		}
 	}
 }

@@ -279,11 +279,11 @@ public class RoutesParseEmitTest {
 		cbPi.post.parameters = new ArrayList<>();
 		openapi.Parameter cbParam = new openapi.Parameter();
 		cbParam.name = "cb_param";
-		cbPi.post.parameters.add(cbParam);
+		cbPi.post.parameters.add(openapi.ReferenceOr.ofValue(cbParam));
 		cbGet.pathItems.put("cb_expr", cbPi);
 
-		Map<String, Object> cbs = new HashMap<>();
-		cbs.put("cb_name", cbGet);
+		Map<String, openapi.ReferenceOr<openapi.Callback>> cbs = new HashMap<>();
+		cbs.put("cb_name", openapi.ReferenceOr.ofValue(cbGet));
 
 		// Put callbacks on different methods
 		if (api.paths.pathItems.containsKey("/path3")) {
@@ -340,16 +340,16 @@ public class RoutesParseEmitTest {
 		openapi.SecurityScheme sch1 = new openapi.SecurityScheme();
 		sch1.type = "http";
 		sch1.scheme = "basic";
-		manualApi.components.securitySchemes.put("secBasic", sch1);
+		manualApi.components.securitySchemes.put("secBasic", openapi.ReferenceOr.ofValue(sch1));
 		openapi.SecurityScheme sch2 = new openapi.SecurityScheme();
 		sch2.type = "apiKey";
 		sch2.in = "header";
 		sch2.name = "X-API-Key";
-		manualApi.components.securitySchemes.put("secApi", sch2);
+		manualApi.components.securitySchemes.put("secApi", openapi.ReferenceOr.ofValue(sch2));
 		openapi.SecurityScheme sch3 = new openapi.SecurityScheme();
 		sch3.type = "http";
 		sch3.scheme = "bearer";
-		manualApi.components.securitySchemes.put("secBearer", sch3);
+		manualApi.components.securitySchemes.put("secBearer", openapi.ReferenceOr.ofValue(sch3));
 
 		manualApi.paths = new openapi.Paths();
 		manualApi.paths.pathItems = new HashMap<>();
@@ -361,7 +361,7 @@ public class RoutesParseEmitTest {
 		openapi.Parameter pathParam = new openapi.Parameter();
 		pathParam.name = "X-API-Key"; // Duplicate param check in Emit
 		pathParam.in = "header";
-		pi.parameters.add(pathParam);
+		pi.parameters.add(openapi.ReferenceOr.ofValue(pathParam));
 
 		pi.get = new openapi.Operation();
 		pi.get.operationId = "myOpId";
@@ -371,11 +371,11 @@ public class RoutesParseEmitTest {
 		openapi.Parameter p = new openapi.Parameter();
 		p.name = "X-API-Key"; // Duplicate param check in Emit
 		p.in = "header";
-		pi.get.parameters.add(p);
+		pi.get.parameters.add(openapi.ReferenceOr.ofValue(p));
 
 		openapi.Parameter pEmptyName = new openapi.Parameter();
 		pEmptyName.name = "!"; // safeName becomes empty
-		pi.get.parameters.add(pEmptyName);
+		pi.get.parameters.add(openapi.ReferenceOr.ofValue(pEmptyName));
 
 		manualApi.paths.pathItems.put("/manual", pi);
 
@@ -393,13 +393,14 @@ public class RoutesParseEmitTest {
 
 		String emittedManual = Emit.emit(manualApi, null);
 		assertNotNull(emittedManual);
+		assertTrue(emittedManual.contains("myOpId"));
 
 		// Test Emit empty OpenAPI
 		OpenAPI emptyApi = new OpenAPI();
-		Emit.emit(emptyApi, null);
+		String emptyEmitted = Emit.emit(emptyApi, null);
+		assertNotNull(emptyEmitted);
 
-		// Also test the Exception catch in Parse
-
+		// Also test boundary arities and malformed inputs in Parse
 		String edgeCode = """
 				    /**
 				     * @contactName
@@ -456,1129 +457,6 @@ public class RoutesParseEmitTest {
 				     * @pathParameter /path
 				     * @pathParameter /path p1
 				     */
-
-				     * @componentLinkOpId
-				     * @componentLinkOpId - - - - - - -
-				     * @componentLinkOpId arg1
-				     * @componentLinkOpId arg1 arg2
-				     * @componentLinkOpId arg1 arg2 arg3
-				     * @componentLinkOpId arg1 arg2 arg3 arg4
-				     * @componentLinkOpId arg1 arg2 arg3 arg4 arg5
-				     * @componentLinkOpId arg1 arg2|arg3|arg4
-				     * @componentLinkOpId default application/json
-				     * @componentLinkOpId 200 application/json
-				     * @componentLinkOpId type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLinkOpId type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLinkOpId implicit sec1 - -
-				     * @componentLinkOpId password sec1 - -
-				     * @componentLinkOpId clientCredentials sec1 - -
-				     * @componentLinkOpId authorizationCode sec1 - - -
-				     * @componentLinkOpId deviceAuthorization sec1 - - -
-				     * @licenseName
-				     * @licenseName - - - - - - -
-				     * @licenseName arg1
-				     * @licenseName arg1 arg2
-				     * @licenseName arg1 arg2 arg3
-				     * @licenseName arg1 arg2 arg3 arg4
-				     * @licenseName arg1 arg2 arg3 arg4 arg5
-				     * @licenseName arg1 arg2|arg3|arg4
-				     * @licenseName default application/json
-				     * @licenseName 200 application/json
-				     * @licenseName type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @licenseName type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @licenseName implicit sec1 - -
-				     * @licenseName password sec1 - -
-				     * @licenseName clientCredentials sec1 - -
-				     * @licenseName authorizationCode sec1 - - -
-				     * @licenseName deviceAuthorization sec1 - - -
-				     * @responseHeaderExplode
-				     * @responseHeaderExplode - - - - - - -
-				     * @responseHeaderExplode arg1
-				     * @responseHeaderExplode arg1 arg2
-				     * @responseHeaderExplode arg1 arg2 arg3
-				     * @responseHeaderExplode arg1 arg2 arg3 arg4
-				     * @responseHeaderExplode arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderExplode arg1 arg2|arg3|arg4
-				     * @responseHeaderExplode default application/json
-				     * @responseHeaderExplode 200 application/json
-				     * @responseHeaderExplode type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderExplode type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderExplode implicit sec1 - -
-				     * @responseHeaderExplode password sec1 - -
-				     * @responseHeaderExplode clientCredentials sec1 - -
-				     * @responseHeaderExplode authorizationCode sec1 - - -
-				     * @responseHeaderExplode deviceAuthorization sec1 - - -
-				     * @responseContentPrefixEncoding
-				     * @responseContentPrefixEncoding - - - - - - -
-				     * @responseContentPrefixEncoding arg1
-				     * @responseContentPrefixEncoding arg1 arg2
-				     * @responseContentPrefixEncoding arg1 arg2 arg3
-				     * @responseContentPrefixEncoding arg1 arg2 arg3 arg4
-				     * @responseContentPrefixEncoding arg1 arg2 arg3 arg4 arg5
-				     * @responseContentPrefixEncoding arg1 arg2|arg3|arg4
-				     * @responseContentPrefixEncoding default application/json
-				     * @responseContentPrefixEncoding 200 application/json
-				     * @responseContentPrefixEncoding type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContentPrefixEncoding type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContentPrefixEncoding implicit sec1 - -
-				     * @responseContentPrefixEncoding password sec1 - -
-				     * @responseContentPrefixEncoding clientCredentials sec1 - -
-				     * @responseContentPrefixEncoding authorizationCode sec1 - - -
-				     * @responseContentPrefixEncoding deviceAuthorization sec1 - - -
-				     * @responseContentItemEncoding
-				     * @responseContentItemEncoding - - - - - - -
-				     * @responseContentItemEncoding arg1
-				     * @responseContentItemEncoding arg1 arg2
-				     * @responseContentItemEncoding arg1 arg2 arg3
-				     * @responseContentItemEncoding arg1 arg2 arg3 arg4
-				     * @responseContentItemEncoding arg1 arg2 arg3 arg4 arg5
-				     * @responseContentItemEncoding arg1 arg2|arg3|arg4
-				     * @responseContentItemEncoding default application/json
-				     * @responseContentItemEncoding 200 application/json
-				     * @responseContentItemEncoding type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContentItemEncoding type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContentItemEncoding implicit sec1 - -
-				     * @responseContentItemEncoding password sec1 - -
-				     * @responseContentItemEncoding clientCredentials sec1 - -
-				     * @responseContentItemEncoding authorizationCode sec1 - - -
-				     * @responseContentItemEncoding deviceAuthorization sec1 - - -
-				     * @responseHeaderExamples
-				     * @responseHeaderExamples - - - - - - -
-				     * @responseHeaderExamples arg1
-				     * @responseHeaderExamples arg1 arg2
-				     * @responseHeaderExamples arg1 arg2 arg3
-				     * @responseHeaderExamples arg1 arg2 arg3 arg4
-				     * @responseHeaderExamples arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderExamples arg1 arg2|arg3|arg4
-				     * @responseHeaderExamples default application/json
-				     * @responseHeaderExamples 200 application/json
-				     * @responseHeaderExamples type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderExamples type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderExamples implicit sec1 - -
-				     * @responseHeaderExamples password sec1 - -
-				     * @responseHeaderExamples clientCredentials sec1 - -
-				     * @responseHeaderExamples authorizationCode sec1 - - -
-				     * @responseHeaderExamples deviceAuthorization sec1 - - -
-				     * @componentLinkParam
-				     * @componentLinkParam - - - - - - -
-				     * @componentLinkParam arg1
-				     * @componentLinkParam arg1 arg2
-				     * @componentLinkParam arg1 arg2 arg3
-				     * @componentLinkParam arg1 arg2 arg3 arg4
-				     * @componentLinkParam arg1 arg2 arg3 arg4 arg5
-				     * @componentLinkParam arg1 arg2|arg3|arg4
-				     * @componentLinkParam default application/json
-				     * @componentLinkParam 200 application/json
-				     * @componentLinkParam type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLinkParam type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLinkParam implicit sec1 - -
-				     * @componentLinkParam password sec1 - -
-				     * @componentLinkParam clientCredentials sec1 - -
-				     * @componentLinkParam authorizationCode sec1 - - -
-				     * @componentLinkParam deviceAuthorization sec1 - - -
-				     * @licenseIdentifier
-				     * @licenseIdentifier - - - - - - -
-				     * @licenseIdentifier arg1
-				     * @licenseIdentifier arg1 arg2
-				     * @licenseIdentifier arg1 arg2 arg3
-				     * @licenseIdentifier arg1 arg2 arg3 arg4
-				     * @licenseIdentifier arg1 arg2 arg3 arg4 arg5
-				     * @licenseIdentifier arg1 arg2|arg3|arg4
-				     * @licenseIdentifier default application/json
-				     * @licenseIdentifier 200 application/json
-				     * @licenseIdentifier type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @licenseIdentifier type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @licenseIdentifier implicit sec1 - -
-				     * @licenseIdentifier password sec1 - -
-				     * @licenseIdentifier clientCredentials sec1 - -
-				     * @licenseIdentifier authorizationCode sec1 - - -
-				     * @licenseIdentifier deviceAuthorization sec1 - - -
-				     * @version
-				     * @version - - - - - - -
-				     * @version arg1
-				     * @version arg1 arg2
-				     * @version arg1 arg2 arg3
-				     * @version arg1 arg2 arg3 arg4
-				     * @version arg1 arg2 arg3 arg4 arg5
-				     * @version arg1 arg2|arg3|arg4
-				     * @version default application/json
-				     * @version 200 application/json
-				     * @version type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @version type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @version implicit sec1 - -
-				     * @version password sec1 - -
-				     * @version clientCredentials sec1 - -
-				     * @version authorizationCode sec1 - - -
-				     * @version deviceAuthorization sec1 - - -
-				     * @responseContent
-				     * @responseContent - - - - - - -
-				     * @responseContent arg1
-				     * @responseContent arg1 arg2
-				     * @responseContent arg1 arg2 arg3
-				     * @responseContent arg1 arg2 arg3 arg4
-				     * @responseContent arg1 arg2 arg3 arg4 arg5
-				     * @responseContent arg1 arg2|arg3|arg4
-				     * @responseContent default application/json
-				     * @responseContent 200 application/json
-				     * @responseContent type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContent type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContent implicit sec1 - -
-				     * @responseContent password sec1 - -
-				     * @responseContent clientCredentials sec1 - -
-				     * @responseContent authorizationCode sec1 - - -
-				     * @responseContent deviceAuthorization sec1 - - -
-				     * @responseHeaderSchema
-				     * @responseHeaderSchema - - - - - - -
-				     * @responseHeaderSchema arg1
-				     * @responseHeaderSchema arg1 arg2
-				     * @responseHeaderSchema arg1 arg2 arg3
-				     * @responseHeaderSchema arg1 arg2 arg3 arg4
-				     * @responseHeaderSchema arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderSchema arg1 arg2|arg3|arg4
-				     * @responseHeaderSchema default application/json
-				     * @responseHeaderSchema 200 application/json
-				     * @responseHeaderSchema type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderSchema type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderSchema implicit sec1 - -
-				     * @responseHeaderSchema password sec1 - -
-				     * @responseHeaderSchema clientCredentials sec1 - -
-				     * @responseHeaderSchema authorizationCode sec1 - - -
-				     * @responseHeaderSchema deviceAuthorization sec1 - - -
-				     * @responseEncodingPrefixEncoding
-				     * @responseEncodingPrefixEncoding - - - - - - -
-				     * @responseEncodingPrefixEncoding arg1
-				     * @responseEncodingPrefixEncoding arg1 arg2
-				     * @responseEncodingPrefixEncoding arg1 arg2 arg3
-				     * @responseEncodingPrefixEncoding arg1 arg2 arg3 arg4
-				     * @responseEncodingPrefixEncoding arg1 arg2 arg3 arg4 arg5
-				     * @responseEncodingPrefixEncoding arg1 arg2|arg3|arg4
-				     * @responseEncodingPrefixEncoding default application/json
-				     * @responseEncodingPrefixEncoding 200 application/json
-				     * @responseEncodingPrefixEncoding type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseEncodingPrefixEncoding type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseEncodingPrefixEncoding implicit sec1 - -
-				     * @responseEncodingPrefixEncoding password sec1 - -
-				     * @responseEncodingPrefixEncoding clientCredentials sec1 - -
-				     * @responseEncodingPrefixEncoding authorizationCode sec1 - - -
-				     * @responseEncodingPrefixEncoding deviceAuthorization sec1 - - -
-				     * @componentLink
-				     * @componentLink - - - - - - -
-				     * @componentLink arg1
-				     * @componentLink arg1 arg2
-				     * @componentLink arg1 arg2 arg3
-				     * @componentLink arg1 arg2 arg3 arg4
-				     * @componentLink arg1 arg2 arg3 arg4 arg5
-				     * @componentLink arg1 arg2|arg3|arg4
-				     * @componentLink default application/json
-				     * @componentLink 200 application/json
-				     * @componentLink type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLink type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLink implicit sec1 - -
-				     * @componentLink password sec1 - -
-				     * @componentLink clientCredentials sec1 - -
-				     * @componentLink authorizationCode sec1 - - -
-				     * @componentLink deviceAuthorization sec1 - - -
-				     * @responseLinkParam
-				     * @responseLinkParam - - - - - - -
-				     * @responseLinkParam arg1
-				     * @responseLinkParam arg1 arg2
-				     * @responseLinkParam arg1 arg2 arg3
-				     * @responseLinkParam arg1 arg2 arg3 arg4
-				     * @responseLinkParam arg1 arg2 arg3 arg4 arg5
-				     * @responseLinkParam arg1 arg2|arg3|arg4
-				     * @responseLinkParam default application/json
-				     * @responseLinkParam 200 application/json
-				     * @responseLinkParam type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLinkParam type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLinkParam implicit sec1 - -
-				     * @responseLinkParam password sec1 - -
-				     * @responseLinkParam clientCredentials sec1 - -
-				     * @responseLinkParam authorizationCode sec1 - - -
-				     * @responseLinkParam deviceAuthorization sec1 - - -
-				     * @responseContentItemSchema
-				     * @responseContentItemSchema - - - - - - -
-				     * @responseContentItemSchema arg1
-				     * @responseContentItemSchema arg1 arg2
-				     * @responseContentItemSchema arg1 arg2 arg3
-				     * @responseContentItemSchema arg1 arg2 arg3 arg4
-				     * @responseContentItemSchema arg1 arg2 arg3 arg4 arg5
-				     * @responseContentItemSchema arg1 arg2|arg3|arg4
-				     * @responseContentItemSchema default application/json
-				     * @responseContentItemSchema 200 application/json
-				     * @responseContentItemSchema type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContentItemSchema type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContentItemSchema implicit sec1 - -
-				     * @responseContentItemSchema password sec1 - -
-				     * @responseContentItemSchema clientCredentials sec1 - -
-				     * @responseContentItemSchema authorizationCode sec1 - - -
-				     * @responseContentItemSchema deviceAuthorization sec1 - - -
-				     * @responseContentExamples
-				     * @responseContentExamples - - - - - - -
-				     * @responseContentExamples arg1
-				     * @responseContentExamples arg1 arg2
-				     * @responseContentExamples arg1 arg2 arg3
-				     * @responseContentExamples arg1 arg2 arg3 arg4
-				     * @responseContentExamples arg1 arg2 arg3 arg4 arg5
-				     * @responseContentExamples arg1 arg2|arg3|arg4
-				     * @responseContentExamples default application/json
-				     * @responseContentExamples 200 application/json
-				     * @responseContentExamples type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContentExamples type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContentExamples implicit sec1 - -
-				     * @responseContentExamples password sec1 - -
-				     * @responseContentExamples clientCredentials sec1 - -
-				     * @responseContentExamples authorizationCode sec1 - - -
-				     * @responseContentExamples deviceAuthorization sec1 - - -
-				     * @jsonSchemaDialect
-				     * @jsonSchemaDialect - - - - - - -
-				     * @jsonSchemaDialect arg1
-				     * @jsonSchemaDialect arg1 arg2
-				     * @jsonSchemaDialect arg1 arg2 arg3
-				     * @jsonSchemaDialect arg1 arg2 arg3 arg4
-				     * @jsonSchemaDialect arg1 arg2 arg3 arg4 arg5
-				     * @jsonSchemaDialect arg1 arg2|arg3|arg4
-				     * @jsonSchemaDialect default application/json
-				     * @jsonSchemaDialect 200 application/json
-				     * @jsonSchemaDialect type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @jsonSchemaDialect type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @jsonSchemaDialect implicit sec1 - -
-				     * @jsonSchemaDialect password sec1 - -
-				     * @jsonSchemaDialect clientCredentials sec1 - -
-				     * @jsonSchemaDialect authorizationCode sec1 - - -
-				     * @jsonSchemaDialect deviceAuthorization sec1 - - -
-				     * @responseContentExample
-				     * @responseContentExample - - - - - - -
-				     * @responseContentExample arg1
-				     * @responseContentExample arg1 arg2
-				     * @responseContentExample arg1 arg2 arg3
-				     * @responseContentExample arg1 arg2 arg3 arg4
-				     * @responseContentExample arg1 arg2 arg3 arg4 arg5
-				     * @responseContentExample arg1 arg2|arg3|arg4
-				     * @responseContentExample default application/json
-				     * @responseContentExample 200 application/json
-				     * @responseContentExample type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContentExample type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContentExample implicit sec1 - -
-				     * @responseContentExample password sec1 - -
-				     * @responseContentExample clientCredentials sec1 - -
-				     * @responseContentExample authorizationCode sec1 - - -
-				     * @responseContentExample deviceAuthorization sec1 - - -
-				     * @responseLink
-				     * @responseLink - - - - - - -
-				     * @responseLink arg1
-				     * @responseLink arg1 arg2
-				     * @responseLink arg1 arg2 arg3
-				     * @responseLink arg1 arg2 arg3 arg4
-				     * @responseLink arg1 arg2 arg3 arg4 arg5
-				     * @responseLink arg1 arg2|arg3|arg4
-				     * @responseLink default application/json
-				     * @responseLink 200 application/json
-				     * @responseLink type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLink type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLink implicit sec1 - -
-				     * @responseLink password sec1 - -
-				     * @responseLink clientCredentials sec1 - -
-				     * @responseLink authorizationCode sec1 - - -
-				     * @responseLink deviceAuthorization sec1 - - -
-				     * @openapiVersion
-				     * @openapiVersion - - - - - - -
-				     * @openapiVersion arg1
-				     * @openapiVersion arg1 arg2
-				     * @openapiVersion arg1 arg2 arg3
-				     * @openapiVersion arg1 arg2 arg3 arg4
-				     * @openapiVersion arg1 arg2 arg3 arg4 arg5
-				     * @openapiVersion arg1 arg2|arg3|arg4
-				     * @openapiVersion default application/json
-				     * @openapiVersion 200 application/json
-				     * @openapiVersion type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @openapiVersion type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @openapiVersion implicit sec1 - -
-				     * @openapiVersion password sec1 - -
-				     * @openapiVersion clientCredentials sec1 - -
-				     * @openapiVersion authorizationCode sec1 - - -
-				     * @openapiVersion deviceAuthorization sec1 - - -
-				     * @responseLinkDesc
-				     * @responseLinkDesc - - - - - - -
-				     * @responseLinkDesc arg1
-				     * @responseLinkDesc arg1 arg2
-				     * @responseLinkDesc arg1 arg2 arg3
-				     * @responseLinkDesc arg1 arg2 arg3 arg4
-				     * @responseLinkDesc arg1 arg2 arg3 arg4 arg5
-				     * @responseLinkDesc arg1 arg2|arg3|arg4
-				     * @responseLinkDesc default application/json
-				     * @responseLinkDesc 200 application/json
-				     * @responseLinkDesc type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLinkDesc type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLinkDesc implicit sec1 - -
-				     * @responseLinkDesc password sec1 - -
-				     * @responseLinkDesc clientCredentials sec1 - -
-				     * @responseLinkDesc authorizationCode sec1 - - -
-				     * @responseLinkDesc deviceAuthorization sec1 - - -
-				     * @responseLinkRequestBody
-				     * @responseLinkRequestBody - - - - - - -
-				     * @responseLinkRequestBody arg1
-				     * @responseLinkRequestBody arg1 arg2
-				     * @responseLinkRequestBody arg1 arg2 arg3
-				     * @responseLinkRequestBody arg1 arg2 arg3 arg4
-				     * @responseLinkRequestBody arg1 arg2 arg3 arg4 arg5
-				     * @responseLinkRequestBody arg1 arg2|arg3|arg4
-				     * @responseLinkRequestBody default application/json
-				     * @responseLinkRequestBody 200 application/json
-				     * @responseLinkRequestBody type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLinkRequestBody type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLinkRequestBody implicit sec1 - -
-				     * @responseLinkRequestBody password sec1 - -
-				     * @responseLinkRequestBody clientCredentials sec1 - -
-				     * @responseLinkRequestBody authorizationCode sec1 - - -
-				     * @responseLinkRequestBody deviceAuthorization sec1 - - -
-				     * @globalTag
-				     * @globalTag - - - - - - -
-				     * @globalTag arg1
-				     * @globalTag arg1 arg2
-				     * @globalTag arg1 arg2 arg3
-				     * @globalTag arg1 arg2 arg3 arg4
-				     * @globalTag arg1 arg2 arg3 arg4 arg5
-				     * @globalTag arg1 arg2|arg3|arg4
-				     * @globalTag default application/json
-				     * @globalTag 200 application/json
-				     * @globalTag type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @globalTag type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @globalTag implicit sec1 - -
-				     * @globalTag password sec1 - -
-				     * @globalTag clientCredentials sec1 - -
-				     * @globalTag authorizationCode sec1 - - -
-				     * @globalTag deviceAuthorization sec1 - - -
-				     * @responseLinkServer
-				     * @responseLinkServer - - - - - - -
-				     * @responseLinkServer arg1
-				     * @responseLinkServer arg1 arg2
-				     * @responseLinkServer arg1 arg2 arg3
-				     * @responseLinkServer arg1 arg2 arg3 arg4
-				     * @responseLinkServer arg1 arg2 arg3 arg4 arg5
-				     * @responseLinkServer arg1 arg2|arg3|arg4
-				     * @responseLinkServer default application/json
-				     * @responseLinkServer 200 application/json
-				     * @responseLinkServer type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLinkServer type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLinkServer implicit sec1 - -
-				     * @responseLinkServer password sec1 - -
-				     * @responseLinkServer clientCredentials sec1 - -
-				     * @responseLinkServer authorizationCode sec1 - - -
-				     * @responseLinkServer deviceAuthorization sec1 - - -
-				     * @contactUrl
-				     * @contactUrl - - - - - - -
-				     * @contactUrl arg1
-				     * @contactUrl arg1 arg2
-				     * @contactUrl arg1 arg2 arg3
-				     * @contactUrl arg1 arg2 arg3 arg4
-				     * @contactUrl arg1 arg2 arg3 arg4 arg5
-				     * @contactUrl arg1 arg2|arg3|arg4
-				     * @contactUrl default application/json
-				     * @contactUrl 200 application/json
-				     * @contactUrl type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @contactUrl type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @contactUrl implicit sec1 - -
-				     * @contactUrl password sec1 - -
-				     * @contactUrl clientCredentials sec1 - -
-				     * @contactUrl authorizationCode sec1 - - -
-				     * @contactUrl deviceAuthorization sec1 - - -
-				     * @securitySchemeFlow
-				     * @securitySchemeFlow - - - - - - -
-				     * @securitySchemeFlow arg1
-				     * @securitySchemeFlow arg1 arg2
-				     * @securitySchemeFlow arg1 arg2 arg3
-				     * @securitySchemeFlow arg1 arg2 arg3 arg4
-				     * @securitySchemeFlow arg1 arg2 arg3 arg4 arg5
-				     * @securitySchemeFlow arg1 arg2|arg3|arg4
-				     * @securitySchemeFlow default application/json
-				     * @securitySchemeFlow 200 application/json
-				     * @securitySchemeFlow type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @securitySchemeFlow type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @securitySchemeFlow implicit sec1 - -
-				     * @securitySchemeFlow password sec1 - -
-				     * @securitySchemeFlow clientCredentials sec1 - -
-				     * @securitySchemeFlow authorizationCode sec1 - - -
-				     * @securitySchemeFlow deviceAuthorization sec1 - - -
-				     * @responseContentSchema
-				     * @responseContentSchema - - - - - - -
-				     * @responseContentSchema arg1
-				     * @responseContentSchema arg1 arg2
-				     * @responseContentSchema arg1 arg2 arg3
-				     * @responseContentSchema arg1 arg2 arg3 arg4
-				     * @responseContentSchema arg1 arg2 arg3 arg4 arg5
-				     * @responseContentSchema arg1 arg2|arg3|arg4
-				     * @responseContentSchema default application/json
-				     * @responseContentSchema 200 application/json
-				     * @responseContentSchema type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseContentSchema type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseContentSchema implicit sec1 - -
-				     * @responseContentSchema password sec1 - -
-				     * @responseContentSchema clientCredentials sec1 - -
-				     * @responseContentSchema authorizationCode sec1 - - -
-				     * @responseContentSchema deviceAuthorization sec1 - - -
-				     * @serverName
-				     * @serverName - - - - - - -
-				     * @serverName arg1
-				     * @serverName arg1 arg2
-				     * @serverName arg1 arg2 arg3
-				     * @serverName arg1 arg2 arg3 arg4
-				     * @serverName arg1 arg2 arg3 arg4 arg5
-				     * @serverName arg1 arg2|arg3|arg4
-				     * @serverName default application/json
-				     * @serverName 200 application/json
-				     * @serverName type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @serverName type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @serverName implicit sec1 - -
-				     * @serverName password sec1 - -
-				     * @serverName clientCredentials sec1 - -
-				     * @serverName authorizationCode sec1 - - -
-				     * @serverName deviceAuthorization sec1 - - -
-				     * @pathServer
-				     * @pathServer - - - - - - -
-				     * @pathServer arg1
-				     * @pathServer arg1 arg2
-				     * @pathServer arg1 arg2 arg3
-				     * @pathServer arg1 arg2 arg3 arg4
-				     * @pathServer arg1 arg2 arg3 arg4 arg5
-				     * @pathServer arg1 arg2|arg3|arg4
-				     * @pathServer default application/json
-				     * @pathServer 200 application/json
-				     * @pathServer type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @pathServer type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @pathServer implicit sec1 - -
-				     * @pathServer password sec1 - -
-				     * @pathServer clientCredentials sec1 - -
-				     * @pathServer authorizationCode sec1 - - -
-				     * @pathServer deviceAuthorization sec1 - - -
-				     * @summary
-				     * @summary - - - - - - -
-				     * @summary arg1
-				     * @summary arg1 arg2
-				     * @summary arg1 arg2 arg3
-				     * @summary arg1 arg2 arg3 arg4
-				     * @summary arg1 arg2 arg3 arg4 arg5
-				     * @summary arg1 arg2|arg3|arg4
-				     * @summary default application/json
-				     * @summary 200 application/json
-				     * @summary type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @summary type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @summary implicit sec1 - -
-				     * @summary password sec1 - -
-				     * @summary clientCredentials sec1 - -
-				     * @summary authorizationCode sec1 - - -
-				     * @summary deviceAuthorization sec1 - - -
-				     * @termsOfService
-				     * @termsOfService - - - - - - -
-				     * @termsOfService arg1
-				     * @termsOfService arg1 arg2
-				     * @termsOfService arg1 arg2 arg3
-				     * @termsOfService arg1 arg2 arg3 arg4
-				     * @termsOfService arg1 arg2 arg3 arg4 arg5
-				     * @termsOfService arg1 arg2|arg3|arg4
-				     * @termsOfService default application/json
-				     * @termsOfService 200 application/json
-				     * @termsOfService type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @termsOfService type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @termsOfService implicit sec1 - -
-				     * @termsOfService password sec1 - -
-				     * @termsOfService clientCredentials sec1 - -
-				     * @termsOfService authorizationCode sec1 - - -
-				     * @termsOfService deviceAuthorization sec1 - - -
-				     * @server
-				     * @server - - - - - - -
-				     * @server arg1
-				     * @server arg1 arg2
-				     * @server arg1 arg2 arg3
-				     * @server arg1 arg2 arg3 arg4
-				     * @server arg1 arg2 arg3 arg4 arg5
-				     * @server arg1 arg2|arg3|arg4
-				     * @server default application/json
-				     * @server 200 application/json
-				     * @server type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @server type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @server implicit sec1 - -
-				     * @server password sec1 - -
-				     * @server clientCredentials sec1 - -
-				     * @server authorizationCode sec1 - - -
-				     * @server deviceAuthorization sec1 - - -
-				     * @componentRequestBody
-				     * @componentRequestBody - - - - - - -
-				     * @componentRequestBody arg1
-				     * @componentRequestBody arg1 arg2
-				     * @componentRequestBody arg1 arg2 arg3
-				     * @componentRequestBody arg1 arg2 arg3 arg4
-				     * @componentRequestBody arg1 arg2 arg3 arg4 arg5
-				     * @componentRequestBody arg1 arg2|arg3|arg4
-				     * @componentRequestBody default application/json
-				     * @componentRequestBody 200 application/json
-				     * @componentRequestBody type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentRequestBody type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentRequestBody implicit sec1 - -
-				     * @componentRequestBody password sec1 - -
-				     * @componentRequestBody clientCredentials sec1 - -
-				     * @componentRequestBody authorizationCode sec1 - - -
-				     * @componentRequestBody deviceAuthorization sec1 - - -
-				     * @componentMediaType
-				     * @componentMediaType - - - - - - -
-				     * @componentMediaType arg1
-				     * @componentMediaType arg1 arg2
-				     * @componentMediaType arg1 arg2 arg3
-				     * @componentMediaType arg1 arg2 arg3 arg4
-				     * @componentMediaType arg1 arg2 arg3 arg4 arg5
-				     * @componentMediaType arg1 arg2|arg3|arg4
-				     * @componentMediaType default application/json
-				     * @componentMediaType 200 application/json
-				     * @componentMediaType type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentMediaType type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentMediaType implicit sec1 - -
-				     * @componentMediaType password sec1 - -
-				     * @componentMediaType clientCredentials sec1 - -
-				     * @componentMediaType authorizationCode sec1 - - -
-				     * @componentMediaType deviceAuthorization sec1 - - -
-				     * @componentParameter
-				     * @componentParameter - - - - - - -
-				     * @componentParameter arg1
-				     * @componentParameter arg1 arg2
-				     * @componentParameter arg1 arg2 arg3
-				     * @componentParameter arg1 arg2 arg3 arg4
-				     * @componentParameter arg1 arg2 arg3 arg4 arg5
-				     * @componentParameter arg1 arg2|arg3|arg4
-				     * @componentParameter default application/json
-				     * @componentParameter 200 application/json
-				     * @componentParameter type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentParameter type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentParameter implicit sec1 - -
-				     * @componentParameter password sec1 - -
-				     * @componentParameter clientCredentials sec1 - -
-				     * @componentParameter authorizationCode sec1 - - -
-				     * @componentParameter deviceAuthorization sec1 - - -
-				     * @componentCallback
-				     * @componentCallback - - - - - - -
-				     * @componentCallback arg1
-				     * @componentCallback arg1 arg2
-				     * @componentCallback arg1 arg2 arg3
-				     * @componentCallback arg1 arg2 arg3 arg4
-				     * @componentCallback arg1 arg2 arg3 arg4 arg5
-				     * @componentCallback arg1 arg2|arg3|arg4
-				     * @componentCallback default application/json
-				     * @componentCallback 200 application/json
-				     * @componentCallback type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentCallback type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentCallback implicit sec1 - -
-				     * @componentCallback password sec1 - -
-				     * @componentCallback clientCredentials sec1 - -
-				     * @componentCallback authorizationCode sec1 - - -
-				     * @componentCallback deviceAuthorization sec1 - - -
-				     * @componentResponse
-				     * @componentResponse - - - - - - -
-				     * @componentResponse arg1
-				     * @componentResponse arg1 arg2
-				     * @componentResponse arg1 arg2 arg3
-				     * @componentResponse arg1 arg2 arg3 arg4
-				     * @componentResponse arg1 arg2 arg3 arg4 arg5
-				     * @componentResponse arg1 arg2|arg3|arg4
-				     * @componentResponse default application/json
-				     * @componentResponse 200 application/json
-				     * @componentResponse type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentResponse type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentResponse implicit sec1 - -
-				     * @componentResponse password sec1 - -
-				     * @componentResponse clientCredentials sec1 - -
-				     * @componentResponse authorizationCode sec1 - - -
-				     * @componentResponse deviceAuthorization sec1 - - -
-				     * @pathSummary
-				     * @pathSummary - - - - - - -
-				     * @pathSummary arg1
-				     * @pathSummary arg1 arg2
-				     * @pathSummary arg1 arg2 arg3
-				     * @pathSummary arg1 arg2 arg3 arg4
-				     * @pathSummary arg1 arg2 arg3 arg4 arg5
-				     * @pathSummary arg1 arg2|arg3|arg4
-				     * @pathSummary default application/json
-				     * @pathSummary 200 application/json
-				     * @pathSummary type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @pathSummary type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @pathSummary implicit sec1 - -
-				     * @pathSummary password sec1 - -
-				     * @pathSummary clientCredentials sec1 - -
-				     * @pathSummary authorizationCode sec1 - - -
-				     * @pathSummary deviceAuthorization sec1 - - -
-				     * @responseHeader
-				     * @responseHeader - - - - - - -
-				     * @responseHeader arg1
-				     * @responseHeader arg1 arg2
-				     * @responseHeader arg1 arg2 arg3
-				     * @responseHeader arg1 arg2 arg3 arg4
-				     * @responseHeader arg1 arg2 arg3 arg4 arg5
-				     * @responseHeader arg1 arg2|arg3|arg4
-				     * @responseHeader default application/json
-				     * @responseHeader 200 application/json
-				     * @responseHeader type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeader type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeader implicit sec1 - -
-				     * @responseHeader password sec1 - -
-				     * @responseHeader clientCredentials sec1 - -
-				     * @responseHeader authorizationCode sec1 - - -
-				     * @responseHeader deviceAuthorization sec1 - - -
-				     * @serverVariableEnum
-				     * @serverVariableEnum - - - - - - -
-				     * @serverVariableEnum arg1
-				     * @serverVariableEnum arg1 arg2
-				     * @serverVariableEnum arg1 arg2 arg3
-				     * @serverVariableEnum arg1 arg2 arg3 arg4
-				     * @serverVariableEnum arg1 arg2 arg3 arg4 arg5
-				     * @serverVariableEnum arg1 arg2|arg3|arg4
-				     * @serverVariableEnum default application/json
-				     * @serverVariableEnum 200 application/json
-				     * @serverVariableEnum type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @serverVariableEnum type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @serverVariableEnum implicit sec1 - -
-				     * @serverVariableEnum password sec1 - -
-				     * @serverVariableEnum clientCredentials sec1 - -
-				     * @serverVariableEnum authorizationCode sec1 - - -
-				     * @serverVariableEnum deviceAuthorization sec1 - - -
-				     * @responseHeaderDeprecated
-				     * @responseHeaderDeprecated - - - - - - -
-				     * @responseHeaderDeprecated arg1
-				     * @responseHeaderDeprecated arg1 arg2
-				     * @responseHeaderDeprecated arg1 arg2 arg3
-				     * @responseHeaderDeprecated arg1 arg2 arg3 arg4
-				     * @responseHeaderDeprecated arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderDeprecated arg1 arg2|arg3|arg4
-				     * @responseHeaderDeprecated default application/json
-				     * @responseHeaderDeprecated 200 application/json
-				     * @responseHeaderDeprecated type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderDeprecated type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderDeprecated implicit sec1 - -
-				     * @responseHeaderDeprecated password sec1 - -
-				     * @responseHeaderDeprecated clientCredentials sec1 - -
-				     * @responseHeaderDeprecated authorizationCode sec1 - - -
-				     * @responseHeaderDeprecated deviceAuthorization sec1 - - -
-				     * @securityScheme
-				     * @securityScheme - - - - - - -
-				     * @securityScheme arg1
-				     * @securityScheme arg1 arg2
-				     * @securityScheme arg1 arg2 arg3
-				     * @securityScheme arg1 arg2 arg3 arg4
-				     * @securityScheme arg1 arg2 arg3 arg4 arg5
-				     * @securityScheme arg1 arg2|arg3|arg4
-				     * @securityScheme default application/json
-				     * @securityScheme 200 application/json
-				     * @securityScheme type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @securityScheme type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @securityScheme implicit sec1 - -
-				     * @securityScheme password sec1 - -
-				     * @securityScheme clientCredentials sec1 - -
-				     * @securityScheme authorizationCode sec1 - - -
-				     * @securityScheme deviceAuthorization sec1 - - -
-				     * @openapiSelf
-				     * @openapiSelf - - - - - - -
-				     * @openapiSelf arg1
-				     * @openapiSelf arg1 arg2
-				     * @openapiSelf arg1 arg2 arg3
-				     * @openapiSelf arg1 arg2 arg3 arg4
-				     * @openapiSelf arg1 arg2 arg3 arg4 arg5
-				     * @openapiSelf arg1 arg2|arg3|arg4
-				     * @openapiSelf default application/json
-				     * @openapiSelf 200 application/json
-				     * @openapiSelf type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @openapiSelf type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @openapiSelf implicit sec1 - -
-				     * @openapiSelf password sec1 - -
-				     * @openapiSelf clientCredentials sec1 - -
-				     * @openapiSelf authorizationCode sec1 - - -
-				     * @openapiSelf deviceAuthorization sec1 - - -
-				     * @componentHeader
-				     * @componentHeader - - - - - - -
-				     * @componentHeader arg1
-				     * @componentHeader arg1 arg2
-				     * @componentHeader arg1 arg2 arg3
-				     * @componentHeader arg1 arg2 arg3 arg4
-				     * @componentHeader arg1 arg2 arg3 arg4 arg5
-				     * @componentHeader arg1 arg2|arg3|arg4
-				     * @componentHeader default application/json
-				     * @componentHeader 200 application/json
-				     * @componentHeader type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentHeader type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentHeader implicit sec1 - -
-				     * @componentHeader password sec1 - -
-				     * @componentHeader clientCredentials sec1 - -
-				     * @componentHeader authorizationCode sec1 - - -
-				     * @componentHeader deviceAuthorization sec1 - - -
-				     * @securitySchemeFlowScope
-				     * @securitySchemeFlowScope - - - - - - -
-				     * @securitySchemeFlowScope arg1
-				     * @securitySchemeFlowScope arg1 arg2
-				     * @securitySchemeFlowScope arg1 arg2 arg3
-				     * @securitySchemeFlowScope arg1 arg2 arg3 arg4
-				     * @securitySchemeFlowScope arg1 arg2 arg3 arg4 arg5
-				     * @securitySchemeFlowScope arg1 arg2|arg3|arg4
-				     * @securitySchemeFlowScope default application/json
-				     * @securitySchemeFlowScope 200 application/json
-				     * @securitySchemeFlowScope type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @securitySchemeFlowScope type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @securitySchemeFlowScope implicit sec1 - -
-				     * @securitySchemeFlowScope password sec1 - -
-				     * @securitySchemeFlowScope clientCredentials sec1 - -
-				     * @securitySchemeFlowScope authorizationCode sec1 - - -
-				     * @securitySchemeFlowScope deviceAuthorization sec1 - - -
-				     * @componentLinkRequestBody
-				     * @componentLinkRequestBody - - - - - - -
-				     * @componentLinkRequestBody arg1
-				     * @componentLinkRequestBody arg1 arg2
-				     * @componentLinkRequestBody arg1 arg2 arg3
-				     * @componentLinkRequestBody arg1 arg2 arg3 arg4
-				     * @componentLinkRequestBody arg1 arg2 arg3 arg4 arg5
-				     * @componentLinkRequestBody arg1 arg2|arg3|arg4
-				     * @componentLinkRequestBody default application/json
-				     * @componentLinkRequestBody 200 application/json
-				     * @componentLinkRequestBody type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLinkRequestBody type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLinkRequestBody implicit sec1 - -
-				     * @componentLinkRequestBody password sec1 - -
-				     * @componentLinkRequestBody clientCredentials sec1 - -
-				     * @componentLinkRequestBody authorizationCode sec1 - - -
-				     * @componentLinkRequestBody deviceAuthorization sec1 - - -
-				     * @responseHeaderStyle
-				     * @responseHeaderStyle - - - - - - -
-				     * @responseHeaderStyle arg1
-				     * @responseHeaderStyle arg1 arg2
-				     * @responseHeaderStyle arg1 arg2 arg3
-				     * @responseHeaderStyle arg1 arg2 arg3 arg4
-				     * @responseHeaderStyle arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderStyle arg1 arg2|arg3|arg4
-				     * @responseHeaderStyle default application/json
-				     * @responseHeaderStyle 200 application/json
-				     * @responseHeaderStyle type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderStyle type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderStyle implicit sec1 - -
-				     * @responseHeaderStyle password sec1 - -
-				     * @responseHeaderStyle clientCredentials sec1 - -
-				     * @responseHeaderStyle authorizationCode sec1 - - -
-				     * @responseHeaderStyle deviceAuthorization sec1 - - -
-				     * @responseLinkOpRef
-				     * @responseLinkOpRef - - - - - - -
-				     * @responseLinkOpRef arg1
-				     * @responseLinkOpRef arg1 arg2
-				     * @responseLinkOpRef arg1 arg2 arg3
-				     * @responseLinkOpRef arg1 arg2 arg3 arg4
-				     * @responseLinkOpRef arg1 arg2 arg3 arg4 arg5
-				     * @responseLinkOpRef arg1 arg2|arg3|arg4
-				     * @responseLinkOpRef default application/json
-				     * @responseLinkOpRef 200 application/json
-				     * @responseLinkOpRef type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLinkOpRef type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLinkOpRef implicit sec1 - -
-				     * @responseLinkOpRef password sec1 - -
-				     * @responseLinkOpRef clientCredentials sec1 - -
-				     * @responseLinkOpRef authorizationCode sec1 - - -
-				     * @responseLinkOpRef deviceAuthorization sec1 - - -
-				     * @licenseUrl
-				     * @licenseUrl - - - - - - -
-				     * @licenseUrl arg1
-				     * @licenseUrl arg1 arg2
-				     * @licenseUrl arg1 arg2 arg3
-				     * @licenseUrl arg1 arg2 arg3 arg4
-				     * @licenseUrl arg1 arg2 arg3 arg4 arg5
-				     * @licenseUrl arg1 arg2|arg3|arg4
-				     * @licenseUrl default application/json
-				     * @licenseUrl 200 application/json
-				     * @licenseUrl type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @licenseUrl type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @licenseUrl implicit sec1 - -
-				     * @licenseUrl password sec1 - -
-				     * @licenseUrl clientCredentials sec1 - -
-				     * @licenseUrl authorizationCode sec1 - - -
-				     * @licenseUrl deviceAuthorization sec1 - - -
-				     * @contactEmail
-				     * @contactEmail - - - - - - -
-				     * @contactEmail arg1
-				     * @contactEmail arg1 arg2
-				     * @contactEmail arg1 arg2 arg3
-				     * @contactEmail arg1 arg2 arg3 arg4
-				     * @contactEmail arg1 arg2 arg3 arg4 arg5
-				     * @contactEmail arg1 arg2|arg3|arg4
-				     * @contactEmail default application/json
-				     * @contactEmail 200 application/json
-				     * @contactEmail type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @contactEmail type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @contactEmail implicit sec1 - -
-				     * @contactEmail password sec1 - -
-				     * @contactEmail clientCredentials sec1 - -
-				     * @contactEmail authorizationCode sec1 - - -
-				     * @contactEmail deviceAuthorization sec1 - - -
-				     * @responseHeaderContent
-				     * @responseHeaderContent - - - - - - -
-				     * @responseHeaderContent arg1
-				     * @responseHeaderContent arg1 arg2
-				     * @responseHeaderContent arg1 arg2 arg3
-				     * @responseHeaderContent arg1 arg2 arg3 arg4
-				     * @responseHeaderContent arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderContent arg1 arg2|arg3|arg4
-				     * @responseHeaderContent default application/json
-				     * @responseHeaderContent 200 application/json
-				     * @responseHeaderContent type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderContent type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderContent implicit sec1 - -
-				     * @responseHeaderContent password sec1 - -
-				     * @responseHeaderContent clientCredentials sec1 - -
-				     * @responseHeaderContent authorizationCode sec1 - - -
-				     * @responseHeaderContent deviceAuthorization sec1 - - -
-				     * @componentLinkServer
-				     * @componentLinkServer - - - - - - -
-				     * @componentLinkServer arg1
-				     * @componentLinkServer arg1 arg2
-				     * @componentLinkServer arg1 arg2 arg3
-				     * @componentLinkServer arg1 arg2 arg3 arg4
-				     * @componentLinkServer arg1 arg2 arg3 arg4 arg5
-				     * @componentLinkServer arg1 arg2|arg3|arg4
-				     * @componentLinkServer default application/json
-				     * @componentLinkServer 200 application/json
-				     * @componentLinkServer type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLinkServer type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLinkServer implicit sec1 - -
-				     * @componentLinkServer password sec1 - -
-				     * @componentLinkServer clientCredentials sec1 - -
-				     * @componentLinkServer authorizationCode sec1 - - -
-				     * @componentLinkServer deviceAuthorization sec1 - - -
-				     * @responseLinkOpId
-				     * @responseLinkOpId - - - - - - -
-				     * @responseLinkOpId arg1
-				     * @responseLinkOpId arg1 arg2
-				     * @responseLinkOpId arg1 arg2 arg3
-				     * @responseLinkOpId arg1 arg2 arg3 arg4
-				     * @responseLinkOpId arg1 arg2 arg3 arg4 arg5
-				     * @responseLinkOpId arg1 arg2|arg3|arg4
-				     * @responseLinkOpId default application/json
-				     * @responseLinkOpId 200 application/json
-				     * @responseLinkOpId type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseLinkOpId type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseLinkOpId implicit sec1 - -
-				     * @responseLinkOpId password sec1 - -
-				     * @responseLinkOpId clientCredentials sec1 - -
-				     * @responseLinkOpId authorizationCode sec1 - - -
-				     * @responseLinkOpId deviceAuthorization sec1 - - -
-				     * @description
-				     * @description - - - - - - -
-				     * @description arg1
-				     * @description arg1 arg2
-				     * @description arg1 arg2 arg3
-				     * @description arg1 arg2 arg3 arg4
-				     * @description arg1 arg2 arg3 arg4 arg5
-				     * @description arg1 arg2|arg3|arg4
-				     * @description default application/json
-				     * @description 200 application/json
-				     * @description type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @description type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @description implicit sec1 - -
-				     * @description password sec1 - -
-				     * @description clientCredentials sec1 - -
-				     * @description authorizationCode sec1 - - -
-				     * @description deviceAuthorization sec1 - - -
-				     * @componentLinkDesc
-				     * @componentLinkDesc - - - - - - -
-				     * @componentLinkDesc arg1
-				     * @componentLinkDesc arg1 arg2
-				     * @componentLinkDesc arg1 arg2 arg3
-				     * @componentLinkDesc arg1 arg2 arg3 arg4
-				     * @componentLinkDesc arg1 arg2 arg3 arg4 arg5
-				     * @componentLinkDesc arg1 arg2|arg3|arg4
-				     * @componentLinkDesc default application/json
-				     * @componentLinkDesc 200 application/json
-				     * @componentLinkDesc type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLinkDesc type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLinkDesc implicit sec1 - -
-				     * @componentLinkDesc password sec1 - -
-				     * @componentLinkDesc clientCredentials sec1 - -
-				     * @componentLinkDesc authorizationCode sec1 - - -
-				     * @componentLinkDesc deviceAuthorization sec1 - - -
-				     * @pathParameter
-				     * @pathParameter - - - - - - -
-				     * @pathParameter arg1
-				     * @pathParameter arg1 arg2
-				     * @pathParameter arg1 arg2 arg3
-				     * @pathParameter arg1 arg2 arg3 arg4
-				     * @pathParameter arg1 arg2 arg3 arg4 arg5
-				     * @pathParameter arg1 arg2|arg3|arg4
-				     * @pathParameter default application/json
-				     * @pathParameter 200 application/json
-				     * @pathParameter type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @pathParameter type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @pathParameter implicit sec1 - -
-				     * @pathParameter password sec1 - -
-				     * @pathParameter clientCredentials sec1 - -
-				     * @pathParameter authorizationCode sec1 - - -
-				     * @pathParameter deviceAuthorization sec1 - - -
-				     * @contactName
-				     * @contactName - - - - - - -
-				     * @contactName arg1
-				     * @contactName arg1 arg2
-				     * @contactName arg1 arg2 arg3
-				     * @contactName arg1 arg2 arg3 arg4
-				     * @contactName arg1 arg2 arg3 arg4 arg5
-				     * @contactName arg1 arg2|arg3|arg4
-				     * @contactName default application/json
-				     * @contactName 200 application/json
-				     * @contactName type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @contactName type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @contactName implicit sec1 - -
-				     * @contactName password sec1 - -
-				     * @contactName clientCredentials sec1 - -
-				     * @contactName authorizationCode sec1 - - -
-				     * @contactName deviceAuthorization sec1 - - -
-				     * @responseHeaderExample
-				     * @responseHeaderExample - - - - - - -
-				     * @responseHeaderExample arg1
-				     * @responseHeaderExample arg1 arg2
-				     * @responseHeaderExample arg1 arg2 arg3
-				     * @responseHeaderExample arg1 arg2 arg3 arg4
-				     * @responseHeaderExample arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderExample arg1 arg2|arg3|arg4
-				     * @responseHeaderExample default application/json
-				     * @responseHeaderExample 200 application/json
-				     * @responseHeaderExample type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderExample type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderExample implicit sec1 - -
-				     * @responseHeaderExample password sec1 - -
-				     * @responseHeaderExample clientCredentials sec1 - -
-				     * @responseHeaderExample authorizationCode sec1 - - -
-				     * @responseHeaderExample deviceAuthorization sec1 - - -
-				     * @title
-				     * @title - - - - - - -
-				     * @title arg1
-				     * @title arg1 arg2
-				     * @title arg1 arg2 arg3
-				     * @title arg1 arg2 arg3 arg4
-				     * @title arg1 arg2 arg3 arg4 arg5
-				     * @title arg1 arg2|arg3|arg4
-				     * @title default application/json
-				     * @title 200 application/json
-				     * @title type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @title type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @title implicit sec1 - -
-				     * @title password sec1 - -
-				     * @title clientCredentials sec1 - -
-				     * @title authorizationCode sec1 - - -
-				     * @title deviceAuthorization sec1 - - -
-				     * @responseEncodingItemEncoding
-				     * @responseEncodingItemEncoding - - - - - - -
-				     * @responseEncodingItemEncoding arg1
-				     * @responseEncodingItemEncoding arg1 arg2
-				     * @responseEncodingItemEncoding arg1 arg2 arg3
-				     * @responseEncodingItemEncoding arg1 arg2 arg3 arg4
-				     * @responseEncodingItemEncoding arg1 arg2 arg3 arg4 arg5
-				     * @responseEncodingItemEncoding arg1 arg2|arg3|arg4
-				     * @responseEncodingItemEncoding default application/json
-				     * @responseEncodingItemEncoding 200 application/json
-				     * @responseEncodingItemEncoding type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseEncodingItemEncoding type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseEncodingItemEncoding implicit sec1 - -
-				     * @responseEncodingItemEncoding password sec1 - -
-				     * @responseEncodingItemEncoding clientCredentials sec1 - -
-				     * @responseEncodingItemEncoding authorizationCode sec1 - - -
-				     * @responseEncodingItemEncoding deviceAuthorization sec1 - - -
-				     * @responseHeaderRequired
-				     * @responseHeaderRequired - - - - - - -
-				     * @responseHeaderRequired arg1
-				     * @responseHeaderRequired arg1 arg2
-				     * @responseHeaderRequired arg1 arg2 arg3
-				     * @responseHeaderRequired arg1 arg2 arg3 arg4
-				     * @responseHeaderRequired arg1 arg2 arg3 arg4 arg5
-				     * @responseHeaderRequired arg1 arg2|arg3|arg4
-				     * @responseHeaderRequired default application/json
-				     * @responseHeaderRequired 200 application/json
-				     * @responseHeaderRequired type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseHeaderRequired type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseHeaderRequired implicit sec1 - -
-				     * @responseHeaderRequired password sec1 - -
-				     * @responseHeaderRequired clientCredentials sec1 - -
-				     * @responseHeaderRequired authorizationCode sec1 - - -
-				     * @responseHeaderRequired deviceAuthorization sec1 - - -
-				     * @componentPathItem
-				     * @componentPathItem - - - - - - -
-				     * @componentPathItem arg1
-				     * @componentPathItem arg1 arg2
-				     * @componentPathItem arg1 arg2 arg3
-				     * @componentPathItem arg1 arg2 arg3 arg4
-				     * @componentPathItem arg1 arg2 arg3 arg4 arg5
-				     * @componentPathItem arg1 arg2|arg3|arg4
-				     * @componentPathItem default application/json
-				     * @componentPathItem 200 application/json
-				     * @componentPathItem type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentPathItem type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentPathItem implicit sec1 - -
-				     * @componentPathItem password sec1 - -
-				     * @componentPathItem clientCredentials sec1 - -
-				     * @componentPathItem authorizationCode sec1 - - -
-				     * @componentPathItem deviceAuthorization sec1 - - -
-				     * @serverVariable
-				     * @serverVariable - - - - - - -
-				     * @serverVariable arg1
-				     * @serverVariable arg1 arg2
-				     * @serverVariable arg1 arg2 arg3
-				     * @serverVariable arg1 arg2 arg3 arg4
-				     * @serverVariable arg1 arg2 arg3 arg4 arg5
-				     * @serverVariable arg1 arg2|arg3|arg4
-				     * @serverVariable default application/json
-				     * @serverVariable 200 application/json
-				     * @serverVariable type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @serverVariable type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @serverVariable implicit sec1 - -
-				     * @serverVariable password sec1 - -
-				     * @serverVariable clientCredentials sec1 - -
-				     * @serverVariable authorizationCode sec1 - - -
-				     * @serverVariable deviceAuthorization sec1 - - -
-				     * @pathDescription
-				     * @pathDescription - - - - - - -
-				     * @pathDescription arg1
-				     * @pathDescription arg1 arg2
-				     * @pathDescription arg1 arg2 arg3
-				     * @pathDescription arg1 arg2 arg3 arg4
-				     * @pathDescription arg1 arg2 arg3 arg4 arg5
-				     * @pathDescription arg1 arg2|arg3|arg4
-				     * @pathDescription default application/json
-				     * @pathDescription 200 application/json
-				     * @pathDescription type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @pathDescription type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @pathDescription implicit sec1 - -
-				     * @pathDescription password sec1 - -
-				     * @pathDescription clientCredentials sec1 - -
-				     * @pathDescription authorizationCode sec1 - - -
-				     * @pathDescription deviceAuthorization sec1 - - -
-				     * @responseEncoding
-				     * @responseEncoding - - - - - - -
-				     * @responseEncoding arg1
-				     * @responseEncoding arg1 arg2
-				     * @responseEncoding arg1 arg2 arg3
-				     * @responseEncoding arg1 arg2 arg3 arg4
-				     * @responseEncoding arg1 arg2 arg3 arg4 arg5
-				     * @responseEncoding arg1 arg2|arg3|arg4
-				     * @responseEncoding default application/json
-				     * @responseEncoding 200 application/json
-				     * @responseEncoding type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @responseEncoding type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @responseEncoding implicit sec1 - -
-				     * @responseEncoding password sec1 - -
-				     * @responseEncoding clientCredentials sec1 - -
-				     * @responseEncoding authorizationCode sec1 - - -
-				     * @responseEncoding deviceAuthorization sec1 - - -
-				     * @componentLinkOpRef
-				     * @componentLinkOpRef - - - - - - -
-				     * @componentLinkOpRef arg1
-				     * @componentLinkOpRef arg1 arg2
-				     * @componentLinkOpRef arg1 arg2 arg3
-				     * @componentLinkOpRef arg1 arg2 arg3 arg4
-				     * @componentLinkOpRef arg1 arg2 arg3 arg4 arg5
-				     * @componentLinkOpRef arg1 arg2|arg3|arg4
-				     * @componentLinkOpRef default application/json
-				     * @componentLinkOpRef 200 application/json
-				     * @componentLinkOpRef type=- scheme=- in=- name=- bearerFormat=- openIdConnectUrl=-
-				     * @componentLinkOpRef type=a scheme=b in=c name=d bearerFormat=e openIdConnectUrl=f
-				     * @componentLinkOpRef implicit sec1 - -
-				     * @componentLinkOpRef password sec1 - -
-				     * @componentLinkOpRef clientCredentials sec1 - -
-				     * @componentLinkOpRef authorizationCode sec1 - - -
-				     * @componentLinkOpRef deviceAuthorization sec1 - - -
 				    public class EdgeClient {
 
 				        /**
@@ -1646,12 +524,15 @@ public class RoutesParseEmitTest {
 				         */
 				        public HttpResponse<String> edge(String p1) {
 				            HttpRequest.Builder b = HttpRequest.newBuilder().uri(URI.create(baseUrl + "/edge?q=" + p1));
-				            b.method("GET");
+				            b.method("GET", HttpRequest.BodyPublishers.noBody());
 				            return null;
 				        }
 				    }
 				""";
-		Parse.parse(edgeCode);
+		OpenAPI edgeApi = Parse.parse(edgeCode);
+		assertNotNull(edgeApi);
+		assertNotNull(edgeApi.paths);
+		assertTrue(edgeApi.paths.pathItems.containsKey("/edge"));
 
 		OpenAPI errApi = Parse.parse("this is not java code {{");
 
@@ -1721,6 +602,12 @@ public class RoutesParseEmitTest {
 				+ "}\n";
 
 		openapi.OpenAPI api = routes.Parse.parse(source);
+		assertNotNull(api);
+		assertEquals("3.2.0", api.openapi);
+		assertEquals("self", api.$self);
+		assertEquals("dialect", api.jsonSchemaDialect);
+		assertEquals("title", api.info.title);
+		assertEquals("1.0.0", api.info.version);
 
 		String sourceReversed = "package test;\n" + "import java.net.http.HttpResponse;\n" + "/**\n"
 				+ " * @responseLinkRequestBody 200 l1 rb\n" + " * @responseLinkServer 200 l1 s1\n"
@@ -1755,9 +642,11 @@ public class RoutesParseEmitTest {
 				+ " * @licenseName lname\n" + " * @contactUrl url\n" + " * @contactEmail email\n"
 				+ " * @contactName name\n" + " * @termsOfService tos\n" + " * @description desc\n" + " * @summary sum\n"
 				+ " * @version 1.0.0\n" + " * @title title\n" + " * @jsonSchemaDialect dialect\n"
-				+ " * @openapiSelf self\n" + " * @openapiVersion 3.2.0\n" + " */\n" + "class GeneratedClassTags {\n";
+				+ " * @openapiSelf self\n" + " * @openapiVersion 3.2.0\n" + " */\n" + "class GeneratedClassTags {}\n";
 		openapi.OpenAPI apiRev = routes.Parse.parse(sourceReversed);
 		assertNotNull(apiRev);
+		assertEquals("3.2.0", apiRev.openapi);
+		assertEquals("title", apiRev.info.title);
 	}
 
 	/**
@@ -1780,39 +669,39 @@ public class RoutesParseEmitTest {
 		openapi.Callback cb = new openapi.Callback();
 		openapi.PathItem cbPi = new openapi.PathItem();
 		cbPi.post = new openapi.Operation();
-		cbPi.post.requestBody = new openapi.RequestBody();
+		cbPi.post.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
 		cbPi.parameters = new java.util.ArrayList<>();
 		openapi.Parameter cbP = new openapi.Parameter();
 		cbP.name = "cb_param";
-		cbPi.parameters.add(cbP);
+		cbPi.parameters.add(openapi.ReferenceOr.ofValue(cbP));
 		cb.pathItems = new java.util.HashMap<>();
 		cb.pathItems.put("cb1", cbPi);
-		pi.post.callbacks.put("cb1", cb);
+		pi.post.callbacks.put("cb1", openapi.ReferenceOr.ofValue(cb));
 
 		pi.put = new openapi.Operation();
 		pi.put.callbacks = new java.util.HashMap<>();
-		pi.put.callbacks.put("cb2", cb);
+		pi.put.callbacks.put("cb2", openapi.ReferenceOr.ofValue(cb));
 
 		pi.delete = new openapi.Operation();
 		pi.delete.callbacks = new java.util.HashMap<>();
-		pi.delete.callbacks.put("cb3", cb);
+		pi.delete.callbacks.put("cb3", openapi.ReferenceOr.ofValue(cb));
 
 		pi.patch = new openapi.Operation();
 		pi.patch.callbacks = new java.util.HashMap<>();
-		pi.patch.callbacks.put("cb4", cb);
+		pi.patch.callbacks.put("cb4", openapi.ReferenceOr.ofValue(cb));
 
 		pi.query = new openapi.Operation();
 		pi.query.callbacks = new java.util.HashMap<>();
-		pi.query.callbacks.put("cb5", cb);
+		pi.query.callbacks.put("cb5", openapi.ReferenceOr.ofValue(cb));
 
 		api.webhooks = new java.util.HashMap<>();
 		openapi.PathItem wh = new openapi.PathItem();
 		wh.post = new openapi.Operation();
-		wh.post.requestBody = new openapi.RequestBody();
+		wh.post.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
 		wh.parameters = new java.util.ArrayList<>();
 		openapi.Parameter whP = new openapi.Parameter();
 		whP.name = "wh_param";
-		wh.parameters.add(whP);
+		wh.parameters.add(openapi.ReferenceOr.ofValue(whP));
 		api.webhooks.put("wh1", wh);
 
 		pi.get = new openapi.Operation();
@@ -1826,20 +715,20 @@ public class RoutesParseEmitTest {
 		ex1.summary = "sum";
 		ex1.description = "desc";
 		getP1.examples = new java.util.HashMap<>();
-		getP1.examples.put("ex1", ex1);
+		getP1.examples.put("ex1", openapi.ReferenceOr.ofValue(ex1));
 
 		openapi.Example ex2 = new openapi.Example();
 		ex2.value = null;
 		ex2.summary = null;
 		ex2.description = null;
-		getP1.examples.put("ex2", ex2);
-		pi.get.parameters.add(getP1);
+		getP1.examples.put("ex2", openapi.ReferenceOr.ofValue(ex2));
+		pi.get.parameters.add(openapi.ReferenceOr.ofValue(getP1));
 
 		pi.parameters = new java.util.ArrayList<>();
 		openapi.Parameter pathParam = new openapi.Parameter();
 		pathParam.name = "q1";
 		pathParam.in = "query";
-		pi.parameters.add(pathParam);
+		pi.parameters.add(openapi.ReferenceOr.ofValue(pathParam));
 
 		pi.patch.responses = new openapi.Responses();
 		pi.patch.responses.statusCodes = new java.util.HashMap<>();
@@ -1847,13 +736,13 @@ public class RoutesParseEmitTest {
 		getRes.content = new java.util.HashMap<>();
 		openapi.MediaType mt = new openapi.MediaType();
 		mt.examples = new java.util.HashMap<>();
-		mt.examples.put("mtEx1", ex1);
-		mt.examples.put("mtEx2", ex2);
+		mt.examples.put("mtEx1", openapi.ReferenceOr.ofValue(ex1));
+		mt.examples.put("mtEx2", openapi.ReferenceOr.ofValue(ex2));
 		getRes.content.put("application/json", mt);
-		pi.patch.responses.statusCodes.put("200", getRes);
+		pi.patch.responses.statusCodes.put("200", openapi.ReferenceOr.ofValue(getRes));
 
 		pi.patch.parameters = new java.util.ArrayList<>();
-		pi.patch.parameters.add(getP1);
+		pi.patch.parameters.add(openapi.ReferenceOr.ofValue(getP1));
 		pi.patch.security = new java.util.ArrayList<>();
 		openapi.SecurityRequirement secReq = new openapi.SecurityRequirement();
 		secReq.addRequirement("basicAuth", new java.util.ArrayList<>());
@@ -1864,16 +753,19 @@ public class RoutesParseEmitTest {
 		openapi.SecurityScheme ss = new openapi.SecurityScheme();
 		ss.type = "http";
 		ss.scheme = "basic";
-		api.components.securitySchemes.put("basicAuth", ss);
+		api.components.securitySchemes.put("basicAuth", openapi.ReferenceOr.ofValue(ss));
 
 		openapi.Parameter authParam = new openapi.Parameter();
 		authParam.name = "Authorization";
 		authParam.in = "header";
-		pi.patch.parameters.add(authParam);
+		pi.patch.parameters.add(openapi.ReferenceOr.ofValue(authParam));
 
 		String existing = "class ServerRoutesClient {\n" + "    public void existingOp(String q1) {\n"
 				+ "        // Preserve this\n" + "    }\n" + "}\n";
-		routes.Emit.emit(api, existing);
+		String emitted = routes.Emit.emit(api, existing);
+		assertNotNull(emitted);
+		assertTrue(emitted.contains("// Preserve this"));
+		assertTrue(emitted.contains("wh1WebhookHandler"));
 	}
 
 	/**
@@ -1912,7 +804,7 @@ public class RoutesParseEmitTest {
 					content = "implicit sec1 http http scope1=a";
 
 				String source = "package test;\n/**\n * @" + tag + " " + content + "\n */\nclass Test {}";
-				routes.Parse.parse(source);
+				assertNotNull(routes.Parse.parse(source));
 			}
 		}
 
@@ -1938,7 +830,9 @@ public class RoutesParseEmitTest {
 						+ tag + " " + content + "\n */\n"
 						+ "    public HttpResponse<String> testMethod(String Authorization) { new StringBuilder(baseUrl + \"/test\"); HttpRequest.newBuilder().uri(java.net.URI.create(baseUrl + \"/test\")).GET(); return null; }\n"
 						+ "}";
-				routes.Parse.parse(source);
+				OpenAPI parsedMethod = routes.Parse.parse(source);
+				assertNotNull(parsedMethod);
+				assertTrue(parsedMethod.paths.pathItems.containsKey("/test"));
 			}
 		}
 	}
@@ -1962,15 +856,15 @@ public class RoutesParseEmitTest {
 		pi.get.operationId = "doGet";
 		pi.post = new openapi.Operation();
 		pi.post.operationId = "doPost";
-		pi.post.requestBody = new openapi.RequestBody();
+		pi.post.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
 		pi.put = new openapi.Operation();
 		pi.put.operationId = "doPut";
-		pi.put.requestBody = new openapi.RequestBody();
+		pi.put.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
 		pi.delete = new openapi.Operation();
 		pi.delete.operationId = "doDelete";
 		pi.patch = new openapi.Operation();
 		pi.patch.operationId = "doPatch";
-		pi.patch.requestBody = new openapi.RequestBody();
+		pi.patch.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
 		pi.options = new openapi.Operation();
 		pi.options.operationId = "doOptions";
 		pi.head = new openapi.Operation();
@@ -1979,7 +873,7 @@ public class RoutesParseEmitTest {
 		pi.trace.operationId = "doTrace";
 		pi.query = new openapi.Operation();
 		pi.query.operationId = "doQuery";
-		pi.query.requestBody = new openapi.RequestBody();
+		pi.query.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
 		api.paths.pathItems.put("/verbs", pi);
 
 		String emitted = routes.Emit.emit(api, null);

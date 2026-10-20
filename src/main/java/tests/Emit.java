@@ -1,6 +1,8 @@
 package tests;
 
 import openapi.OpenAPI;
+import openapi.RequestBody;
+import openapi.Schema;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -131,7 +133,7 @@ public class Emit {
 	 *            The root {@link OpenAPI} model.
 	 */
 	private static void appendJUnitTest(StringBuilder sb, String clientClass, String method, String path, Operation op,
-			List<Object> pathParams, OpenAPI model) {
+			List<openapi.ReferenceOr<Parameter>> pathParams, OpenAPI model) {
 		String methodName = op.operationId;
 		if (methodName == null || methodName.isEmpty()) {
 			methodName = method.toLowerCase() + path.replaceAll("[^a-zA-Z0-9]", "");
@@ -141,15 +143,15 @@ public class Emit {
 		String testMethodName = "test" + methodName.substring(0, 1).toUpperCase() + methodName.substring(1);
 		List<Parameter> allParams = new ArrayList<>();
 		if (pathParams != null) {
-			for (Object po : pathParams) {
-				if (po instanceof Parameter)
-					allParams.add((Parameter) po);
+			for (openapi.ReferenceOr<Parameter> po : pathParams) {
+				if (po != null)
+					allParams.add(po.value);
 			}
 		}
 		if (op.parameters != null) {
-			for (Object po : op.parameters) {
-				if (po instanceof Parameter) {
-					Parameter p = (Parameter) po;
+			for (openapi.ReferenceOr<Parameter> po : op.parameters) {
+				if (po != null) {
+					Parameter p = po.value;
 					boolean exists = false;
 					for (Parameter e : allParams) {
 						if (e.name != null && e.name.equals(p.name) && e.in != null && e.in.equals(p.in)) {
@@ -176,12 +178,9 @@ public class Emit {
 		if (model.basePath != null && !model.basePath.isEmpty()) {
 			rawPathPrefix = model.basePath;
 			literalBaseUrl = "http://localhost:8080" + rawPathPrefix;
-		} else {
-			try {
-				rawPathPrefix = model.servers.get(0).url.substring(model.servers.get(0).url.indexOf("/api"));
-				literalBaseUrl = "http://localhost:8080" + rawPathPrefix;
-			} catch (Exception e) {
-			}
+		} else if (model.servers != null && model.servers.get(0).url.contains("/api")) {
+			rawPathPrefix = model.servers.get(0).url.substring(model.servers.get(0).url.indexOf("/api"));
+			literalBaseUrl = "http://localhost:8080" + rawPathPrefix;
 		}
 
 		StringBuilder argsStrBuilder = new StringBuilder();
@@ -198,31 +197,27 @@ public class Emit {
 			first = false;
 
 			if ("body".equals(p.in)) {
-				if (method.equals("POST") && path.endsWith("/createWithArray")) {
-					argsStrBuilder.append("\"[{}]\"");
-				} else if (method.equals("POST") && path.endsWith("/createWithList")) {
-					argsStrBuilder.append("\"[{}]\"");
-				} else {
-					argsStrBuilder.append("\"{}\"");
-				}
+				argsStrBuilder.append(synthesizeBodyLiteral(p.schema != null ? p.schema.value : null, method, path));
 			} else {
-				argsStrBuilder.append("\"0\"");
+				argsStrBuilder.append(synthesizeParamLiteral(p));
 			}
 		}
 
 		if (hasBody) {
 			if (!first)
 				argsStrBuilder.append(", ");
-			if (method.equals("POST") && path.endsWith("/createWithArray")) {
-				argsStrBuilder.append("\"[{}]\"");
-			} else if (method.equals("POST") && path.endsWith("/createWithList")) {
-				argsStrBuilder.append("\"[{}]\"");
-			} else {
-				argsStrBuilder.append("\"{}\"");
-			}
+			Object reqSchema = extractRequestBodySchema(op.requestBody);
+			argsStrBuilder.append(synthesizeBodyLiteral(reqSchema, method, path));
 		}
 		String argsStr = argsStrBuilder.toString();
 
+		int expectedSuccessStatus = mocks.Emit.resolveStatusCode(op);
+		String expectedSuccessMockPayload = mocks.Emit.synthesizeMockPayload(op, model).replace("\\", "\\\\")
+				.replace("\"", "\\\"");
+
+		sb.append("    /**\n");
+		sb.append("     * ").append(method).append(" ").append(path).append("\n");
+		sb.append("     */\n");
 		sb.append("    @Test\n");
 		sb.append("    public void ").append(testMethodName).append("() throws Exception {\n");
 		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"")
@@ -250,13 +245,13 @@ public class Emit {
 		// test[MethodName]MockSuccess
 		sb.append("    @Test\n");
 		sb.append("    public void ").append(testMethodName).append("MockSuccess() throws Exception {\n");
-		sb.append("        mockStatus = 200;\n");
-		sb.append("        mockResponse = \"{}\";\n");
+		sb.append("        mockStatus = ").append(expectedSuccessStatus).append(";\n");
+		sb.append("        mockResponse = \"").append(expectedSuccessMockPayload).append("\";\n");
 		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass)
 				.append("(\"http://localhost:\" + mockPort + \"").append(rawPathPrefix).append("\");\n");
 		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
 				.append(");\n");
-		sb.append("        assertEquals(200, res.statusCode());\n");
+		sb.append("        assertEquals(").append(expectedSuccessStatus).append(", res.statusCode());\n");
 		sb.append("    }\n\n");
 
 		// test[MethodName]MockClientError
@@ -285,23 +280,70 @@ public class Emit {
 	}
 
 	/**
-	 * Checks whether the given class declaration already contains a method with the
-	 * specified name.
+	 * Extracts the JSON schema from an operation's {@code requestBody} if present.
 	 *
-	 * @param classDecl
-	 *            The {@link ClassOrInterfaceDeclaration} to inspect.
-	 * @param name
-	 *            The method name to look for.
-	 * @return {@code true} if a method with the given name exists; {@code false}
-	 *         otherwise.
+	 * @param rbObj
+	 *            The {@link RequestBody} object.
+	 * @return The extracted {@link Schema}, or {@code null}.
 	 */
-	private static boolean hasMember(ClassOrInterfaceDeclaration classDecl, String name) {
-		for (BodyDeclaration<?> member : classDecl.getMembers()) {
-			if (member instanceof MethodDeclaration) {
-				if (((MethodDeclaration) member).getNameAsString().equals(name))
-					return true;
+	private static Object extractRequestBodySchema(openapi.ReferenceOr<RequestBody> rbObj) {
+		RequestBody rb = rbObj.value;
+		if (rb.content != null) {
+			return rb.content.get("application/json").schema.value;
+		}
+		return null;
+	}
+
+	/**
+	 * Synthesizes a Java string literal representing a request body argument based
+	 * on its schema.
+	 *
+	 * @param schemaObj
+	 *            The body {@link Schema}, or {@code null}.
+	 * @param method
+	 *            The HTTP method verb.
+	 * @param path
+	 *            The URL path template.
+	 * @return A quoted Java string literal.
+	 */
+	private static String synthesizeBodyLiteral(Object schemaObj, String method, String path) {
+		if (schemaObj instanceof Schema) {
+			Schema s = (Schema) schemaObj;
+			if ("array".equals(String.valueOf(s.type))) {
+				return "\"[{}]\"";
+			}
+			if (s.example != null) {
+				String ex = String.valueOf(s.example).replace("\\", "\\\\").replace("\"", "\\\"");
+				return "\"" + ex + "\"";
 			}
 		}
-		return false;
+		if (path.endsWith("/createWithArray") || path.endsWith("/createWithList")) {
+			return "\"[{}]\"";
+		}
+		return "\"{}\"";
+	}
+
+	/**
+	 * Synthesizes a Java string literal for a non-body parameter based on its
+	 * example or schema default.
+	 *
+	 * @param p
+	 *            The {@link Parameter}.
+	 * @return A quoted Java string literal.
+	 */
+	private static String synthesizeParamLiteral(Parameter p) {
+		if (p.example != null) {
+			return "\"" + String.valueOf(p.example).replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+		}
+		if (p.schema != null) {
+			Schema s = p.schema.value;
+			if (s.defaultValue != null) {
+				return "\"" + String.valueOf(s.defaultValue).replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+			}
+			if (s.example != null) {
+				return "\"" + String.valueOf(s.example).replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+			}
+		}
+		return "\"0\"";
 	}
 }

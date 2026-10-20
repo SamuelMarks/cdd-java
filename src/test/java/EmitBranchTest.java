@@ -1,88 +1,89 @@
-import org.junit.Test;
 import static org.junit.Assert.*;
+
+import cli.Emit;
 import java.util.*;
 import openapi.*;
-import cli.Emit;
+import org.junit.Test;
 
 /**
- * Branch coverage unit tests for {@link cli.Emit}.
+ * Branch coverage and output verification unit tests for {@link cli.Emit}.
  */
 public class EmitBranchTest {
 	/**
-	 * Verifies null, empty, and non-matching branches in {@link cli.Emit#emitCli}.
+	 * Default constructor.
+	 */
+	public EmitBranchTest() {
+	}
+
+	/**
+	 * Verifies null, empty, and non-matching branches in {@link cli.Emit#emitCli}
+	 * with assertions on generated CLI code.
 	 */
 	@Test
 	public void testEmitBranches() {
-		// 1. api.paths == null
 		OpenAPI api = new OpenAPI();
 		api.paths = null;
-		assertNotNull(Emit.emitCli(api));
+		String c1 = Emit.emitCli(api);
+		assertTrue(c1.contains("public class SdkCli"));
 
-		// 2. api.paths != null, pathItems == null
 		api.paths = new Paths();
 		api.paths.pathItems = null;
-		assertNotNull(Emit.emitCli(api));
+		String c2 = Emit.emitCli(api);
+		assertTrue(c2.contains("printHelp()"));
 
-		// 3. api.paths != null, pathItems != null
 		api.paths.pathItems = new HashMap<>();
-		assertNotNull(Emit.emitCli(api));
+		String c3 = Emit.emitCli(api);
+		assertFalse(c3.contains("Operation:"));
 
-		// op.requestBody != null && op.requestBody instanceof RequestBody
 		Operation op = new Operation();
 		op.requestBody = null;
-		assertNotNull(Emit.emitCli(wrap(op)));
+		assertFalse(Emit.emitCli(wrap(op)).contains("--requestBody"));
 
-		op.requestBody = new Object(); // not RequestBody
-		assertNotNull(Emit.emitCli(wrap(op)));
+		op.requestBody = ReferenceOr.ofRef("#/components/requestBodies/Ref");
+		assertFalse(Emit.emitCli(wrap(op)).contains("--requestBody"));
 
-		op.requestBody = new RequestBody(); // is RequestBody
+		op.requestBody = ReferenceOr.ofValue(new RequestBody());
 		assertTrue(Emit.emitCli(wrap(op)).contains("--requestBody"));
 
-		// mt.itemSchema != null && mt.itemSchema instanceof Map
 		RequestBody rb = new RequestBody();
 		rb.content = new HashMap<>();
 		MediaType mt = new MediaType();
 		rb.content.put("json", mt);
-		op.requestBody = rb;
+		op.requestBody = ReferenceOr.ofValue(rb);
 
 		mt.itemSchema = null;
-		assertNotNull(Emit.emitCli(wrap(op)));
+		assertFalse(Emit.emitCli(wrap(op)).contains("RequestBodyContentItemSchema"));
 
-		mt.itemSchema = new Object(); // not map
-		assertNotNull(Emit.emitCli(wrap(op)));
+		mt.itemSchema = ReferenceOr.ofRef("#/components/schemas/Ref");
+		assertFalse(Emit.emitCli(wrap(op)).contains("RequestBodyContentItemSchema"));
 
-		mt.itemSchema = new HashMap<>(); // is map
-		assertNotNull(Emit.emitCli(wrap(op)));
+		mt.itemSchema = ReferenceOr.ofValue(new Schema());
+		assertFalse(Emit.emitCli(wrap(op)).contains("RequestBodyContentItemSchema json"));
 
-		// op.responses != null && op.responses.statusCodes != null
 		op.responses = null;
-		assertNotNull(Emit.emitCli(wrap(op)));
+		assertFalse(Emit.emitCli(wrap(op)).contains("Returns "));
 
 		op.responses = new Responses();
 		op.responses.statusCodes = null;
-		assertNotNull(Emit.emitCli(wrap(op)));
+		assertFalse(Emit.emitCli(wrap(op)).contains("Returns 200"));
 
 		op.responses.statusCodes = new HashMap<>();
-		assertNotNull(Emit.emitCli(wrap(op)));
+		assertFalse(Emit.emitCli(wrap(op)).contains("Returns 200"));
 
-		// op.responses != null && op.responses.defaultResponse != null &&
-		// op.responses.defaultResponse instanceof Response
 		op.responses.defaultResponse = null;
-		assertNotNull(Emit.emitCli(wrap(op)));
+		assertFalse(Emit.emitCli(wrap(op)).contains("Returns default:"));
 
-		op.responses.defaultResponse = new Object();
-		assertNotNull(Emit.emitCli(wrap(op)));
+		op.responses.defaultResponse = ReferenceOr.ofRef("#/components/responses/Ref");
+		assertFalse(Emit.emitCli(wrap(op)).contains("Returns default:"));
 
-		op.responses.defaultResponse = new Response();
+		op.responses.defaultResponse = ReferenceOr.ofValue(new Response());
 		assertTrue(Emit.emitCli(wrap(op)).contains("Returns default:"));
 
-		// h.required != null && h.required, h.deprecated != null &&
-		// h.deprecated
 		Response r = new Response();
 		r.headers = new HashMap<>();
 		Header h = new Header();
-		r.headers.put("h1", h);
-		op.responses.defaultResponse = r;
+		r.headers.put("h1", ReferenceOr.ofValue(h));
+		op.responses.defaultResponse = ReferenceOr.ofValue(r);
 
 		h.required = null;
 		h.deprecated = null;

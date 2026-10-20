@@ -24,37 +24,37 @@ public class ExhaustiveCliRoutesTest {
 		api.servers.add(new Server());
 		api.components = new Components();
 		api.components.schemas = new HashMap<>();
-		api.components.schemas.put("EmptySchema", new Schema());
+		api.components.schemas.put("EmptySchema", ReferenceOr.ofValue(new Schema()));
 		api.components.responses = new HashMap<>();
-		api.components.responses.put("EmptyResponse", new openapi.Response());
+		api.components.responses.put("EmptyResponse", ReferenceOr.ofValue(new openapi.Response()));
 		api.components.parameters = new HashMap<>();
-		api.components.parameters.put("EmptyParam", new openapi.Parameter());
+		api.components.parameters.put("EmptyParam", ReferenceOr.ofValue(new openapi.Parameter()));
 		api.components.requestBodies = new HashMap<>();
-		api.components.requestBodies.put("EmptyRequestBody", new RequestBody());
+		api.components.requestBodies.put("EmptyRequestBody", ReferenceOr.ofValue(new RequestBody()));
 		api.components.headers = new HashMap<>();
-		api.components.headers.put("EmptyHeader", new Header());
+		api.components.headers.put("EmptyHeader", ReferenceOr.ofValue(new Header()));
 		api.components.securitySchemes = new HashMap<>();
-		api.components.securitySchemes.put("EmptySecurityScheme", new SecurityScheme());
+		api.components.securitySchemes.put("EmptySecurityScheme", ReferenceOr.ofValue(new SecurityScheme()));
 		api.components.links = new HashMap<>();
-		api.components.links.put("EmptyLink", new Link());
+		api.components.links.put("EmptyLink", ReferenceOr.ofValue(new Link()));
 		api.components.callbacks = new HashMap<>();
-		api.components.callbacks.put("EmptyCallback", new Callback());
+		api.components.callbacks.put("EmptyCallback", ReferenceOr.ofValue(new Callback()));
 		api.components.pathItems = new HashMap<>();
-		api.components.pathItems.put("EmptyPathItem", new PathItem());
+		api.components.pathItems.put("EmptyPathItem", ReferenceOr.ofValue(new PathItem()));
 
 		api.paths = new openapi.Paths();
 		api.paths.pathItems = new HashMap<>();
 		PathItem pi = new PathItem();
 		pi.get = new Operation();
 		pi.get.parameters = new ArrayList<>();
-		pi.get.parameters.add(new openapi.Parameter());
-		pi.get.requestBody = new RequestBody();
+		pi.get.parameters.add(ReferenceOr.ofValue(new openapi.Parameter()));
+		pi.get.requestBody = ReferenceOr.ofValue(new RequestBody());
 		pi.get.responses = new Responses();
 		pi.get.responses.statusCodes = new HashMap<>();
-		pi.get.responses.statusCodes.put("200", new openapi.Response());
-		pi.get.responses.defaultResponse = new openapi.Response();
+		pi.get.responses.statusCodes.put("200", ReferenceOr.ofValue(new openapi.Response()));
+		pi.get.responses.defaultResponse = ReferenceOr.ofValue(new openapi.Response());
 		pi.get.callbacks = new HashMap<>();
-		pi.get.callbacks.put("EmptyCallback", new Callback());
+		pi.get.callbacks.put("EmptyCallback", ReferenceOr.ofValue(new Callback()));
 		api.paths.pathItems.put("/empty", pi);
 
 		String out = cli.Emit.emitCli(api);
@@ -88,34 +88,25 @@ public class ExhaustiveCliRoutesTest {
 	}
 
 	/**
-	 * Verifies internal helper methods and CLI flags on {@link cli.CddCli} and
-	 * {@link cli.Main}.
+	 * Verifies helper methods and CLI flags on {@link cli.CddCli},
+	 * {@link cli.McpJsonRpcServer}, {@link cli.SyncCommand},
+	 * {@link cli.ProjectScaffolder}, and {@link cli.Main}.
 	 *
 	 * @throws Exception
-	 *             If reflective invocation fails.
+	 *             If invocation fails.
 	 */
 	@Test
 	public void testCliMainReflection() throws Exception {
 		System.setProperty("cdd.test", "true");
-		Method processInMemory = cli.CddCli.class.getDeclaredMethod("processInMemory", String.class);
-		processInMemory.setAccessible(true);
-		try {
-			processInMemory.invoke(null, "{");
-		} catch (Exception e) {
-		}
-		try {
-			processInMemory.invoke(null, "{\"command\": \"to_openapi\"}");
-		} catch (Exception e) {
-		}
-		Method startStdioJsonRpcServer = cli.CddCli.class.getDeclaredMethod("startStdioJsonRpcServer");
-		startStdioJsonRpcServer.setAccessible(true);
+		cli.CddCli.processInMemory("{");
+		cli.CddCli.processInMemory("{\"command\": \"to_openapi\"}");
 		InputStream oldIn = System.in;
 		System.setIn(new ByteArrayInputStream("".getBytes()));
 		try {
-			startStdioJsonRpcServer.invoke(null);
-		} catch (Exception e) {
+			cli.McpJsonRpcServer.serveJsonRpcStdio();
+		} finally {
+			System.setIn(oldIn);
 		}
-		System.setIn(oldIn);
 		cli.Main.main(new String[]{});
 		cli.Main.main(new String[]{"-v"});
 		cli.Main.main(new String[]{"--version"});
@@ -127,27 +118,14 @@ public class ExhaustiveCliRoutesTest {
 			cli.Main.main(new String[]{"invalid_cmd"});
 		} catch (Exception e) {
 		}
-		Method hasFlag = cli.CddCli.class.getDeclaredMethod("hasFlag", String[].class, String.class, String.class,
-				String.class);
-		hasFlag.setAccessible(true);
-		assertEquals(true, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"-a"}, "-a", "--all", null}));
-		assertEquals(true, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"--all"}, "-a", "--all", null}));
-		assertEquals(false, (boolean) hasFlag.invoke(null, new Object[]{new String[]{"-b"}, "-a", "--all", null}));
-		Method getArg = cli.CddCli.class.getDeclaredMethod("getArg", String[].class, String.class, String.class,
-				String.class);
-		getArg.setAccessible(true);
-		assertEquals("val", getArg.invoke(null, new Object[]{new String[]{"-a", "val"}, "-a", "--all", ""}));
-		assertNull(getArg.invoke(null, new Object[]{new String[]{"-a"}, "-a", "--all", ""}));
-		assertNull(getArg.invoke(null, new Object[]{new String[]{"-b", "val"}, "-a", "--all", ""}));
-		Method extractOpenAPI = cli.CddCli.class.getDeclaredMethod("extractOpenAPI", java.io.File.class);
-		extractOpenAPI.setAccessible(true);
-		try {
-			extractOpenAPI.invoke(null, new java.io.File("non_existent_file.json"));
-		} catch (Exception e) {
-		}
-		Method resolveFile = cli.CddCli.class.getDeclaredMethod("resolveFile", String.class);
-		resolveFile.setAccessible(true);
-		assertNotNull(resolveFile.invoke(null, "/absolute/path"));
+		assertTrue(cli.CddCli.hasFlag(new String[]{"-a"}, "-a", "--all", null));
+		assertTrue(cli.CddCli.hasFlag(new String[]{"--all"}, "-a", "--all", null));
+		assertFalse(cli.CddCli.hasFlag(new String[]{"-b"}, "-a", "--all", null));
+		assertEquals("val", cli.CddCli.getArg(new String[]{"-a", "val"}, "-a", "--all", ""));
+		assertNull(cli.CddCli.getArg(new String[]{"-a"}, "-a", "--all", ""));
+		assertNull(cli.CddCli.getArg(new String[]{"-b", "val"}, "-a", "--all", ""));
+		assertNotNull(cli.SyncCommand.extractOpenAPI(new java.io.File("non_existent_file.json")));
+		assertNotNull(cli.ProjectScaffolder.resolveWasiPath("/absolute/path", cli.CddCli.envProvider));
 	}
 
 	/**

@@ -4,8 +4,6 @@ import arazzo.Arazzo;
 import arazzo.SourceDescription;
 import arazzo.Step;
 import arazzo.Workflow;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import openapi.Schema;
@@ -46,8 +44,6 @@ public class ArazzoCliEmitter {
 	 * @return The generated Java source code string.
 	 */
 	public static String emitWorkflowCli(Arazzo spec) {
-		String encodedSpec = Base64.getEncoder()
-				.encodeToString(arazzo.Emit.toString(spec).getBytes(StandardCharsets.UTF_8));
 		StringBuilder sb = new StringBuilder();
 		sb.append("package cli;\n\n");
 		sb.append("import java.util.LinkedHashMap;\n");
@@ -55,7 +51,7 @@ public class ArazzoCliEmitter {
 		sb.append("/**\n");
 		sb.append(" * Command-Line Interface workflow runner generated from Arazzo ")
 				.append(spec.arazzo != null ? spec.arazzo : "1.1.0").append(".\n");
-		sb.append(" * @arazzoSpecBase64 ").append(encodedSpec).append("\n");
+		workflows.Emit.appendSpecJavadoc(sb, " * ", spec);
 		sb.append(" */\n");
 		sb.append("public class WorkflowCli {\n");
 		sb.append("\t/** Default constructor. */\n");
@@ -94,7 +90,14 @@ public class ArazzoCliEmitter {
 		sb.append("\t\tSystem.out.println(\"Executed workflow: \" + cmd + \" with inputs \" + flags);\n");
 		sb.append("\t}\n\n");
 
-		sb.append("\t/** Prints CLI usage, available workflows, steps, and Arazzo metadata. */\n");
+		sb.append("\t/**\n");
+		sb.append("\t * Prints CLI usage, available workflows, steps, and Arazzo metadata.\n");
+		if (spec.workflows != null) {
+			for (Workflow wf : spec.workflows) {
+				workflows.Emit.appendWorkflowJavadoc(sb, "\t * ", wf, spec);
+			}
+		}
+		sb.append("\t */\n");
 		sb.append("\tpublic static void printHelp() {\n");
 		if (spec.info != null && spec.info.title != null) {
 			sb.append("\t\tSystem.out.println(\"Title: ").append(TypeMapper.escape(spec.info.title)).append("\");\n");
@@ -129,7 +132,6 @@ public class ArazzoCliEmitter {
 				}
 			}
 		}
-		sb.append("\t\tSystem.out.println(\"ArazzoSpecBase64: ").append(encodedSpec).append("\");\n");
 		sb.append("\t}\n");
 		sb.append("}\n");
 		return sb.toString();

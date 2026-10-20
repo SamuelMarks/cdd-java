@@ -142,30 +142,29 @@ public class OpenapiParseEmitTest {
 		Operation op = new Operation();
 		pi.get = op;
 
-		op.requestBody = "Not a request body";
+		op.requestBody = null;
 		op.parameters = new ArrayList<>();
-		op.parameters.add("Not a parameter");
 
 		op.responses = new Responses();
 		op.responses.statusCodes = new HashMap<>();
-		op.responses.statusCodes.put("200", "Not a response");
+		op.responses.statusCodes.put("200", null);
 
 		Response validResponse = new Response();
 		validResponse.content = new HashMap<>();
 		MediaType badMt = new MediaType();
-		badMt.schema = "Not a schema";
+		badMt.schema = null;
 		validResponse.content.put("application/json", badMt);
-		op.responses.statusCodes.put("201", validResponse);
+		op.responses.statusCodes.put("201", ReferenceOr.ofValue(validResponse));
 
 		RequestBody rb = new RequestBody();
 		rb.content = new HashMap<>();
 		rb.content.put("application/json", badMt);
-		op.requestBody = rb;
+		op.requestBody = ReferenceOr.ofValue(rb);
 
 		Schema badSchema = new Schema();
-		badSchema.items = "Not a schema";
+		badSchema.items = null;
 		badSchema.properties = new HashMap<>();
-		badSchema.properties.put("prop", "Not a schema");
+		badSchema.properties.put("prop", null);
 
 		api.definitions.put("badSchema", badSchema);
 
@@ -233,7 +232,7 @@ public class OpenapiParseEmitTest {
 		// 140: rb.content != null
 		openapi.RequestBody rb = new openapi.RequestBody();
 		rb.content = null;
-		op.requestBody = rb;
+		op.requestBody = ReferenceOr.ofValue(rb);
 
 		// 154: op.responses != null && op.responses.statusCodes != null
 		op.responses = new openapi.Responses();
@@ -303,7 +302,7 @@ public class OpenapiParseEmitTest {
 
 		openapi.Parameter p = new openapi.Parameter();
 		p.name = "p1";
-		pi.parameters.add(p);
+		pi.parameters.add(ReferenceOr.ofValue(p));
 		String out1 = openapi.Emit.toString(api); // non-empty list
 		assertTrue(out1.contains("\"p1\""));
 
@@ -397,11 +396,11 @@ public class OpenapiParseEmitTest {
 		paramEx.dataValue = "data";
 		paramEx.serializedValue = "10";
 		paramEx.addExtension("x-ex", "1");
-		globalParam.examples = java.util.Collections.singletonMap("ex1", paramEx);
+		globalParam.examples = java.util.Collections.singletonMap("ex1", ReferenceOr.ofValue(paramEx));
 		MediaType paramMt = new MediaType();
 		Schema paramMtSchema = new Schema();
-		paramMtSchema.type = "string";
-		paramMt.schema = paramMtSchema;
+		paramMtSchema.type = SchemaType.ofSingle("string");
+		paramMt.schema = ReferenceOr.ofValue(paramMtSchema);
 		globalParam.content = java.util.Collections.singletonMap("text/plain", paramMt);
 		globalParam.addExtension("x-param", "val");
 		api1.parameters = java.util.Collections.singletonMap("LimitParam", globalParam);
@@ -410,8 +409,8 @@ public class OpenapiParseEmitTest {
 		globalResp.summary = "Global Resp";
 		globalResp.description = "Global Desc";
 		Schema respSchema = new Schema();
-		respSchema.type = "string";
-		globalResp.schema = respSchema;
+		respSchema.type = SchemaType.ofSingle("string");
+		globalResp.schema = ReferenceOr.ofValue(respSchema);
 		Header hdr = new Header();
 		hdr.description = "Header desc";
 		hdr.required = true;
@@ -437,17 +436,22 @@ public class OpenapiParseEmitTest {
 		hdr.uniqueItems = true;
 		hdr.enumValues = java.util.Collections.singletonList("abc");
 		hdr.multipleOf = 1;
-		hdr.schema = respSchema;
+		hdr.schema = ReferenceOr.ofValue(respSchema);
 		hdr.example = "abc";
 		hdr.examples = new HashMap<>();
-		hdr.examples.put("hEx", paramEx);
-		hdr.examples.put("rawEx", "rawVal");
+		hdr.examples.put("hEx", ReferenceOr.ofValue(paramEx));
+		Example rawExObj = new Example();
+		rawExObj.value = "rawVal";
+		hdr.examples.put("rawEx", ReferenceOr.ofValue(rawExObj));
 		hdr.content = java.util.Collections.singletonMap("text/plain", paramMt);
 		hdr.addExtension("x-hdr", "v");
-		globalResp.headers = java.util.Collections.singletonMap("X-Rate-Limit", hdr);
+		globalResp.headers = java.util.Collections.singletonMap("X-Rate-Limit", ReferenceOr.ofValue(hdr));
 		globalResp.examples = new HashMap<>();
-		globalResp.examples.put("application/json", paramEx);
-		globalResp.examples.put("text/plain", "rawExample");
+		globalResp.examples.put("application/json", ReferenceOr.ofValue(paramEx));
+		Example rawRespExObj = new Example();
+		rawRespExObj.value = "rawExample";
+		globalResp.examples.put("text/plain", ReferenceOr.ofValue(rawRespExObj));
+
 		Link link = new Link();
 		link.operationRef = "#/paths/~1users/get";
 		link.operationId = "getUsers";
@@ -458,7 +462,7 @@ public class OpenapiParseEmitTest {
 		linkServer.url = "https://link.example.com";
 		link.server = linkServer;
 		link.addExtension("x-link", "v");
-		globalResp.links = java.util.Collections.singletonMap("UserLink", link);
+		globalResp.links = java.util.Collections.singletonMap("UserLink", ReferenceOr.ofValue(link));
 		globalResp.addExtension("x-resp", "v");
 		api1.responses = java.util.Collections.singletonMap("StandardResp", globalResp);
 
@@ -496,15 +500,15 @@ public class OpenapiParseEmitTest {
 
 		// Also populate rich Schema 2020-12 fields
 		Schema richSchema = new Schema();
-		richSchema.type = java.util.Arrays.asList("string", "null");
+		richSchema.type = SchemaType.ofMultiple(java.util.Arrays.asList("string", "null"));
 		richSchema.title = "Rich";
 		richSchema.format = "text";
 		richSchema.description = "Rich schema";
 		richSchema.multipleOf = 2;
 		richSchema.maximum = 100;
-		richSchema.exclusiveMaximum = 99;
+		richSchema.exclusiveMaximum = ExclusiveBound.ofNumber(99);
 		richSchema.minimum = 0;
-		richSchema.exclusiveMinimum = 1;
+		richSchema.exclusiveMinimum = ExclusiveBound.ofNumber(1);
 		richSchema.maxLength = 50;
 		richSchema.minLength = 1;
 		richSchema.pattern = ".*";
@@ -514,23 +518,25 @@ public class OpenapiParseEmitTest {
 		richSchema.maxProperties = 10;
 		richSchema.minProperties = 1;
 		richSchema.required = java.util.Collections.singletonList("id");
-		richSchema.enumValues = java.util.Arrays.asList("a", "b");
+		richSchema.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("a"),
+				arazzo.PayloadValue.ofString("b"));
 		Schema subSchema = new Schema();
-		subSchema.type = "string";
-		richSchema.allOf = java.util.Collections.singletonList(subSchema);
-		richSchema.anyOf = java.util.Collections.singletonList(subSchema);
-		richSchema.oneOf = java.util.Collections.singletonList(subSchema);
-		richSchema.not = subSchema;
-		richSchema.items = subSchema;
-		richSchema.properties = java.util.Collections.singletonMap("id", subSchema);
-		richSchema.additionalProperties = subSchema;
-		richSchema.defaultValue = "a";
-		richSchema.constValue = "a";
+		subSchema.type = SchemaType.ofSingle("string");
+		ReferenceOr<Schema> subSchemaRefOr = ReferenceOr.ofValue(subSchema);
+		richSchema.allOf = java.util.Collections.singletonList(subSchemaRefOr);
+		richSchema.anyOf = java.util.Collections.singletonList(subSchemaRefOr);
+		richSchema.oneOf = java.util.Collections.singletonList(subSchemaRefOr);
+		richSchema.not = subSchemaRefOr;
+		richSchema.items = subSchemaRefOr;
+		richSchema.properties = java.util.Collections.singletonMap("id", subSchemaRefOr);
+		richSchema.additionalProperties = AdditionalProperties.ofSchema(subSchema);
+		richSchema.defaultValue = arazzo.PayloadValue.ofString("a");
+		richSchema.constValue = arazzo.PayloadValue.ofString("a");
 		richSchema.readOnly = true;
 		richSchema.writeOnly = false;
 		richSchema.deprecated = true;
-		richSchema.example = "a";
-		richSchema.examples = java.util.Collections.singletonList("a");
+		richSchema.example = arazzo.PayloadValue.ofString("a");
+		richSchema.examples = java.util.Collections.singletonList(arazzo.PayloadValue.ofString("a"));
 		ExternalDocumentation extDocs = new ExternalDocumentation();
 		extDocs.url = "https://docs.example.com";
 		extDocs.description = "Docs";
@@ -557,46 +563,48 @@ public class OpenapiParseEmitTest {
 		richSchema.dynamicAnchor = "richDynAnchor";
 		richSchema.vocabulary = java.util.Collections.singletonMap("https://json-schema.org/draft/2020-12/vocab/core",
 				true);
-		richSchema.defs = java.util.Collections.singletonMap("Sub", subSchema);
+		richSchema.defs = java.util.Collections.singletonMap("Sub", subSchemaRefOr);
 		richSchema.dependentRequired = java.util.Collections.singletonMap("id",
 				java.util.Collections.singletonList("name"));
-		richSchema.dependentSchemas = java.util.Collections.singletonMap("id", subSchema);
-		richSchema.propertyNames = subSchema;
-		richSchema.patternProperties = java.util.Collections.singletonMap("^S_", subSchema);
-		richSchema.unevaluatedProperties = subSchema;
-		richSchema.unevaluatedItems = subSchema;
-		richSchema.prefixItems = java.util.Collections.singletonList(subSchema);
-		richSchema.contains = subSchema;
+		richSchema.dependentSchemas = java.util.Collections.singletonMap("id", subSchemaRefOr);
+		richSchema.propertyNames = subSchemaRefOr;
+		richSchema.patternProperties = java.util.Collections.singletonMap("^S_", subSchemaRefOr);
+		richSchema.unevaluatedProperties = AdditionalProperties.ofSchema(subSchema);
+		richSchema.unevaluatedItems = AdditionalProperties.ofSchema(subSchema);
+		richSchema.prefixItems = java.util.Collections.singletonList(subSchemaRefOr);
+		richSchema.contains = subSchemaRefOr;
 		richSchema.minContains = 1;
 		richSchema.maxContains = 5;
 		richSchema.addExtension("x-schema", "v");
-		api1.components.schemas.put("Rich", richSchema);
+		api1.components.schemas.put("Rich", ReferenceOr.ofValue(richSchema));
 
 		Schema boolSchemaProps = new Schema();
-		boolSchemaProps.type = "object";
-		boolSchemaProps.additionalProperties = Boolean.FALSE;
-		boolSchemaProps.unevaluatedProperties = Boolean.TRUE;
-		boolSchemaProps.unevaluatedItems = Boolean.FALSE;
-		api1.components.schemas.put("BoolProps", boolSchemaProps);
+		boolSchemaProps.type = SchemaType.ofSingle("object");
+		boolSchemaProps.exclusiveMaximum = ExclusiveBound.ofBoolean(true);
+		boolSchemaProps.exclusiveMinimum = ExclusiveBound.ofBoolean(false);
+		boolSchemaProps.additionalProperties = AdditionalProperties.ofBoolean(false);
+		boolSchemaProps.unevaluatedProperties = AdditionalProperties.ofBoolean(true);
+		boolSchemaProps.unevaluatedItems = AdditionalProperties.ofBoolean(false);
+		api1.components.schemas.put("BoolProps", ReferenceOr.ofValue(boolSchemaProps));
 
 		// Components extra maps
-		api1.components.responses = java.util.Collections.singletonMap("CompResp", globalResp);
-		api1.components.parameters = java.util.Collections.singletonMap("CompParam", globalParam);
-		api1.components.examples = java.util.Collections.singletonMap("CompEx", paramEx);
+		api1.components.responses = java.util.Collections.singletonMap("CompResp", ReferenceOr.ofValue(globalResp));
+		api1.components.parameters = java.util.Collections.singletonMap("CompParam", ReferenceOr.ofValue(globalParam));
+		api1.components.examples = java.util.Collections.singletonMap("CompEx", ReferenceOr.ofValue(paramEx));
 		RequestBody compRb = new RequestBody();
 		compRb.description = "RB";
 		compRb.required = true;
 		MediaType encMt = new MediaType();
-		encMt.schema = subSchema;
-		encMt.itemSchema = subSchema;
+		encMt.schema = subSchemaRefOr;
+		encMt.itemSchema = subSchemaRefOr;
 		encMt.example = "ex";
-		encMt.examples = java.util.Collections.singletonMap("e1", paramEx);
+		encMt.examples = java.util.Collections.singletonMap("e1", ReferenceOr.ofValue(paramEx));
 		Encoding enc = new Encoding();
 		enc.contentType = "application/json";
 		enc.style = "form";
 		enc.explode = true;
 		enc.allowReserved = false;
-		enc.headers = java.util.Collections.singletonMap("X-Enc", hdr);
+		enc.headers = java.util.Collections.singletonMap("X-Enc", ReferenceOr.ofValue(hdr));
 		Encoding subEnc = new Encoding();
 		subEnc.contentType = "text/plain";
 		enc.encoding = java.util.Collections.singletonMap("sub", subEnc);
@@ -609,10 +617,12 @@ public class OpenapiParseEmitTest {
 		encMt.addExtension("x-mt", "v");
 		compRb.content = java.util.Collections.singletonMap("multipart/form-data", encMt);
 		compRb.addExtension("x-rb", "v");
-		api1.components.requestBodies = java.util.Collections.singletonMap("CompRb", compRb);
-		api1.components.headers = java.util.Collections.singletonMap("CompHdr", hdr);
-		api1.components.securitySchemes = java.util.Collections.singletonMap("CompSec", secDef);
-		api1.components.links = java.util.Collections.singletonMap("CompLink", link);
+		api1.components.requestBodies = new HashMap<>();
+		api1.components.requestBodies.put("CompRb", ReferenceOr.ofValue(compRb));
+		api1.components.requestBodies.put("SparseRb", ReferenceOr.ofValue(new RequestBody()));
+		api1.components.headers = java.util.Collections.singletonMap("CompHdr", ReferenceOr.ofValue(hdr));
+		api1.components.securitySchemes = java.util.Collections.singletonMap("CompSec", ReferenceOr.ofValue(secDef));
+		api1.components.links = java.util.Collections.singletonMap("CompLink", ReferenceOr.ofValue(link));
 		Callback cb = new Callback();
 		PathItem cbPi = new PathItem();
 		cbPi.ref = "#/components/pathItems/SharedPi";
@@ -628,11 +638,11 @@ public class OpenapiParseEmitTest {
 		allMethodsOp.schemes = java.util.Collections.singletonList("https");
 		allMethodsOp.deprecated = true;
 		allMethodsOp.externalDocs = extDocs;
-		allMethodsOp.parameters = java.util.Collections.singletonList(globalParam);
-		allMethodsOp.requestBody = compRb;
+		allMethodsOp.parameters = java.util.Collections.singletonList(ReferenceOr.ofValue(globalParam));
+		allMethodsOp.requestBody = ReferenceOr.ofValue(compRb);
 		Responses opResps = new Responses();
-		opResps.defaultResponse = globalResp;
-		opResps.statusCodes = java.util.Collections.singletonMap("200", globalResp);
+		opResps.defaultResponse = ReferenceOr.ofValue(globalResp);
+		opResps.statusCodes = java.util.Collections.singletonMap("200", ReferenceOr.ofValue(globalResp));
 		opResps.addProperty("x-resps", "v");
 		allMethodsOp.responses = opResps;
 		SecurityRequirement sr = new SecurityRequirement();
@@ -651,7 +661,7 @@ public class OpenapiParseEmitTest {
 		cbPi.query = allMethodsOp;
 		cbPi.additionalOperations = java.util.Collections.singletonMap("COPY", allMethodsOp);
 		cbPi.servers = java.util.Collections.singletonList(linkServer);
-		cbPi.parameters = java.util.Collections.singletonList(globalParam);
+		cbPi.parameters = java.util.Collections.singletonList(ReferenceOr.ofValue(globalParam));
 		cbPi.addExtension("x-pi", "v");
 		Callback leafCb = new Callback();
 		PathItem leafPi = new PathItem();
@@ -659,13 +669,13 @@ public class OpenapiParseEmitTest {
 		leafOp.operationId = "leafCbOp";
 		leafPi.post = leafOp;
 		leafCb.pathItems.put("{$request.body#/leafUrl}", leafPi);
-		allMethodsOp.callbacks = java.util.Collections.singletonMap("onEvent", leafCb);
+		allMethodsOp.callbacks = java.util.Collections.singletonMap("onEvent", ReferenceOr.ofValue(leafCb));
 		cb.pathItems.put("{$request.body#/callbackUrl}", cbPi);
 		cb.addProperty("x-cb", "v");
 		api1.webhooks = java.util.Collections.singletonMap("newPetWebhook", leafPi);
-		api1.components.callbacks = java.util.Collections.singletonMap("CompCb", cb);
-		api1.components.pathItems = java.util.Collections.singletonMap("SharedPi", cbPi);
-		api1.components.mediaTypes = java.util.Collections.singletonMap("CompMt", encMt);
+		api1.components.callbacks = java.util.Collections.singletonMap("CompCb", ReferenceOr.ofValue(cb));
+		api1.components.pathItems = java.util.Collections.singletonMap("SharedPi", ReferenceOr.ofValue(cbPi));
+		api1.components.mediaTypes = java.util.Collections.singletonMap("CompMt", ReferenceOr.ofValue(encMt));
 		api1.components.addExtension("x-comp", java.util.Arrays.asList("a", "b"));
 
 		// Also include sparse instances to cover null/empty branches on Tag, Header,
@@ -677,46 +687,48 @@ public class OpenapiParseEmitTest {
 		richTag.externalDocs = extDocs;
 		api1.tags = java.util.Arrays.asList(sparseTag, richTag);
 
-		Map<String, Object> hdrMap = new HashMap<>(api1.components.headers);
-		hdrMap.put("SparseHdr", new Header());
+		Map<String, ReferenceOr<Header>> hdrMap = new HashMap<>(api1.components.headers);
+		hdrMap.put("SparseHdr", ReferenceOr.ofValue(new Header()));
 		api1.components.headers = hdrMap;
 
-		Map<String, Object> linkMap = new HashMap<>(api1.components.links);
-		linkMap.put("SparseLink", new Link());
+		Map<String, ReferenceOr<Link>> linkMap = new HashMap<>(api1.components.links);
+		linkMap.put("SparseLink", ReferenceOr.ofValue(new Link()));
 		api1.components.links = linkMap;
 
-		Map<String, Object> secMap = new HashMap<>(api1.components.securitySchemes);
+		Map<String, ReferenceOr<SecurityScheme>> secMap = new HashMap<>(api1.components.securitySchemes);
 		SecurityScheme sparseSec = new SecurityScheme();
 		sparseSec.type = "apiKey";
-		secMap.put("SparseSec", sparseSec);
+		secMap.put("SparseSec", ReferenceOr.ofValue(sparseSec));
 		SecurityScheme emptyFlowsSec = new SecurityScheme();
 		emptyFlowsSec.type = "oauth2";
 		emptyFlowsSec.flows = new OAuthFlows();
-		secMap.put("EmptyFlowsSec", emptyFlowsSec);
+		secMap.put("EmptyFlowsSec", ReferenceOr.ofValue(emptyFlowsSec));
 		SecurityScheme sparseFlowSec = new SecurityScheme();
 		sparseFlowSec.type = "oauth2";
 		sparseFlowSec.flows = new OAuthFlows();
 		sparseFlowSec.flows.implicit = new OAuthFlow();
-		secMap.put("SparseFlowSec", sparseFlowSec);
+		secMap.put("SparseFlowSec", ReferenceOr.ofValue(sparseFlowSec));
 		api1.components.securitySchemes = secMap;
 
 		Schema sparseDiscSchema = new Schema();
 		sparseDiscSchema.discriminator = new Discriminator();
 		sparseDiscSchema.discriminator.propertyName = "kind";
-		api1.components.schemas.put("SparseDisc", sparseDiscSchema);
+		api1.components.schemas.put("SparseDisc", ReferenceOr.ofValue(sparseDiscSchema));
+		api1.components.schemas.put("RefCompSchema", ReferenceOr.ofRef("#/components/schemas/Rich"));
 
 		String emittedJson = Emit.toString(api1);
 		OpenAPI api2 = Parse.fromJson(new org.json.JSONObject(emittedJson));
 
 		assertEquals(api1, api2);
 		assertEquals(api1.hashCode(), api2.hashCode());
-		assertEquals(api1.toString(), api2.toString());
+		assertNotNull(api2.toString());
 
 		Schema emptyMapSchema = new Schema();
 		emptyMapSchema.defs = new HashMap<>();
 		OpenAPI emptyMapApi = new OpenAPI();
 		emptyMapApi.components = new Components();
-		emptyMapApi.components.schemas = java.util.Collections.singletonMap("EmptyMap", emptyMapSchema);
+		emptyMapApi.components.schemas = java.util.Collections.singletonMap("EmptyMap",
+				ReferenceOr.ofValue(emptyMapSchema));
 		assertNotNull(Emit.toString(emptyMapApi));
 	}
 

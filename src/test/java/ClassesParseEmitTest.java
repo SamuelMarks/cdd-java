@@ -35,10 +35,11 @@ public class ClassesParseEmitTest {
 				+ "}\n" + "/**\n * @author x\n */\npublic enum EmptyDocEnum { A }\n" + "public enum NoDocEnum { X }\n";
 		OpenAPI api = Parse.parse(source);
 		assertNotNull(api.components.schemas.get("MyEnum"));
-		Schema schema = api.components.schemas.get("MyEnum");
-		assertEquals("string", schema.type);
+		Schema schema = api.components.schemas.get("MyEnum").value;
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.type);
 		assertEquals("My Enum", schema.description);
-		assertEquals(Arrays.asList("val_a", "VAL_B"), schema.enumValues);
+		assertEquals(Arrays.asList(arazzo.PayloadValue.ofString("val_a"), arazzo.PayloadValue.ofString("VAL_B")),
+				schema.enumValues);
 	}
 
 	/**
@@ -68,7 +69,7 @@ public class ClassesParseEmitTest {
 				+ "public class MyIntegrationTest {}\n";
 
 		OpenAPI api = Parse.parse(source);
-		Schema schema = api.components.schemas.get("MyClass");
+		Schema schema = api.components.schemas.get("MyClass").value;
 		assertNotNull(schema);
 		assertEquals("Class doc", schema.description);
 
@@ -87,24 +88,24 @@ public class ClassesParseEmitTest {
 			assertEquals("defaultMapping", schema.discriminator.extensions.values().iterator().next());
 		}
 
-		assertEquals("{ex}", schema.example);
+		assertEquals(arazzo.PayloadValue.ofString("{ex}"), schema.example);
 		assertNotNull(schema.externalDocs);
 		assertEquals("http://doc", schema.externalDocs.url);
 		assertEquals("doc_desc", schema.externalDocs.description);
 
 		assertNotNull(schema.allOf);
-		assertEquals("#/components/schemas/BaseClass", ((Schema) schema.allOf.get(0)).$ref);
+		assertEquals("#/components/schemas/BaseClass", schema.allOf.get(0).value.$ref);
 
 		assertNotNull(schema.properties.get("prop_a"));
-		Schema propSchema = (Schema) schema.properties.get("prop_a");
-		assertEquals("string", propSchema.type);
+		Schema propSchema = schema.properties.get("prop_a").value;
+		assertEquals(openapi.SchemaType.ofSingle("string"), propSchema.type);
 		assertEquals("prop doc", propSchema.description);
 		assertEquals("xpname", propSchema.xml.name);
 		assertEquals("xpns", propSchema.xml.namespace);
 		assertEquals("xppr", propSchema.xml.prefix);
 		assertFalse(propSchema.xml.attribute);
 		assertTrue(propSchema.xml.wrapped);
-		assertEquals("exprop", propSchema.example);
+		assertEquals(arazzo.PayloadValue.ofString("exprop"), propSchema.example);
 		assertEquals("http://pdoc", propSchema.externalDocs.url);
 		assertEquals("pdesc", propSchema.externalDocs.description);
 	}
@@ -128,53 +129,54 @@ public class ClassesParseEmitTest {
 																					// error
 				"}\n";
 		OpenAPI api = Parse.parse(source);
-		Schema schema = api.components.schemas.get("Types");
+		Schema schema = api.components.schemas.get("Types").value;
 
-		assertEquals("integer", ((Schema) schema.properties.get("vInt")).type);
-		assertEquals("integer", ((Schema) schema.properties.get("vLong")).type);
-		assertEquals("int64", ((Schema) schema.properties.get("vLong")).format);
-		assertEquals("number", ((Schema) schema.properties.get("vDouble")).type);
-		assertEquals("number", ((Schema) schema.properties.get("vFloat")).type);
-		assertEquals("float", ((Schema) schema.properties.get("vFloat")).format);
-		assertEquals("boolean", ((Schema) schema.properties.get("vBool")).type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), schema.properties.get("vInt").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), schema.properties.get("vLong").value.type);
+		assertEquals("int64", schema.properties.get("vLong").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("number"), schema.properties.get("vDouble").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("number"), schema.properties.get("vFloat").value.type);
+		assertEquals("float", schema.properties.get("vFloat").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("boolean"), schema.properties.get("vBool").value.type);
 
-		assertEquals("string", ((Schema) schema.properties.get("vUuid")).type);
-		assertEquals("uuid", ((Schema) schema.properties.get("vUuid")).format);
-		assertEquals("string", ((Schema) schema.properties.get("vDate")).type);
-		assertEquals("date", ((Schema) schema.properties.get("vDate")).format);
-		assertEquals("string", ((Schema) schema.properties.get("vOffset")).type);
-		assertEquals("date-time", ((Schema) schema.properties.get("vOffset")).format);
-		assertEquals("string", ((Schema) schema.properties.get("vZoned")).type);
-		assertEquals("date-time", ((Schema) schema.properties.get("vZoned")).format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vUuid").value.type);
+		assertEquals("uuid", schema.properties.get("vUuid").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vDate").value.type);
+		assertEquals("date", schema.properties.get("vDate").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vOffset").value.type);
+		assertEquals("date-time", schema.properties.get("vOffset").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vZoned").value.type);
+		assertEquals("date-time", schema.properties.get("vZoned").value.format);
 
-		assertEquals("array", ((Schema) schema.properties.get("vList")).type);
-		assertEquals("string", ((Schema) ((Schema) schema.properties.get("vList")).items).type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), schema.properties.get("vList").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vList").value.items.value.type);
 
-		assertEquals("array", ((Schema) schema.properties.get("vRawList")).type);
-		assertEquals("string", ((Schema) ((Schema) schema.properties.get("vRawList")).items).type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), schema.properties.get("vRawList").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vRawList").value.items.value.type);
 
-		assertEquals("array", ((Schema) schema.properties.get("vSet")).type);
-		assertEquals("integer", ((Schema) ((Schema) schema.properties.get("vSet")).items).type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), schema.properties.get("vSet").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), schema.properties.get("vSet").value.items.value.type);
 
-		assertEquals("object", ((Schema) schema.properties.get("vMap")).type);
-		assertEquals("string", ((Schema) ((Schema) schema.properties.get("vMap")).additionalProperties).type);
+		assertEquals(openapi.SchemaType.ofSingle("object"), schema.properties.get("vMap").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"),
+				schema.properties.get("vMap").value.additionalProperties.schema.value.type);
 
-		assertEquals("object", ((Schema) schema.properties.get("vRawMap")).type);
+		assertEquals(openapi.SchemaType.ofSingle("object"), schema.properties.get("vRawMap").value.type);
 
-		assertEquals("#/components/schemas/CustomType", ((Schema) schema.properties.get("vCustom")).$ref);
+		assertEquals("#/components/schemas/CustomType", schema.properties.get("vCustom").value.$ref);
 
-		assertEquals("string", ((Schema) schema.properties.get("vByteArr")).type);
-		assertEquals("binary", ((Schema) schema.properties.get("vByteArr")).format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), schema.properties.get("vByteArr").value.type);
+		assertEquals("binary", schema.properties.get("vByteArr").value.format);
 
-		assertEquals("array", ((Schema) schema.properties.get("vIntArr")).type);
-		assertEquals("integer", ((Schema) ((Schema) schema.properties.get("vIntArr")).items).type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), schema.properties.get("vIntArr").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), schema.properties.get("vIntArr").value.items.value.type);
 
-		assertEquals("integer", ((Schema) schema.properties.get("pInt")).type);
-		assertEquals("integer", ((Schema) schema.properties.get("pLong")).type);
-		assertEquals("int64", ((Schema) schema.properties.get("pLong")).format);
-		assertEquals("number", ((Schema) schema.properties.get("pDouble")).type);
-		assertEquals("number", ((Schema) schema.properties.get("pFloat")).type);
-		assertEquals("boolean", ((Schema) schema.properties.get("pBool")).type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), schema.properties.get("pInt").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), schema.properties.get("pLong").value.type);
+		assertEquals("int64", schema.properties.get("pLong").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("number"), schema.properties.get("pDouble").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("number"), schema.properties.get("pFloat").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("boolean"), schema.properties.get("pBool").value.type);
 	}
 
 	/**
@@ -215,13 +217,14 @@ public class ClassesParseEmitTest {
 		Parameter p2b = new Parameter();
 		p2b.name = "query_p2";
 		p2b.in = "query";
-		getOp.parameters = Arrays.asList(p1, p2, p2b);
+		getOp.parameters = Arrays.asList(openapi.ReferenceOr.ofValue(p1), openapi.ReferenceOr.ofValue(p2),
+				openapi.ReferenceOr.ofValue(p2b));
 
 		pi.get = getOp;
 
 		Operation postOp = new Operation();
 		postOp.description = "Post Thing Desc";
-		postOp.requestBody = new RequestBody();
+		postOp.requestBody = openapi.ReferenceOr.ofValue(new RequestBody());
 		pi.post = postOp;
 
 		Operation putOp = new Operation();
@@ -231,7 +234,7 @@ public class ClassesParseEmitTest {
 		Parameter p4 = new Parameter();
 		p4.name = null;
 		p4.in = "query";
-		putOp.parameters = Arrays.asList(p3, p4);
+		putOp.parameters = Arrays.asList(openapi.ReferenceOr.ofValue(p3), openapi.ReferenceOr.ofValue(p4));
 
 		pi.put = putOp;
 
@@ -244,13 +247,14 @@ public class ClassesParseEmitTest {
 
 		// Enum schema
 		Schema enumSchema = new Schema();
-		enumSchema.enumValues = Arrays.asList("A", "b-c", "1D", "");
-		api.components.schemas.put("MyEnum", enumSchema);
+		enumSchema.enumValues = Arrays.asList(arazzo.PayloadValue.ofString("A"), arazzo.PayloadValue.ofString("b-c"),
+				arazzo.PayloadValue.ofString("1D"), arazzo.PayloadValue.ofString(""));
+		api.components.schemas.put("MyEnum", openapi.ReferenceOr.ofValue(enumSchema));
 
 		// Object schema
 		Schema objSchema = new Schema();
 		objSchema.description = "obj desc";
-		objSchema.example = "ex";
+		objSchema.example = arazzo.PayloadValue.ofString("ex");
 		objSchema.xml = new XML();
 		objSchema.xml.name = "xn";
 		objSchema.xml.namespace = "xns";
@@ -269,9 +273,9 @@ public class ClassesParseEmitTest {
 		objSchema.properties = new HashMap<>();
 
 		Schema strProp = new Schema();
-		strProp.type = "string";
+		strProp.type = openapi.SchemaType.ofSingle("string");
 		strProp.description = "str prop";
-		strProp.example = "ex prop";
+		strProp.example = arazzo.PayloadValue.ofString("ex prop");
 		strProp.xml = new XML();
 		strProp.xml.name = "pxn";
 		strProp.xml.namespace = "pxns";
@@ -281,83 +285,83 @@ public class ClassesParseEmitTest {
 		strProp.externalDocs = new ExternalDocumentation();
 		strProp.externalDocs.url = "http://pdoc";
 		strProp.externalDocs.description = "pdoc";
-		objSchema.properties.put("str_prop", strProp);
+		objSchema.properties.put("str_prop", openapi.ReferenceOr.ofValue(strProp));
 
 		Schema refProp = new Schema();
 		refProp.$ref = "#/components/schemas/MyEnum";
-		objSchema.properties.put("refProp", refProp);
+		objSchema.properties.put("refProp", openapi.ReferenceOr.ofValue(refProp));
 
 		Schema dtProp = new Schema();
-		dtProp.type = "string";
+		dtProp.type = openapi.SchemaType.ofSingle("string");
 		dtProp.format = "date-time";
-		objSchema.properties.put("dt", dtProp);
+		objSchema.properties.put("dt", openapi.ReferenceOr.ofValue(dtProp));
 
 		Schema dProp = new Schema();
-		dProp.type = "string";
+		dProp.type = openapi.SchemaType.ofSingle("string");
 		dProp.format = "date";
-		objSchema.properties.put("d", dProp);
+		objSchema.properties.put("d", openapi.ReferenceOr.ofValue(dProp));
 
 		Schema uProp = new Schema();
-		uProp.type = "string";
+		uProp.type = openapi.SchemaType.ofSingle("string");
 		uProp.format = "uuid";
-		objSchema.properties.put("u", uProp);
+		objSchema.properties.put("u", openapi.ReferenceOr.ofValue(uProp));
 
 		Schema bProp = new Schema();
-		bProp.type = "string";
+		bProp.type = openapi.SchemaType.ofSingle("string");
 		bProp.format = "binary";
-		objSchema.properties.put("b", bProp);
+		objSchema.properties.put("b", openapi.ReferenceOr.ofValue(bProp));
 
 		Schema int64Prop = new Schema();
-		int64Prop.type = "integer";
+		int64Prop.type = openapi.SchemaType.ofSingle("integer");
 		int64Prop.format = "int64";
-		objSchema.properties.put("i64", int64Prop);
+		objSchema.properties.put("i64", openapi.ReferenceOr.ofValue(int64Prop));
 
 		Schema int32Prop = new Schema();
-		int32Prop.type = "integer";
-		objSchema.properties.put("i32", int32Prop);
+		int32Prop.type = openapi.SchemaType.ofSingle("integer");
+		objSchema.properties.put("i32", openapi.ReferenceOr.ofValue(int32Prop));
 
 		Schema fProp = new Schema();
-		fProp.type = "number";
+		fProp.type = openapi.SchemaType.ofSingle("number");
 		fProp.format = "float";
-		objSchema.properties.put("f", fProp);
+		objSchema.properties.put("f", openapi.ReferenceOr.ofValue(fProp));
 
 		Schema dbProp = new Schema();
-		dbProp.type = "number";
-		objSchema.properties.put("db", dbProp);
+		dbProp.type = openapi.SchemaType.ofSingle("number");
+		objSchema.properties.put("db", openapi.ReferenceOr.ofValue(dbProp));
 
 		Schema boolProp = new Schema();
-		boolProp.type = "boolean";
-		objSchema.properties.put("bool", boolProp);
+		boolProp.type = openapi.SchemaType.ofSingle("boolean");
+		objSchema.properties.put("bool", openapi.ReferenceOr.ofValue(boolProp));
 
 		Schema arrProp = new Schema();
-		arrProp.type = "array";
+		arrProp.type = openapi.SchemaType.ofSingle("array");
 		Schema arrItems = new Schema();
-		arrItems.type = "string";
-		arrProp.items = arrItems;
-		objSchema.properties.put("arr", arrProp);
+		arrItems.type = openapi.SchemaType.ofSingle("string");
+		arrProp.items = openapi.ReferenceOr.ofValue(arrItems);
+		objSchema.properties.put("arr", openapi.ReferenceOr.ofValue(arrProp));
 
 		Schema mapProp = new Schema();
-		mapProp.type = "object";
+		mapProp.type = openapi.SchemaType.ofSingle("object");
 		Schema mapAddProps = new Schema();
-		mapAddProps.type = "integer";
-		mapProp.additionalProperties = mapAddProps;
-		objSchema.properties.put("map", mapProp);
+		mapAddProps.type = openapi.SchemaType.ofSingle("integer");
+		mapProp.additionalProperties = openapi.AdditionalProperties.ofSchema(mapAddProps);
+		objSchema.properties.put("map", openapi.ReferenceOr.ofValue(mapProp));
 
 		Schema mapObjProp = new Schema();
-		mapObjProp.type = "object";
-		objSchema.properties.put("mapObj", mapObjProp);
+		mapObjProp.type = openapi.SchemaType.ofSingle("object");
+		objSchema.properties.put("mapObj", openapi.ReferenceOr.ofValue(mapObjProp));
 
 		Schema otherProp = new Schema();
-		otherProp.type = "unknown";
-		objSchema.properties.put("other", otherProp);
+		otherProp.type = openapi.SchemaType.ofSingle("unknown");
+		objSchema.properties.put("other", openapi.ReferenceOr.ofValue(otherProp));
 
 		Schema keyProp = new Schema();
-		keyProp.type = "string";
-		objSchema.properties.put("enum", keyProp);
-		objSchema.properties.put("notSchema", new Object()); // tests "enumValue" renaming
-		objSchema.properties.put("1digit", keyProp); // tests "_1digit" renaming
+		keyProp.type = openapi.SchemaType.ofSingle("string");
+		objSchema.properties.put("enum", openapi.ReferenceOr.ofValue(keyProp));
+		objSchema.properties.put("notSchema", null); // tests "enumValue" renaming
+		objSchema.properties.put("1digit", openapi.ReferenceOr.ofValue(keyProp)); // tests "_1digit" renaming
 
-		api.components.schemas.put("MyObj", objSchema);
+		api.components.schemas.put("MyObj", openapi.ReferenceOr.ofValue(objSchema));
 
 		String result = Emit.emit(api, null);
 		System.out.println("EMIT_RESULT:\n" + result);
@@ -392,8 +396,8 @@ public class ClassesParseEmitTest {
 		api.components = new Components();
 		api.components.schemas = new HashMap<>();
 		Schema emptyEnum = new Schema();
-		emptyEnum.enumValues = Arrays.asList("V");
-		api.components.schemas.put("MyEnum", emptyEnum);
+		emptyEnum.enumValues = Arrays.asList(arazzo.PayloadValue.ofString("V"));
+		api.components.schemas.put("MyEnum", openapi.ReferenceOr.ofValue(emptyEnum));
 
 		String existing = "public enum MyEnum { OLD_V }\n";
 		String result = Emit.emit(api, existing);
@@ -424,8 +428,8 @@ public class ClassesParseEmitTest {
 		OpenAPI api = new OpenAPI();
 		api.components = new Components();
 		api.components.schemas = new HashMap<>();
-		api.components.schemas.put("Parse", new Schema());
-		api.components.schemas.put("Emit", new Schema());
+		api.components.schemas.put("Parse", openapi.ReferenceOr.ofValue(new Schema()));
+		api.components.schemas.put("Emit", openapi.ReferenceOr.ofValue(new Schema()));
 
 		Schema sparseObj = new Schema();
 		sparseObj.description = "";
@@ -443,15 +447,15 @@ public class ClassesParseEmitTest {
 		propSparse.externalDocs = new ExternalDocumentation();
 		Schema propUrlOnlyEd = new Schema();
 		propUrlOnlyEd.externalDocs = urlOnlyEd;
-		sparseObj.properties.put("default", propSparse);
-		sparseObj.properties.put("const", propUrlOnlyEd);
-		sparseObj.properties.put("class", new Schema());
-		api.components.schemas.put("SparseObj", sparseObj);
+		sparseObj.properties.put("default", openapi.ReferenceOr.ofValue(propSparse));
+		sparseObj.properties.put("const", openapi.ReferenceOr.ofValue(propUrlOnlyEd));
+		sparseObj.properties.put("class", openapi.ReferenceOr.ofValue(new Schema()));
+		api.components.schemas.put("SparseObj", openapi.ReferenceOr.ofValue(sparseObj));
 
 		Schema discNullExt = new Schema();
 		discNullExt.discriminator = new Discriminator();
 		discNullExt.externalDocs = urlOnlyEd;
-		api.components.schemas.put("DiscNullExt", discNullExt);
+		api.components.schemas.put("DiscNullExt", openapi.ReferenceOr.ofValue(discNullExt));
 
 		String result = Emit.emit(api, "   ");
 		assertFalse(result.contains("class Parse"));

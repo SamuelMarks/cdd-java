@@ -65,65 +65,67 @@ public class OrmParseEmitTest {
 		assertFalse(api.components.schemas.containsKey("MyInterface"));
 		assertFalse(api.components.schemas.containsKey("NotAnEntity"));
 
-		Schema user = api.components.schemas.get("User");
+		Schema user = api.components.schemas.get("User").value;
 		assertEquals("users_table", user.extensions.get("x-table-name"));
 
-		Map<String, Object> props = user.properties;
+		Map<String, openapi.ReferenceOr<Schema>> props = user.properties;
 		assertNotNull(props);
 
-		Schema idSchema = (Schema) props.get("user_id");
+		Schema idSchema = props.get("user_id").value;
 		assertNotNull(idSchema);
-		assertEquals("string", idSchema.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), idSchema.type);
 		assertEquals(true, idSchema.extensions.get("x-primary-key"));
 
-		assertEquals("integer", ((Schema) props.get("age")).type);
-		assertEquals("integer", ((Schema) props.get("longAge")).type);
-		assertEquals("int64", ((Schema) props.get("longAge")).format);
-		assertEquals("number", ((Schema) props.get("doubleVal")).type);
-		assertEquals("number", ((Schema) props.get("floatVal")).type);
-		assertEquals("float", ((Schema) props.get("floatVal")).format);
-		assertEquals("boolean", ((Schema) props.get("active")).type);
-		assertEquals("string", ((Schema) props.get("uuid")).type);
-		assertEquals("uuid", ((Schema) props.get("uuid")).format);
-		assertEquals("string", ((Schema) props.get("ld")).type);
-		assertEquals("date", ((Schema) props.get("ld")).format);
-		assertEquals("string", ((Schema) props.get("odt")).type);
-		assertEquals("date-time", ((Schema) props.get("odt")).format);
-		assertEquals("string", ((Schema) props.get("zdt")).type);
-		assertEquals("date-time", ((Schema) props.get("zdt")).format);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("age").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("longAge").value.type);
+		assertEquals("int64", props.get("longAge").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("number"), props.get("doubleVal").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("number"), props.get("floatVal").value.type);
+		assertEquals("float", props.get("floatVal").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("boolean"), props.get("active").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("uuid").value.type);
+		assertEquals("uuid", props.get("uuid").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("ld").value.type);
+		assertEquals("date", props.get("ld").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("odt").value.type);
+		assertEquals("date-time", props.get("odt").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("zdt").value.type);
+		assertEquals("date-time", props.get("zdt").value.format);
 
-		assertEquals("array", ((Schema) props.get("stringList")).type);
-		assertEquals("string", ((Schema) ((Schema) props.get("stringList")).items).type);
-		assertEquals("array", ((Schema) props.get("intList")).type);
-		assertEquals("integer", ((Schema) ((Schema) props.get("intList")).items).type);
-		assertEquals("array", ((Schema) props.get("noGenSet")).type);
-		assertEquals("string", ((Schema) ((Schema) props.get("noGenSet")).items).type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), props.get("stringList").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("stringList").value.items.value.type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), props.get("intList").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("intList").value.items.value.type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), props.get("noGenSet").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("noGenSet").value.items.value.type);
 
-		assertEquals("object", ((Schema) props.get("mapVal")).type);
-		assertEquals("integer", ((Schema) ((Schema) props.get("mapVal")).additionalProperties).type);
-		assertEquals("object", ((Schema) props.get("singleGenMap")).type);
-		assertNull(((Schema) props.get("singleGenMap")).additionalProperties);
+		assertEquals(openapi.SchemaType.ofSingle("object"), props.get("mapVal").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"),
+				props.get("mapVal").value.additionalProperties.schema.value.type);
+		assertEquals(openapi.SchemaType.ofSingle("object"), props.get("singleGenMap").value.type);
+		assertNull(props.get("singleGenMap").value.additionalProperties);
 
-		assertEquals("#/components/schemas/SomeCustomType", ((Schema) props.get("custom")).$ref);
+		assertEquals("#/components/schemas/SomeCustomType", props.get("custom").value.$ref);
 
-		assertEquals("string", ((Schema) props.get("bytes")).type);
-		assertEquals("binary", ((Schema) props.get("bytes")).format);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("bytes").value.type);
+		assertEquals("binary", props.get("bytes").value.format);
 
-		assertEquals("array", ((Schema) props.get("stringArray")).type);
-		assertEquals("string", ((Schema) ((Schema) props.get("stringArray")).items).type);
+		assertEquals(openapi.SchemaType.ofSingle("array"), props.get("stringArray").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("string"), props.get("stringArray").value.items.value.type);
 
-		assertEquals("integer", ((Schema) props.get("pInt")).type);
-		assertEquals("integer", ((Schema) props.get("pLong")).type);
-		assertEquals("int64", ((Schema) props.get("pLong")).format);
-		assertEquals("number", ((Schema) props.get("pDouble")).type);
-		assertEquals("number", ((Schema) props.get("pFloat")).type);
-		assertEquals("boolean", ((Schema) props.get("pBoolean")).type);
-		assertNull(((Schema) props.get("pShort")).type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("pInt").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("integer"), props.get("pLong").value.type);
+		assertEquals("int64", props.get("pLong").value.format);
+		assertEquals(openapi.SchemaType.ofSingle("number"), props.get("pDouble").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("number"), props.get("pFloat").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("boolean"), props.get("pBoolean").value.type);
+		assertNull(props.get("pShort").value.type);
 
-		assertEquals("object", ((Schema) props.get("wildcardMap")).type);
-		assertEquals("object", ((Schema) ((Schema) props.get("wildcardMap")).additionalProperties).type);
+		assertEquals(openapi.SchemaType.ofSingle("object"), props.get("wildcardMap").value.type);
+		assertEquals(openapi.SchemaType.ofSingle("object"),
+				props.get("wildcardMap").value.additionalProperties.schema.value.type);
 
-		Schema missingNameTable = api.components.schemas.get("MissingNameTable");
+		Schema missingNameTable = api.components.schemas.get("MissingNameTable").value;
 		assertNotNull(missingNameTable);
 		assertNull(missingNameTable.extensions.get("x-table-name"));
 		assertNotNull(missingNameTable.properties.get("missingNameCol"));
@@ -164,134 +166,134 @@ public class OrmParseEmitTest {
 
 		Schema user = new Schema();
 		user.properties = new LinkedHashMap<>();
-		user.properties.put("id", new Schema() {
+		user.properties.put("id", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 				format = "uuid";
 			}
-		});
-		user.properties.put("active", new Schema() {
+		}));
+		user.properties.put("active", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "boolean";
+				type = openapi.SchemaType.ofSingle("boolean");
 			}
-		});
-		user.properties.put("1invalid", new Schema() {
+		}));
+		user.properties.put("1invalid", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		user.properties.put("enum", new Schema() {
+		}));
+		user.properties.put("enum", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		user.properties.put("const", new Schema() {
+		}));
+		user.properties.put("const", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		user.properties.put("default", new Schema() {
+		}));
+		user.properties.put("default", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		user.properties.put("class", new Schema() {
+		}));
+		user.properties.put("class", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		user.properties.put("age", new Schema() {
+		}));
+		user.properties.put("age", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "integer";
+				type = openapi.SchemaType.ofSingle("integer");
 			}
-		});
-		user.properties.put("longAge", new Schema() {
+		}));
+		user.properties.put("longAge", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "integer";
+				type = openapi.SchemaType.ofSingle("integer");
 				format = "int64";
 			}
-		});
-		user.properties.put("dVal", new Schema() {
+		}));
+		user.properties.put("dVal", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "number";
+				type = openapi.SchemaType.ofSingle("number");
 			}
-		});
-		user.properties.put("fVal", new Schema() {
+		}));
+		user.properties.put("fVal", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "number";
+				type = openapi.SchemaType.ofSingle("number");
 				format = "float";
 			}
-		});
-		user.properties.put("bytes", new Schema() {
+		}));
+		user.properties.put("bytes", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 				format = "binary";
 			}
-		});
-		user.properties.put("ld", new Schema() {
+		}));
+		user.properties.put("ld", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 				format = "date";
 			}
-		});
-		user.properties.put("odt", new Schema() {
+		}));
+		user.properties.put("odt", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 				format = "date-time";
 			}
-		});
-		user.properties.put("str", new Schema() {
+		}));
+		user.properties.put("str", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
+		}));
 
 		Schema child = new Schema();
-		child.type = "object";
-		user.properties.put("childMap", child); // map<string, object>
+		child.type = openapi.SchemaType.ofSingle("object");
+		user.properties.put("childMap", openapi.ReferenceOr.ofValue(child)); // map<string, object>
 
 		Schema childMapSchema = new Schema();
-		childMapSchema.type = "object";
-		childMapSchema.additionalProperties = new Schema() {
+		childMapSchema.type = openapi.SchemaType.ofSingle("object");
+		childMapSchema.additionalProperties = openapi.AdditionalProperties.ofSchema(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		};
-		user.properties.put("childSpecMap", childMapSchema); // map<string, string>
+		});
+		user.properties.put("childSpecMap", openapi.ReferenceOr.ofValue(childMapSchema)); // map<string, string>
 
 		Schema arraySchema = new Schema();
-		arraySchema.type = "array";
-		arraySchema.items = new Schema() {
+		arraySchema.type = openapi.SchemaType.ofSingle("array");
+		arraySchema.items = openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		};
-		user.properties.put("tags", arraySchema); // List<String>
+		});
+		user.properties.put("tags", openapi.ReferenceOr.ofValue(arraySchema)); // List<String>
 
 		Schema refSchema = new Schema();
 		refSchema.$ref = "#/components/schemas/Role";
-		user.properties.put("role", refSchema); // Role
+		user.properties.put("role", openapi.ReferenceOr.ofValue(refSchema)); // Role
 
 		Schema reqRefSchema = new Schema();
 		reqRefSchema.$ref = "#/components/schemas/Department";
-		user.properties.put("dept", reqRefSchema);
+		user.properties.put("dept", openapi.ReferenceOr.ofValue(reqRefSchema));
 
 		user.required = new ArrayList<>(Arrays.asList("active", "dept"));
 
 		Schema unknown = new Schema();
-		unknown.type = "unknown";
-		user.properties.put("unk", unknown);
+		unknown.type = openapi.SchemaType.ofSingle("unknown");
+		user.properties.put("unk", openapi.ReferenceOr.ofValue(unknown));
 
-		api.components.schemas.put("User", user);
+		api.components.schemas.put("User", openapi.ReferenceOr.ofValue(user));
 
 		// Test filtering Parse and Emit
-		api.components.schemas.put("Emit", new Schema());
-		api.components.schemas.put("Parse", new Schema());
+		api.components.schemas.put("Emit", openapi.ReferenceOr.ofValue(new Schema()));
+		api.components.schemas.put("Parse", openapi.ReferenceOr.ofValue(new Schema()));
 
 		// Test enumValues (should be skipped)
 		Schema enumSchema = new Schema();
-		enumSchema.enumValues = new ArrayList<>(Arrays.asList("A"));
-		api.components.schemas.put("EnumObj", enumSchema);
+		enumSchema.enumValues = new ArrayList<>(Arrays.asList(arazzo.PayloadValue.ofString("A")));
+		api.components.schemas.put("EnumObj", openapi.ReferenceOr.ofValue(enumSchema));
 
 		String emitted = Emit.emit(api, null);
 		assertTrue(emitted.contains("class User"));
@@ -327,15 +329,15 @@ public class OrmParseEmitTest {
 
 		OpenAPI roundTrip = Parse.parse(emitted
 				+ "\n@Entity public class Extra { @JoinColumn(name = \"custom_col\", nullable = true) @JoinColumn public Role r; }");
-		Schema parsedUser = roundTrip.components.schemas.get("User");
+		Schema parsedUser = roundTrip.components.schemas.get("User").value;
 		assertNotNull(parsedUser);
 		assertNotNull(parsedUser.required);
 		assertTrue(parsedUser.required.contains("active"));
 		assertTrue(parsedUser.required.contains("dept"));
-		assertEquals(true, ((Schema) parsedUser.properties.get("id")).extensions.get("x-primary-key"));
-		assertEquals(true, ((Schema) parsedUser.properties.get("id")).extensions.get("x-generated-value"));
-		assertEquals("many-to-one", ((Schema) parsedUser.properties.get("role")).extensions.get("x-relationship"));
-		assertEquals("one-to-many", ((Schema) parsedUser.properties.get("tags")).extensions.get("x-relationship"));
+		assertEquals(true, parsedUser.properties.get("id").value.extensions.get("x-primary-key"));
+		assertEquals(true, parsedUser.properties.get("id").value.extensions.get("x-generated-value"));
+		assertEquals("many-to-one", parsedUser.properties.get("role").value.extensions.get("x-relationship"));
+		assertEquals("one-to-many", parsedUser.properties.get("tags").value.extensions.get("x-relationship"));
 	}
 
 	/**
@@ -349,17 +351,17 @@ public class OrmParseEmitTest {
 
 		Schema user = new Schema();
 		user.properties = new HashMap<>();
-		user.properties.put("newField", new Schema() {
+		user.properties.put("newField", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		user.properties.put("existingField", new Schema() {
+		}));
+		user.properties.put("existingField", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "string";
+				type = openapi.SchemaType.ofSingle("string");
 			}
-		});
-		api.components.schemas.put("User", user);
+		}));
+		api.components.schemas.put("User", openapi.ReferenceOr.ofValue(user));
 
 		String existing = "package com.example;\n" + "import jakarta.persistence.*;\n" + "@Entity\n"
 				+ "@Table(name = \"custom_table\")\n" + "public class User {\n" + "    public String existingField;\n"
@@ -382,7 +384,7 @@ public class OrmParseEmitTest {
 		api.components.schemas = new HashMap<>();
 
 		Schema user = new Schema();
-		api.components.schemas.put("User", user);
+		api.components.schemas.put("User", openapi.ReferenceOr.ofValue(user));
 
 		String existing = "public class User {}";
 		String emitted = Emit.emit(api, existing);
@@ -405,21 +407,21 @@ public class OrmParseEmitTest {
 		api.components.schemas = new HashMap<>();
 
 		Schema parent = new Schema();
-		parent.type = "object";
+		parent.type = openapi.SchemaType.ofSingle("object");
 		parent.properties = new HashMap<>();
 
 		Schema prop1 = new Schema();
 		// null type, not object, but has additionalProperties
 		prop1.type = null;
-		prop1.additionalProperties = new Schema();
-		parent.properties.put("prop1", prop1);
+		prop1.additionalProperties = openapi.AdditionalProperties.ofSchema(new Schema());
+		parent.properties.put("prop1", openapi.ReferenceOr.ofValue(prop1));
 
 		Schema prop2 = new Schema();
 		// null type, no additionalProperties
 		prop2.type = null;
-		parent.properties.put("prop2", prop2);
+		parent.properties.put("prop2", openapi.ReferenceOr.ofValue(prop2));
 
-		api.components.schemas.put("ParentModel", parent);
+		api.components.schemas.put("ParentModel", openapi.ReferenceOr.ofValue(parent));
 		String emitted = Emit.emit(api, null);
 		assertNotNull(emitted);
 	}
@@ -435,15 +437,15 @@ public class OrmParseEmitTest {
 		api.components.schemas = new HashMap<>();
 		Schema user = new Schema();
 		user.properties = new HashMap<>();
-		user.properties.put("notSchema", "JustAString");
-		user.properties.put("addPropNotSchema", new Schema() {
+		user.properties.put("notSchema", null);
+		user.properties.put("addPropNotSchema", openapi.ReferenceOr.ofValue(new Schema() {
 			{
-				type = "object";
-				additionalProperties = "StringVal";
+				type = openapi.SchemaType.ofSingle("object");
+				additionalProperties = openapi.AdditionalProperties.ofBoolean(true);
 			}
-		});
+		}));
 
-		api.components.schemas.put("User", user);
+		api.components.schemas.put("User", openapi.ReferenceOr.ofValue(user));
 		String emitted = Emit.emit(api, null);
 		assertTrue(emitted.contains("public Object notSchema;"));
 		assertTrue(emitted.contains("public Map<String, Object> addPropNotSchema;"));

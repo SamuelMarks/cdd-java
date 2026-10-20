@@ -87,7 +87,7 @@ public class PathItem {
 	/**
 	 * The parameters property.
 	 */
-	public List<Object> parameters;
+	public List<ReferenceOr<Parameter>> parameters;
 
 	/**
 	 * Extensions.
@@ -117,15 +117,32 @@ public class PathItem {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(ref, summary, description, get, put, post, delete, options, head, patch, trace,
+				query, additionalOperations, servers, parameters, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof PathItem)) {
+			return false;
+		}
+		return fieldValues().equals(((PathItem) o).fieldValues());
 	}
 
 	/**
@@ -135,7 +152,7 @@ public class PathItem {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -145,6 +162,6 @@ public class PathItem {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "PathItem" + fieldValues();
 	}
 }

@@ -1,7 +1,5 @@
 package arazzo;
 
-import openapi.TypeMapper;
-
 /**
  * Arazzo Reusable Object referencing a component definition in
  * {@code $components.parameters.*}, {@code $components.successActions.*}, or
@@ -26,15 +24,31 @@ public class ReusableObject {
 	public PayloadValue value;
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(reference, value);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof ReusableObject)) {
+			return false;
+		}
+		return fieldValues().equals(((ReusableObject) o).fieldValues());
 	}
 
 	/**
@@ -44,7 +58,7 @@ public class ReusableObject {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -54,6 +68,6 @@ public class ReusableObject {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "ReusableObject" + fieldValues();
 	}
 }

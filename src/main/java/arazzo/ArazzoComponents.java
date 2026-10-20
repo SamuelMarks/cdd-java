@@ -3,7 +3,6 @@ package arazzo;
 import java.util.HashMap;
 import java.util.Map;
 import openapi.Schema;
-import openapi.TypeMapper;
 
 /**
  * Arazzo Components Object holding reusable input schemas, parameters, success
@@ -65,15 +64,31 @@ public class ArazzoComponents {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(inputs, parameters, successActions, failureActions, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof ArazzoComponents)) {
+			return false;
+		}
+		return fieldValues().equals(((ArazzoComponents) o).fieldValues());
 	}
 
 	/**
@@ -83,7 +98,7 @@ public class ArazzoComponents {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -93,6 +108,6 @@ public class ArazzoComponents {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "ArazzoComponents" + fieldValues();
 	}
 }

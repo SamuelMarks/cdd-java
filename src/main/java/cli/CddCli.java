@@ -49,11 +49,7 @@ public class CddCli {
 	 * @return The resolved {@link File} instance.
 	 */
 	private static File resolveFile(String path) {
-		String vfsRoot = envProvider.apply("CDD_WASI_VIRTUAL_ROOT");
-		if (vfsRoot != null && path.startsWith("/")) {
-			return new File(vfsRoot, path.substring(1));
-		}
-		return new File(path);
+		return ProjectScaffolder.resolveWasiPath(path, envProvider);
 	}
 
 	/**
@@ -357,17 +353,24 @@ public class CddCli {
 	 *             If an invalid command or execution error occurs.
 	 */
 	public static int run(String[] args) throws Exception {
-		if (args.length == 0 || args[0].equals("--help") || args[0].equals("-h")) {
+		CliArguments cliArgs = CliArguments.parse(args);
+		if (args.length == 0 || "--help".equals(cliArgs.command()) || "-h".equals(cliArgs.command())) {
 			printHelp();
 			return 0;
 		}
-		if (args[0].equals("--version") || args[0].equals("-v")) {
+		if ("--version".equals(cliArgs.command()) || "-v".equals(cliArgs.command())) {
 			System.out.println("0.0.4");
 			return 0;
 		}
-		String command = args[0];
-		boolean wasi = hasFlag(args, "--wasi", "--wasi", "CDD_WASI");
+		String command = cliArgs.command();
+		boolean wasi = cliArgs.hasFlag("--wasi", "--wasi", "CDD_WASI");
 		if (command.equals("process_in_memory")) {
+			if (cliArgs.hasFlag("-h", "--help", null)) {
+				System.out.println("cdd-java process_in_memory");
+				System.out.println("Usage:");
+				System.out.println("  cdd-java process_in_memory <json_payload>");
+				return 0;
+			}
 			if (args.length < 2) {
 				System.err.println("Missing JSON payload argument");
 				throw new Exception("Exit 1");
@@ -376,7 +379,7 @@ public class CddCli {
 			return 0;
 		}
 		if (command.equals("from_openapi")) {
-			if (hasFlag(args, "-h", "--help", null)) {
+			if (cliArgs.hasFlag("-h", "--help", null)) {
 				System.out.println("cdd-java from_openapi");
 				System.out.println("Usage:");
 				System.out.println(
@@ -386,23 +389,17 @@ public class CddCli {
 				System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
 				return 0;
 			}
-			// Default for backward compatibility
-			String subCommand = "to_sdk";
-			int subCmdIdx = 1;
-			if (args.length > 1 && !args[1].startsWith("-")) {
-				subCommand = args[1];
-				subCmdIdx = 2;
-			}
+			String subCommand = cliArgs.subCommand("to_sdk");
 			if (!subCommand.equals("to_sdk_cli") && !subCommand.equals("to_sdk") && !subCommand.equals("to_server")) {
 				System.err.println("Unknown from_openapi subcommand: " + subCommand);
 				throw new Exception("Exit 1");
 			}
-			String inputFile = getArg(args, "-i", "--input", "CDD_INPUT");
-			String inputDir = getArg(args, "--input-dir", "--input-dir", "CDD_INPUT_DIR");
+			String inputFile = cliArgs.getArg("-i", "--input", "CDD_INPUT");
+			String inputDir = cliArgs.getArg("--input-dir", "--input-dir", "CDD_INPUT_DIR");
 			if (inputFile == null && inputDir != null) {
 				inputFile = inputDir;
 			}
-			String outputDir = getArg(args, "-o", "--output", "CDD_OUTPUT");
+			String outputDir = cliArgs.getArg("-o", "--output", "CDD_OUTPUT");
 			if (outputDir == null) {
 				outputDir = System.getProperty("user.dir");
 			}
@@ -410,11 +407,11 @@ public class CddCli {
 				System.err.println("Missing -i <spec.json> or --input-dir <dir>");
 				throw new Exception("Exit 1");
 			}
-			boolean noGithubActions = hasFlag(args, "--no-github-actions", "--no-github-actions",
+			boolean noGithubActions = cliArgs.hasFlag("--no-github-actions", "--no-github-actions",
 					"CDD_NO_GITHUB_ACTIONS");
-			boolean noInstallablePackage = hasFlag(args, "--no-installable-package", "--no-installable-package",
+			boolean noInstallablePackage = cliArgs.hasFlag("--no-installable-package", "--no-installable-package",
 					"CDD_NO_INSTALLABLE_PACKAGE");
-			boolean generateTests = hasFlag(args, "--tests", "--tests", "CDD_TESTS");
+			boolean generateTests = cliArgs.hasFlag("--tests", "--tests", "CDD_TESTS");
 			List<File> specFiles = new ArrayList<>();
 			File targetFile = resolveFile(inputFile);
 			if (targetFile.isDirectory()) {
@@ -637,11 +634,11 @@ public class CddCli {
 			String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
 			writeFile(resolveFile(outputFile), docsJson);
 			System.out.println("Emitted docs JSON to " + outputFile);
-		} else if (command.equals("serve_json_rpc")) {
+		} else if (command.equals("serve_json_rpc") || command.equals("mcp")) {
 			if (hasFlag(args, "-h", "--help", null)) {
-				System.out.println("cdd-java serve_json_rpc");
+				System.out.println("cdd-java " + command);
 				System.out.println("Usage:");
-				System.out.println("  cdd-java serve_json_rpc [-p|--port <port>] [-l|--listen <address>] [--wasi]");
+				System.out.println("  cdd-java " + command + " [-p|--port <port>] [-l|--listen <address>] [--wasi]");
 				return 0;
 			}
 			String portStr = getArg(args, "-p", "--port", "CDD_PORT");
@@ -651,9 +648,9 @@ public class CddCli {
 			if (listen == null)
 				listen = "127.0.0.1";
 			if (wasi) {
-				startStdioJsonRpcServer();
+				McpJsonRpcServer.serveJsonRpcStdio();
 			} else {
-				startHttpJsonRpcServer(listen, Integer.parseInt(portStr));
+				McpJsonRpcServer.serveJsonRpcHttp(listen, Integer.parseInt(portStr));
 			}
 		} else if (command.equals("sync")) {
 			if (hasFlag(args, "-h", "--help", null)) {
@@ -670,45 +667,7 @@ public class CddCli {
 			String outputDir = getArg(args, "-o", "--output", "CDD_OUTPUT");
 			String truth = getArg(args, "--truth", "--truth", "CDD_TRUTH");
 			File dir = resolveFile(dirPath);
-			OpenAPI fullApi = extractOpenAPI(dir, truth);
-			List<File> javaFiles = new ArrayList<>();
-			findJavaFiles(dir, javaFiles);
-			for (File jf : javaFiles) {
-				String source = readFile(jf);
-				String newSource = source;
-				String absPath = jf.getAbsolutePath().replace('\\', '/');
-				if (absPath.contains("/classes/")) {
-					newSource = classes.Emit.emit(fullApi, source);
-				} else if (absPath.contains("/orm/")) {
-					newSource = orm.Emit.emit(fullApi, source);
-				} else if (absPath.contains("/routes/")) {
-					newSource = routes.Emit.emit(fullApi, source);
-				} else if (absPath.contains("/mocks/")) {
-					newSource = mocks.Emit.emit(fullApi, source);
-				} else if (absPath.contains("/tests/")) {
-					newSource = tests.Emit.emit(fullApi, source);
-				} else if (absPath.contains("/functions/")) {
-					newSource = functions.Emit.emit(fullApi, source);
-				} else if (absPath.contains("/cli/")) {
-					newSource = cli.Emit.emitCli(fullApi);
-				} else if (absPath.contains("/workflows/")) {
-					arazzo.Arazzo arazzoSpec = extractArazzo(dir);
-					newSource = workflows.Emit.emit(arazzoSpec, null, source);
-				}
-				File targetFile = jf;
-				if (outputDir != null) {
-					String relativePath = jf.getAbsolutePath().substring(dir.getAbsolutePath().length());
-					if (relativePath.startsWith(File.separator)) {
-						relativePath = relativePath.substring(1);
-					}
-					targetFile = new File(resolveFile(outputDir), relativePath);
-				}
-				if (!newSource.equals(source) || outputDir != null) {
-					writeFile(targetFile, newSource);
-					System.out.println("Updated: " + targetFile.getAbsolutePath());
-				}
-			}
-			System.out.println("Sync complete.");
+			SyncCommand.syncDirectory(dir, outputDir, truth);
 		} else {
 			System.err.println("Error: Unknown or incomplete command: " + command);
 			printHelp();
@@ -746,10 +705,10 @@ public class CddCli {
 				String specContent = inFiles.optString("spec.json", null);
 				OpenAPI api = openapi.Parse.fromString(specContent);
 				if (!noInstallablePackage) {
-					outFiles.put("pom.xml", getScaffoldingPom());
+					outFiles.put("pom.xml", ProjectScaffolder.generatePomXml());
 				}
 				if (!noGithubActions) {
-					outFiles.put(".github/workflows/ci.yml", getGithubActionsCi());
+					outFiles.put(".github/workflows/ci.yml", ProjectScaffolder.generateGithubActionsCi());
 				}
 				if (subCommand.equals("to_sdk_cli")) {
 					outFiles.put("SdkCli.java", cli.Emit.emitCli(api));
@@ -813,10 +772,10 @@ public class CddCli {
 					outFiles.put("src/test/java/" + wfClassName + "Mock.java", mocks.ArazzoMockEmitter.emit(spec));
 				}
 			} else if (command.equals("to_arazzo")) {
-				arazzo.Arazzo spec = extractArazzo(workspaceDir);
+				arazzo.Arazzo spec = SyncCommand.extractArazzo(workspaceDir);
 				outFiles.put("arazzo.json", arazzo.Emit.toString(spec));
 			} else if (command.equals("to_openapi") || command.equals("sync")) {
-				OpenAPI api = extractOpenAPI(workspaceDir);
+				OpenAPI api = SyncCommand.extractOpenAPI(workspaceDir);
 				String spec = openapi.Emit.toString(api);
 				outFiles.put("spec.json", spec);
 			} else if (command.equals("to_docs_json")) {
@@ -857,58 +816,7 @@ public class CddCli {
 	 *             If writing fails.
 	 */
 	private static void writeFile(File file, String content) throws IOException {
-		File absParent = file.getAbsoluteFile().getParentFile();
-		absParent.mkdirs();
-		try (FileOutputStream fos = new FileOutputStream(file)) {
-			fos.write(content.getBytes("UTF-8"));
-		}
-	}
-
-	/**
-	 * Reads the entire contents of a file as a UTF-8 string.
-	 *
-	 * @param file
-	 *            The file to read.
-	 * @return The file contents as a UTF-8 string.
-	 * @throws IOException
-	 *             If reading fails.
-	 */
-	private static String readFile(File file) throws IOException {
-		return java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
-	}
-
-	/**
-	 * Generates the default Maven {@code pom.xml} scaffolding content for generated
-	 * projects.
-	 *
-	 * @return The XML content for {@code pom.xml}.
-	 */
-	private static String getScaffoldingPom() {
-		return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" "
-				+ "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-				+ "xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 "
-				+ "http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" + "    <modelVersion>4.0.0</modelVersion>\n"
-				+ "    <groupId>com.example</groupId>\n" + "    <artifactId>generated-sdk</artifactId>\n"
-				+ "    <version>0.0.4</version>\n" + "    <properties>\n"
-				+ "        <maven.compiler.source>11</maven.compiler.source>\n"
-				+ "        <maven.compiler.target>11</maven.compiler.target>\n" + "    </properties>\n"
-				+ "    <dependencies>\n" + "        <dependency>\n" + "            <groupId>io.javalin</groupId>\n"
-				+ "            <artifactId>javalin</artifactId>\n" + "            <version>5.6.3</version>\n"
-				+ "        </dependency>\n" + "        <dependency>\n"
-				+ "            <groupId>org.hibernate.orm</groupId>\n"
-				+ "            <artifactId>hibernate-core</artifactId>\n"
-				+ "            <version>6.4.4.Final</version>\n" + "        </dependency>\n" + "        <dependency>\n"
-				+ "            <groupId>org.postgresql</groupId>\n"
-				+ "            <artifactId>postgresql</artifactId>\n" + "            <version>42.7.2</version>\n"
-				+ "        </dependency>\n" + "        <dependency>\n"
-				+ "            <groupId>com.fasterxml.jackson.core</groupId>\n"
-				+ "            <artifactId>jackson-databind</artifactId>\n" + "            <version>2.15.2</version>\n"
-				+ "        </dependency>\n" + "        <dependency>\n"
-				+ "            <groupId>net.datafaker</groupId>\n" + "            <artifactId>datafaker</artifactId>\n"
-				+ "            <version>2.0.2</version>\n" + "        </dependency>\n" + "        <dependency>\n"
-				+ "            <groupId>junit</groupId>\n" + "            <artifactId>junit</artifactId>\n"
-				+ "            <version>4.13.2</version>\n" + "            <scope>test</scope>\n"
-				+ "        </dependency>\n" + "    </dependencies>\n" + "</project>";
+		ProjectScaffolder.writeOutput(file, content);
 	}
 
 	/**
@@ -921,16 +829,7 @@ public class CddCli {
 	 *             If writing {@code pom.xml} fails.
 	 */
 	private static void generateScaffolding(File dir) throws IOException {
-		writeFile(new File(dir, "pom.xml"), getScaffoldingPom());
-	}
-
-	/**
-	 * Generates the default GitHub Actions CI workflow YAML content.
-	 *
-	 * @return The YAML content for {@code .github/workflows/ci.yml}.
-	 */
-	private static String getGithubActionsCi() {
-		return "name: CI\non: [push, pull_request]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v6\n    - name: Set up JDK\n      uses: actions/setup-java@v3\n      with:\n        java-version: '11'\n        distribution: 'temurin'\n    - name: Build with Maven\n      run: mvn clean install\n";
+		ProjectScaffolder.generateScaffolding(dir);
 	}
 
 	/**
@@ -943,69 +842,7 @@ public class CddCli {
 	 *             If writing the workflow file fails.
 	 */
 	private static void generateGithubActions(File dir) throws IOException {
-		File ghDir = new File(dir, ".github/workflows");
-		ghDir.mkdirs();
-		writeFile(new File(ghDir, "ci.yml"), getGithubActionsCi());
-	}
-
-	/**
-	 * Starts an HTTP JSON-RPC 2.0 / MCP server on the specified host and port, also
-	 * processing any lines buffered on standard input.
-	 *
-	 * @param listen
-	 *            The host address to bind to.
-	 * @param port
-	 *            The TCP port to listen on (0 for an ephemeral port).
-	 * @throws Exception
-	 *             If starting or running the server fails.
-	 */
-	private static void startHttpJsonRpcServer(String listen, int port) throws Exception {
-		if (activeHttpServer != null) {
-			activeHttpServer.stop(0);
-			activeHttpServer = null;
-		}
-		com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer
-				.create(new java.net.InetSocketAddress(listen, port), 0);
-		server.createContext("/", exchange -> {
-			byte[] reqBytes = exchange.getRequestBody().readAllBytes();
-			String reqBody = new String(reqBytes, java.nio.charset.StandardCharsets.UTF_8).trim();
-			String resp = handleJsonRpcRequest(reqBody);
-			if (resp != null) {
-				byte[] respBytes = resp.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-				exchange.getResponseHeaders().set("Content-Type", "application/json");
-				exchange.sendResponseHeaders(200, respBytes.length);
-				try (java.io.OutputStream os = exchange.getResponseBody()) {
-					os.write(respBytes);
-				}
-			} else {
-				exchange.sendResponseHeaders(204, -1);
-			}
-		});
-		server.start();
-		activeHttpServer = server;
-		startStdioJsonRpcServer();
-	}
-
-	/**
-	 * Starts the JSON-RPC 2.0 / MCP server loop over standard input and standard
-	 * output.
-	 *
-	 * @throws Exception
-	 *             If reading from standard input fails.
-	 */
-	private static void startStdioJsonRpcServer() throws Exception {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			line = line.trim();
-			if (line.isEmpty())
-				continue;
-			String response = handleJsonRpcRequest(line);
-			if (response != null) {
-				System.out.println(response);
-				System.out.flush();
-			}
-		}
+		ProjectScaffolder.generateGithubActions(dir);
 	}
 
 	/**
@@ -1018,89 +855,7 @@ public class CddCli {
 	 * @return The JSON-RPC 2.0 response string, or {@code null} for notifications.
 	 */
 	public static String handleJsonRpcRequest(String line) {
-		try {
-			JSONObject req = new JSONObject(line);
-			Object idObj = req.has("id") && !req.isNull("id") ? req.get("id") : null;
-			String idStr = idObj != null ? JSONObject.valueToString(idObj) : "null";
-			if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
-				String method = req.optString("method", "");
-				if ("initialize".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.4\"}},\"id\":"
-							+ idStr + "}";
-				} else if ("notifications/initialized".equals(method) || "initialized".equals(method)
-						|| "$/cancelRequest".equals(method) || "cancelled".equals(method)
-						|| "notifications/progress".equals(method) || "progress".equals(method)) {
-					return null;
-				} else if ("ping".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{},\"id\":" + idStr + "}";
-				} else if ("tools/list".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[{\"name\":\"cdd_generate\",\"description\":\"Generate code from OpenAPI or sync code\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"files\":{\"type\":\"object\"}},\"required\":[\"command\"]}}]},\"id\":"
-							+ idStr + "}";
-				} else if ("resources/list".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/openapi\",\"name\":\"OpenAPI AST\",\"mimeType\":\"application/json\"},{\"uri\":\"cdd://ast/arazzo\",\"name\":\"Arazzo AST\",\"mimeType\":\"application/json\"}]},\"id\":"
-							+ idStr + "}";
-				} else if ("resources/read".equals(method)) {
-					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
-					String uri = params.optString("uri", "");
-					if ("cdd://ast/openapi".equals(uri)) {
-						OpenAPI api = extractOpenAPI(workspaceDir);
-						String astText = openapi.Emit.toString(api);
-						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":"
-								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
-					} else if ("cdd://ast/arazzo".equals(uri)) {
-						arazzo.Arazzo spec = extractArazzo(workspaceDir);
-						String astText = arazzo.Emit.toString(spec);
-						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/arazzo\",\"mimeType\":\"application/json\",\"text\":"
-								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
-					} else {
-						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Resource not found\"},\"id\":"
-								+ idStr + "}";
-					}
-				} else if ("tools/call".equals(method)) {
-					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
-					String toolName = params.optString("name", "");
-					if ("cdd_generate".equals(toolName)) {
-						JSONObject args = params.has("arguments")
-								? params.getJSONObject("arguments")
-								: new JSONObject();
-						java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-						java.io.PrintStream ps = new java.io.PrintStream(baos);
-						java.io.PrintStream oldOut = System.out;
-						System.setOut(ps);
-						try {
-							processInMemory(args.toString());
-						} finally {
-							System.setOut(oldOut);
-						}
-						String output = baos.toString("UTF-8");
-						JSONObject content = new JSONObject();
-						content.put("type", "text");
-						content.put("text", output);
-						JSONArray contentArr = new JSONArray();
-						contentArr.put(content);
-						JSONObject resultObj = new JSONObject();
-						resultObj.put("content", contentArr);
-						return "{\"jsonrpc\":\"2.0\",\"result\":" + resultObj.toString() + ",\"id\":" + idStr + "}";
-					} else {
-						return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Tool not found\"},\"id\":"
-								+ idStr + "}";
-					}
-				} else if ("version".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":\"0.0.4\",\"id\":" + idStr + "}";
-				} else {
-					if (idObj == null)
-						return null;
-					return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"},\"id\":"
-							+ idStr + "}";
-				}
-			} else {
-				if (idObj == null)
-					return null;
-				return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"},\"id\":null}";
-			}
-		} catch (Exception e) {
-			return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error\"},\"id\":null}";
-		}
+		return McpJsonRpcServer.handleJsonRpc(line);
 	}
 
 	/**
@@ -1114,75 +869,7 @@ public class CddCli {
 	 *             If reading or parsing files fails.
 	 */
 	private static OpenAPI extractOpenAPI(File dir) throws Exception {
-		return extractOpenAPI(dir, null);
-	}
-
-	/**
-	 * Extracts an aggregated OpenAPI specification by parsing source files in a
-	 * directory or file path, optionally prioritizing a source of truth.
-	 *
-	 * @param dir
-	 *            The root directory or single file to scan.
-	 * @param truth
-	 *            Optional source of truth filter (e.g. {@code "openapi"},
-	 *            {@code "orm"}, {@code "classes"}, {@code "routes"}, or
-	 *            {@code null} for all).
-	 * @return The extracted {@link OpenAPI} model.
-	 * @throws Exception
-	 *             If reading or parsing files fails.
-	 */
-	private static OpenAPI extractOpenAPI(File dir, String truth) throws Exception {
-		if ("openapi".equalsIgnoreCase(truth)) {
-			File specFile = new File(dir, "openapi.json");
-			if (specFile.exists()) {
-				return openapi.Parse.fromFile(specFile);
-			}
-		}
-		List<File> javaFiles = new ArrayList<>();
-		findJavaFiles(dir, javaFiles);
-		OpenAPI fullApi = new OpenAPI();
-		fullApi.openapi = "3.2.0";
-		fullApi.info = new openapi.Info();
-		fullApi.info.title = "Extracted API";
-		fullApi.info.version = "0.0.4";
-		fullApi.paths = new openapi.Paths();
-		fullApi.paths.pathItems = new java.util.HashMap<>();
-		fullApi.components = new openapi.Components();
-		fullApi.components.schemas = new java.util.HashMap<>();
-		for (File jf : javaFiles) {
-			String source = readFile(jf);
-			if (!"orm".equalsIgnoreCase(truth) && !"classes".equalsIgnoreCase(truth)) {
-				OpenAPI apiPaths = routes.Parse.parse(source);
-				fullApi.paths.pathItems.putAll(apiPaths.paths.pathItems);
-				OpenAPI mockPaths = mocks.Parse.parse(source);
-				for (java.util.Map.Entry<String, openapi.PathItem> entry : mockPaths.paths.pathItems.entrySet()) {
-					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
-				}
-				OpenAPI cliPaths = cli.Parse.parse(source);
-				if (cliPaths.paths != null) {
-					for (java.util.Map.Entry<String, openapi.PathItem> entry : cliPaths.paths.pathItems.entrySet()) {
-						fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
-					}
-				}
-				OpenAPI testsPaths = tests.Parse.parse(source);
-				for (java.util.Map.Entry<String, openapi.PathItem> entry : testsPaths.paths.pathItems.entrySet()) {
-					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
-				}
-				OpenAPI fnPaths = functions.Parse.parse(source);
-				for (java.util.Map.Entry<String, openapi.PathItem> entry : fnPaths.paths.pathItems.entrySet()) {
-					fullApi.paths.pathItems.putIfAbsent(entry.getKey(), entry.getValue());
-				}
-			}
-			if (!"orm".equalsIgnoreCase(truth)) {
-				OpenAPI apiClasses = classes.Parse.parse(source);
-				fullApi.components.schemas.putAll(apiClasses.components.schemas);
-			}
-			if (!"classes".equalsIgnoreCase(truth)) {
-				OpenAPI ormClasses = orm.Parse.parse(source);
-				fullApi.components.schemas.putAll(ormClasses.components.schemas);
-			}
-		}
-		return fullApi;
+		return SyncCommand.extractOpenAPI(dir);
 	}
 
 	/**
@@ -1197,33 +884,7 @@ public class CddCli {
 	 *             If reading or parsing files fails.
 	 */
 	private static arazzo.Arazzo extractArazzo(File dir) throws Exception {
-		File arazzoFile = new File(dir, "arazzo.json");
-		if (arazzoFile.isFile()) {
-			return arazzo.Parse.fromFile(arazzoFile);
-		}
-		List<File> javaFiles = new ArrayList<>();
-		findJavaFiles(dir, javaFiles);
-		for (File jf : javaFiles) {
-			String source = readFile(jf);
-			String name = jf.getName();
-			if (name.contains("WorkflowCli")) {
-				return cli.ArazzoCliParser.parseWorkflowCli(source);
-			}
-			if (name.contains("IntegrationTest")) {
-				return tests.ArazzoTestParser.parse(source);
-			}
-			if (name.contains("Mock")) {
-				return mocks.ArazzoMockParser.parse(source);
-			}
-			return workflows.Parse.parse(source);
-		}
-		arazzo.Arazzo empty = new arazzo.Arazzo();
-		empty.info = new arazzo.ArazzoInfo();
-		empty.info.title = "Extracted Workflow";
-		empty.info.version = "1.0.0";
-		empty.sourceDescriptions = new ArrayList<>();
-		empty.workflows = new ArrayList<>();
-		return empty;
+		return SyncCommand.extractArazzo(dir);
 	}
 
 	/**
@@ -1240,16 +901,8 @@ public class CddCli {
 	 *            The fallback environment variable name, or {@code null}.
 	 * @return The resolved argument value, or {@code null} if not present.
 	 */
-	private static String getArg(String[] args, String shortFlag, String longFlag, String envVar) {
-		for (int i = 0; i < args.length - 1; i++) {
-			if (args[i].equals(shortFlag) || args[i].equals(longFlag)) {
-				return args[i + 1];
-			}
-		}
-		if (envVar != null) {
-			return envProvider.apply(envVar);
-		}
-		return null;
+	public static String getArg(String[] args, String shortFlag, String longFlag, String envVar) {
+		return CliArguments.getArg(args, shortFlag, longFlag, envVar, envProvider);
 	}
 
 	/**
@@ -1266,16 +919,8 @@ public class CddCli {
 	 *            The fallback environment variable name, or {@code null}.
 	 * @return {@code true} if the flag is set; {@code false} otherwise.
 	 */
-	private static boolean hasFlag(String[] args, String shortFlag, String longFlag, String envVar) {
-		for (String arg : args) {
-			if (arg.equals(shortFlag) || arg.equals(longFlag))
-				return true;
-		}
-		if (envVar != null) {
-			String env = envProvider.apply(envVar);
-			return "true".equalsIgnoreCase(env) || "1".equals(env);
-		}
-		return false;
+	public static boolean hasFlag(String[] args, String shortFlag, String longFlag, String envVar) {
+		return CliArguments.hasFlag(args, shortFlag, longFlag, envVar, envProvider);
 	}
 
 	/**
@@ -1287,18 +932,8 @@ public class CddCli {
 	 * @param result
 	 *            The list to populate with discovered Java files.
 	 */
-	private static void findJavaFiles(File dir, List<File> result) {
-		if (dir.isFile()) {
-			if (dir.getName().endsWith(".java")) {
-				result.add(dir);
-			}
-		} else {
-			File[] files = dir.listFiles();
-			if (files != null) {
-				for (File f : files)
-					findJavaFiles(f, result);
-			}
-		}
+	public static void findJavaFiles(File dir, List<File> result) {
+		ProjectScaffolder.findJavaFiles(dir, result);
 	}
 
 	/**
@@ -1309,25 +944,34 @@ public class CddCli {
 		System.out.println("Usage:");
 		System.out.println("  cdd-java [subcommand] [options]");
 		System.out.println("\nSubcommands:");
-		System.out.println("  from_openapi    Generate code from an OpenAPI specification.");
-		System.out.println("  to_openapi      Generate an OpenAPI specification from source code.");
-		System.out.println("  from_arazzo     Generate workflow code from an Arazzo 1.1.0 specification.");
-		System.out.println("  to_arazzo       Generate an Arazzo 1.1.0 specification from workflow source code.");
+		System.out.println("  from_openapi       Generate code from an OpenAPI specification.");
+		System.out.println("  to_openapi         Generate an OpenAPI specification from source code.");
+		System.out.println("  from_arazzo        Generate workflow code from an Arazzo 1.1.0 specification.");
+		System.out.println("  to_arazzo          Generate an Arazzo 1.1.0 specification from workflow source code.");
 		System.out.println(
-				"  to_docs_json    Generate JSON documentation with code snippets for an OpenAPI specification.");
-		System.out.println("  serve_json_rpc  Expose CLI interface as a JSON-RPC server.");
-		System.out.println("  sync            Synchronize database schema to models and OpenAPI specifications.");
+				"  to_docs_json       Generate JSON documentation with code snippets for an OpenAPI specification.");
+		System.out.println("  serve_json_rpc     Expose CLI interface as a JSON-RPC server.");
+		System.out.println("  mcp                Expose CLI interface as a Model Context Protocol (MCP) server.");
+		System.out.println("  sync               Synchronize database schema to models and OpenAPI specifications.");
+		System.out.println("  process_in_memory  Execute compilation in memory from a JSON payload.");
 		System.out.println("\nOptions:");
 		System.out.println("  --help, -h      Show this help message.");
 		System.out.println("  --version, -v   Show version information.");
 		System.out.println("\nExamples:");
 		System.out.println("  cdd-java serve_json_rpc [--port 8080] [--listen 127.0.0.1] [--wasi]");
+		System.out.println("  cdd-java mcp [--port 8080] [--listen 127.0.0.1] [--wasi]");
 		System.out.println(
 				"  cdd-java from_openapi to_sdk_cli -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
 		System.out.println(
 				"  cdd-java from_openapi to_sdk -i <spec.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
 		System.out.println("  cdd-java from_openapi to_server -i <spec.json> [-o <target_directory>]");
+		System.out.println(
+				"  cdd-java from_arazzo to_sdk_cli -i <arazzo.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
+		System.out.println(
+				"  cdd-java from_arazzo to_sdk -i <arazzo.json> [-o <target_directory>] [--no-github-actions] [--no-installable-package] [--tests]");
+		System.out.println("  cdd-java from_arazzo to_server -i <arazzo.json> [-o <target_directory>]");
 		System.out.println("  cdd-java to_openapi -i <path/to/code> [-o <spec.json>]");
+		System.out.println("  cdd-java to_arazzo -i <path/to/code> [-o <arazzo.json>]");
 		System.out.println("  cdd-java to_docs_json [--no-imports] [--no-wrapping] -i <spec.json> [-o <docs.json>]");
 		System.out.println("  cdd-java sync -i <dir> [-o <dir>] [--truth <type>]");
 	}

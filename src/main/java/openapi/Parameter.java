@@ -67,11 +67,11 @@ public class Parameter {
 	/** The allowReserved property. */
 	public Boolean allowReserved;
 	/** The schema property. */
-	public Schema schema;
+	public ReferenceOr<Schema> schema;
 	/** The example property. */
 	public Object example;
 	/** The examples property. */
-	public Map<String, Example> examples;
+	public Map<String, ReferenceOr<Example>> examples;
 	/** The content property. */
 	public Map<String, MediaType> content;
 
@@ -101,15 +101,34 @@ public class Parameter {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(name, in, description, required, deprecated, allowEmptyValue, type, format,
+				items, collectionFormat, defaultValue, maximum, exclusiveMaximum, minimum, exclusiveMinimum, maxLength,
+				minLength, pattern, maxItems, minItems, uniqueItems, enumValues, multipleOf, style, explode,
+				allowReserved, schema, example, examples, content, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Parameter)) {
+			return false;
+		}
+		return fieldValues().equals(((Parameter) o).fieldValues());
 	}
 
 	/**
@@ -119,7 +138,7 @@ public class Parameter {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -129,6 +148,6 @@ public class Parameter {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Parameter" + fieldValues();
 	}
 }

@@ -1,76 +1,91 @@
-import org.junit.Test;
+import static org.junit.Assert.*;
+
 import java.util.*;
 import openapi.*;
+import org.junit.Test;
 import routes.Emit;
 
 /**
- * Branch coverage unit tests for {@link routes.Emit}.
+ * Branch coverage and output verification unit tests for {@link routes.Emit}.
  */
 public class RoutesEmitBranchTest {
 	/**
+	 * Default constructor.
+	 */
+	public RoutesEmitBranchTest() {
+	}
+
+	/**
 	 * Verifies {@link routes.Emit#emit} across sparse, null, and multi-verb path
-	 * items and webhooks.
+	 * items and webhooks with concrete assertions on emitted source code.
 	 */
 	@Test
 	public void testRoutesEmitBranches() {
 		OpenAPI api = new OpenAPI();
-		// Base edge case: null paths
 		api.paths = null;
-		Emit.emit(api, null);
+		String outNullPaths = Emit.emit(api, null);
+		assertTrue(outNullPaths.contains("class ApiClient"));
 
 		api.paths = new Paths();
 		api.paths.pathItems = null;
-		Emit.emit(api, null);
+		String outNullPathItems = Emit.emit(api, null);
+		assertTrue(outNullPathItems.contains("class ApiClient"));
 
 		api.paths.pathItems = new HashMap<>();
 
-		// Single path item with null operations
 		PathItem pi = new PathItem();
 		api.paths.pathItems.put("/test", pi);
-		Emit.emit(api, null);
+		String outEmptyPi = Emit.emit(api, null);
+		assertTrue(outEmptyPi.contains("class ApiClient"));
 
-		// Let's add parameters
 		pi.get = new Operation();
 		pi.get.operationId = "testOp";
 		pi.get.parameters = new ArrayList<>();
 
-		Parameter pNull = new Parameter(); // no schema, no name, etc.
-		pi.get.parameters.add(pNull);
+		Parameter pNull = new Parameter();
+		pi.get.parameters.add(ReferenceOr.ofValue(pNull));
 
 		Parameter pQuery = new Parameter();
 		pQuery.in = "query";
 		pQuery.name = "qp";
-		pQuery.schema = new Schema();
-		pQuery.schema.type = "array";
-		Items it = new Items();
-		it.type = "string";
-		pQuery.schema.items = it;
-		pi.get.parameters.add(pQuery);
+		Schema pQuerySchema = new Schema();
+		pQuerySchema.type = SchemaType.ofSingle("array");
+		Schema it = new Schema();
+		it.type = SchemaType.ofSingle("string");
+		pQuerySchema.items = ReferenceOr.ofValue(it);
+		pQuery.schema = ReferenceOr.ofValue(pQuerySchema);
+		pi.get.parameters.add(ReferenceOr.ofValue(pQuery));
 
 		Parameter pPath = new Parameter();
 		pPath.in = "path";
 		pPath.name = "pp";
-		pPath.schema = new Schema();
-		pPath.schema.type = "integer";
-		pi.get.parameters.add(pPath);
+		Schema pPathSchema = new Schema();
+		pPathSchema.type = SchemaType.ofSingle("integer");
+		pPath.schema = ReferenceOr.ofValue(pPathSchema);
+		pi.get.parameters.add(ReferenceOr.ofValue(pPath));
 
-		pi.get.requestBody = new RequestBody();
-		((RequestBody) pi.get.requestBody).content = new HashMap<>();
+		RequestBody rb = new RequestBody();
+		rb.content = new HashMap<>();
 		MediaType mt = new MediaType();
-		mt.itemSchema = new HashMap<String, Object>();
-		((Map<String, Object>) mt.itemSchema).put("type", "string");
-		((RequestBody) pi.get.requestBody).content.put("application/json", mt);
+		Schema mtItemSchema = new Schema();
+		mtItemSchema.type = SchemaType.ofSingle("string");
+		mt.itemSchema = ReferenceOr.ofValue(mtItemSchema);
+		rb.content.put("application/json", mt);
+		pi.get.requestBody = ReferenceOr.ofValue(rb);
 
 		pi.get.responses = new Responses();
 		pi.get.responses.statusCodes = new HashMap<>();
 		Response resp = new Response();
-		pi.get.responses.statusCodes.put("200", resp);
+		pi.get.responses.statusCodes.put("200", ReferenceOr.ofValue(resp));
+		pi.get.responses.statusCodes.put("400", ReferenceOr.ofRef("#/components/responses/BadReq"));
 
-		Emit.emit(api, null);
+		String outSingleGet = Emit.emit(api, null);
+		assertTrue(outSingleGet.contains("public HttpResponse<String> testOp("));
+		assertTrue(outSingleGet.contains("@requestBodyContentItemSchema application/json string"));
 
-		// Add multiple operations
 		pi.post = new Operation();
 		pi.post.operationId = "postOp";
+		pi.post.requestBody = ReferenceOr.ofRef("#/components/requestBodies/PostBody");
 		pi.put = new Operation();
 		pi.delete = new Operation();
 		pi.patch = new Operation();
@@ -80,35 +95,31 @@ public class RoutesEmitBranchTest {
 		pi.query = new Operation();
 
 		pi.query.callbacks = new HashMap<>();
-		pi.query.callbacks.put("cb", new Callback());
+		pi.query.callbacks.put("cb", ReferenceOr.ofValue(new Callback()));
 
 		api.webhooks = new HashMap<>();
 		PathItem wh = new PathItem();
 		wh.post = new Operation();
-		wh.post.requestBody = new RequestBody();
+		wh.post.requestBody = ReferenceOr.ofValue(new RequestBody());
 		wh.parameters = new ArrayList<>();
-		wh.parameters.add(new Parameter());
+		wh.parameters.add(ReferenceOr.ofValue(new Parameter()));
 		Parameter wp = new Parameter();
 		wp.name = "wp";
-		wh.parameters.add(wp);
+		wh.parameters.add(ReferenceOr.ofValue(wp));
 		api.webhooks.put("wh", wh);
 
 		PathItem wh2 = new PathItem();
 		wh2.post = new Operation();
-		wh2.parameters = Arrays.asList(new Parameter(), wp);
+		wh2.parameters = Arrays.asList(ReferenceOr.ofValue(new Parameter()), ReferenceOr.ofValue(wp));
 		api.webhooks.put("wh2", wh2);
 
 		String result = Emit.emit(api, null);
-		org.junit.Assert.assertTrue(result.contains(
+		assertTrue(result.contains(
 				"public void mcpSse(String toolName, java.util.Map<String, Object> arguments, java.util.Map<String, String> headers)"));
-		// Re-emit into existing result to cover !hasMember(classDecl, "mcpSse") and
-		// !hasMember(classDecl, interfaceName) false branches
+		assertTrue(result.contains("Webhook"));
 		String reResult = Emit.emit(api, result);
-		org.junit.Assert.assertNotNull(reResult);
+		assertTrue(reResult.contains("Webhook"));
 
-		// Cover query-only and options-only callback items, empty
-		// ref/summary/description, duplicate parameter in/name, and security scheme
-		// edge cases
 		OpenAPI edgeApi = new OpenAPI();
 		edgeApi.paths = new Paths();
 		edgeApi.paths.pathItems = new HashMap<>();
@@ -116,7 +127,7 @@ public class RoutesEmitBranchTest {
 		Operation optOp = new Operation();
 		Callback optCb = new Callback();
 		optCb.pathItems = Collections.singletonMap("/cb", new PathItem());
-		optOp.callbacks = Collections.singletonMap("optCb", optCb);
+		optOp.callbacks = Collections.singletonMap("optCb", ReferenceOr.ofValue(optCb));
 		optionsOnlyPi.options = optOp;
 		edgeApi.paths.pathItems.put("/optonly", optionsOnlyPi);
 		PathItem queryOnlyPi = new PathItem();
@@ -126,7 +137,7 @@ public class RoutesEmitBranchTest {
 		Parameter sharedP = new Parameter();
 		sharedP.name = "shared";
 		sharedP.in = "query";
-		queryOnlyPi.parameters = Collections.singletonList(sharedP);
+		queryOnlyPi.parameters = Collections.singletonList(ReferenceOr.ofValue(sharedP));
 		Operation qOp = new Operation();
 		Parameter opP1 = new Parameter();
 		opP1.name = "shared";
@@ -137,10 +148,10 @@ public class RoutesEmitBranchTest {
 		Parameter opP3 = new Parameter();
 		opP3.name = "other";
 		opP3.in = "query";
-		qOp.parameters = Arrays.asList(opP1, opP2, opP3);
+		qOp.parameters = Arrays.asList(ReferenceOr.ofValue(opP1), ReferenceOr.ofValue(opP2), ReferenceOr.ofValue(opP3));
 		Callback qCb = new Callback();
 		qCb.pathItems = Collections.singletonMap("/cb", new PathItem());
-		qOp.callbacks = Collections.singletonMap("qCb", qCb);
+		qOp.callbacks = Collections.singletonMap("qCb", ReferenceOr.ofValue(qCb));
 
 		SecurityRequirement srNullReqs = new SecurityRequirement();
 		srNullReqs.requirements = null;
@@ -152,37 +163,37 @@ public class RoutesEmitBranchTest {
 		srEdge.requirements.put("otherType", Collections.emptyList());
 		qOp.security = Arrays.asList(srNullReqs, srEdge);
 
-		// Also test secReqs != null when model.components == null, and when
-		// components.securitySchemes == null
 		queryOnlyPi.query = qOp;
 		edgeApi.paths.pathItems.put("/qonly", queryOnlyPi);
-		Emit.emit(edgeApi, null);
+		String edgeNoComp = Emit.emit(edgeApi, null);
+		assertTrue(edgeNoComp.contains("queryqonly"));
 		edgeApi.components = new Components();
 		edgeApi.components.securitySchemes = null;
-		Emit.emit(edgeApi, null);
+		String edgeNullSec = Emit.emit(edgeApi, null);
+		assertTrue(edgeNullSec.contains("optionsoptonly"));
 
 		edgeApi.components.securitySchemes = new HashMap<>();
 		SecurityScheme sNoName = new SecurityScheme();
 		sNoName.type = "apiKey";
 		sNoName.in = "header";
-		edgeApi.components.securitySchemes.put("apiKeyNoName", sNoName);
+		edgeApi.components.securitySchemes.put("apiKeyNoName", ReferenceOr.ofValue(sNoName));
 		SecurityScheme sNoIn = new SecurityScheme();
 		sNoIn.type = "apiKey";
 		sNoIn.name = "X-Key";
-		edgeApi.components.securitySchemes.put("apiKeyNoIn", sNoIn);
+		edgeApi.components.securitySchemes.put("apiKeyNoIn", ReferenceOr.ofValue(sNoIn));
 		SecurityScheme sHttpOther = new SecurityScheme();
 		sHttpOther.type = "http";
 		sHttpOther.scheme = "digest";
-		edgeApi.components.securitySchemes.put("httpOther", sHttpOther);
+		edgeApi.components.securitySchemes.put("httpOther", ReferenceOr.ofValue(sHttpOther));
 		SecurityScheme sOtherType = new SecurityScheme();
 		sOtherType.type = "oauth2";
-		edgeApi.components.securitySchemes.put("otherType", sOtherType);
+		edgeApi.components.securitySchemes.put("otherType", ReferenceOr.ofValue(sOtherType));
 
 		RequestBody edgeRb = new RequestBody();
 		edgeRb.content = new HashMap<>();
 		MediaType edgeMt = new MediaType();
-		edgeMt.schema = new HashMap<String, Object>();
-		edgeMt.itemSchema = new HashMap<String, Object>();
+		edgeMt.schema = ReferenceOr.ofValue(new Schema());
+		edgeMt.itemSchema = ReferenceOr.ofValue(new Schema());
 		Encoding nullCtEnc = new Encoding();
 		edgeMt.prefixEncoding = Collections.singletonList(nullCtEnc);
 		edgeMt.itemEncoding = new Encoding();
@@ -194,8 +205,10 @@ public class RoutesEmitBranchTest {
 		encMap.put("eSparse", new Encoding());
 		edgeMt.encoding = encMap;
 		edgeRb.content.put("application/json", edgeMt);
-		qOp.requestBody = edgeRb;
+		qOp.requestBody = ReferenceOr.ofValue(edgeRb);
 
-		Emit.emit(edgeApi, null);
+		String edgeFull = Emit.emit(edgeApi, null);
+		assertTrue(edgeFull.contains("@requestBodyContent application/json"));
+		assertTrue(edgeFull.contains("@callback qCb /cb QUERY"));
 	}
 }

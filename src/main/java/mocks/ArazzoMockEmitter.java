@@ -3,8 +3,6 @@ package mocks;
 import arazzo.Arazzo;
 import arazzo.Step;
 import arazzo.Workflow;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import openapi.TypeMapper;
@@ -29,8 +27,6 @@ public class ArazzoMockEmitter {
 	 * @return The generated Java source code string.
 	 */
 	public static String emit(Arazzo spec) {
-		String encodedSpec = Base64.getEncoder()
-				.encodeToString(arazzo.Emit.toString(spec).getBytes(StandardCharsets.UTF_8));
 		String className = workflows.Emit.deriveClassName(spec) + "Mock";
 		StringBuilder sb = new StringBuilder();
 		sb.append("import java.util.LinkedHashMap;\n");
@@ -38,7 +34,7 @@ public class ArazzoMockEmitter {
 		sb.append("/**\n");
 		sb.append(" * Stateful workflow mock simulator generated from Arazzo ")
 				.append(spec.arazzo != null ? spec.arazzo : "1.1.0").append(".\n");
-		sb.append(" * @arazzoSpecBase64 ").append(encodedSpec).append("\n");
+		workflows.Emit.appendSpecJavadoc(sb, " * ", spec);
 		sb.append(" */\n");
 		sb.append("public class ").append(className).append(" {\n");
 		sb.append("\t/** Tracks per-step invocation counts for retry simulation. */\n");
@@ -51,6 +47,7 @@ public class ArazzoMockEmitter {
 				String mName = "mock_" + TypeMapper.sanitizeIdentifier(wf.workflowId);
 				sb.append("\t/**\n");
 				sb.append("\t * Simulates stateful execution of workflow ").append(wf.workflowId).append(".\n");
+				workflows.Emit.appendWorkflowJavadoc(sb, "\t * ", wf, spec);
 				sb.append("\t * @return Map of simulated step responses.\n");
 				sb.append("\t */\n");
 				sb.append("\tpublic Map<String, String> ").append(mName).append("() {\n");

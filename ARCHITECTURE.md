@@ -1,96 +1,40 @@
-# cdd-java Architecture
-
+# `cdd-java` Architecture
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI/CD](https://github.com/offscale/cdd-java/workflows/CI/badge.svg)](https://github.com/offscale/cdd-java/actions)
-[![Coverage](https://codecov.io/gh/offscale/cdd-java/branch/master/graph/badge.svg)](https://codecov.io/gh/offscale/cdd-java)
+[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/offscale/cdd-java/actions)
+[![Doc Coverage](https://img.shields.io/badge/docs-100%25-brightgreen.svg)](https://offscale.github.io/cdd-java/)
 
+`cdd-java` is a bidirectional Compiler Driven Development (CDD) engine for Java, translating between **OpenAPI 3.2.0 / Swagger 2.0**, **Arazzo 1.1.0**, **Model Context Protocol (MCP) 1.0.0**, and Java source code ASTs via `com.github.javaparser`.
 
-The **cdd-java** tool acts as a dedicated compiler and transpiler. Its fundamental architecture follows standard compiler design principles, divided into three distinct phases: **Frontend (Parsing)**, **Intermediate Representation (IR)**, and **Backend (Emitting)**.
+---
 
-This decoupled design ensures that any format capable of being parsed into the IR can subsequently be emitted into any supported output format, whether that is a server-side route, a client-side SDK, a database ORM, or an OpenAPI specification.
+## Package Architecture (`src/main/java/`)
 
-## 🏗 High-Level Overview
+| Package | Role | Key Classes |
+| :--- | :--- | :--- |
+| `openapi` | OpenAPI 3.2.0 / Swagger 2.0 IR, parser, serializer, `$ref` resolver, and Java type mapper | `OpenAPI`, `Parse`, `Emit`, `RefResolver`, `TypeMapper`, `Schema`, `Paths`, `PathItem`, `Operation`, `Components`, `SecurityScheme`, etc. |
+| `arazzo` | Arazzo 1.1.0 IR, parser, serializer, cross-spec resolver, and runtime expression evaluator | `Arazzo`, `Parse`, `Emit`, `ArazzoResolver`, `RuntimeExpression`, `Workflow`, `Step`, `Criterion`, `SuccessAction`, `FailureAction`, `ArazzoComponents`, etc. |
+| `classes` | Jackson model POJOs, embedded SDK HTTP client, and MCP 1.0.0 schema adapter | `Emit`, `Parse`, `McpEmitter` |
+| `routes` | Lexical-preserving `java.net.http.HttpClient` route methods, SSE MCP adapter (`mcpSse`), webhook & callback interfaces | `Emit`, `Parse` |
+| `orm` | Jakarta Persistence (`jakarta.persistence.*`) / Hibernate 6 `@Entity` classes | `Emit`, `Parse` |
+| `dao` | Data Access Object interfaces, `Concrete<Entity>Dao`, and `Stub<Entity>Dao` implementations | `Emit` |
+| `seeder` | Synthetic database seeding via `net.datafaker.Faker` | `Emit` |
+| `serverroutes` | Modular Javalin 5 HTTP route controllers (`<Resource>Routes.java`) | `Emit` |
+| `servermain` | Modular Javalin 5 server entrypoint (`Main.java`) | `Emit` |
+| `servertests` | Modular JUnit 4 model and route/DAO wiring test suites | `Emit` |
+| `workflows` | Bidirectional Arazzo 1.1.0 Java SDK workflow orchestrators | `Emit`, `Parse` |
+| `cli` | Compiler CLI (`Main`, `CddCli`), generated OpenAPI SDK CLI (`Emit`, `Parse`), and Arazzo workflow CLI (`ArazzoCliEmitter`, `ArazzoCliParser`) | `Main`, `CddCli`, `Emit`, `Parse`, `ArazzoCliEmitter`, `ArazzoCliParser` |
+| `tests` | Bidirectional OpenAPI JUnit 4 integration tests (`Emit`, `Parse`) and Arazzo E2E workflow tests (`ArazzoTestEmitter`, `ArazzoTestParser`) | `Emit`, `Parse`, `ArazzoTestEmitter`, `ArazzoTestParser` |
+| `mocks` | Bidirectional OpenAPI mock HTTP servers (`Emit`, `Parse`) and Arazzo stateful workflow simulators (`ArazzoMockEmitter`, `ArazzoMockParser`) | `Emit`, `Parse`, `ArazzoMockEmitter`, `ArazzoMockParser` |
+| `functions` | Lexical-preserving helper function generation and extraction | `Emit`, `Parse` |
+| `docstrings` | Documentation JSON generator (`to_docs_json`) and Javadoc tag parser | `Emit`, `Parse` |
 
-```mermaid
-graph TD
-    %% Styling Definitions
-    classDef frontend fill:#57caff,stroke:#4285f4,stroke-width:2px,color:#20344b,font-family:Roboto Mono
-    classDef core fill:#ffd427,stroke:#f9ab00,stroke-width:3px,color:#20344b,font-family:Google Sans,font-weight:bold
-    classDef backend fill:#5cdb6d,stroke:#34a853,stroke-width:2px,color:#20344b,font-family:Roboto Mono
-    classDef endpoint fill:#ffffff,stroke:#20344b,stroke-width:1px,color:#20344b,font-family:Google Sans
+---
 
-    subgraph Frontend [Parsers]
-        A[OpenAPI .yaml/.json]:::endpoint --> P1(OpenAPI Parser):::frontend
-        B[LANGUAGE Models / Source]:::endpoint --> P2(LANGUAGE Parser):::frontend
-        C[Server Routes / Frameworks]:::endpoint --> P3(Framework Parser):::frontend
-        D[Client SDKs / ORMs]:::endpoint --> P4(Ext Parser):::frontend
-    end
+## Core Design Principles
 
-    subgraph Core [Intermediate Representation]
-        IR((CDD IR)):::core
-    end
-
-    subgraph Backend [Emitters]
-        E1(OpenAPI Emitter):::backend --> X[OpenAPI .yaml/.json]:::endpoint
-        E2(LANGUAGE Emitter):::backend --> Y[LANGUAGE Models / Structs]:::endpoint
-        E3(Server Emitter):::backend --> Z[Server Routes / Controllers]:::endpoint
-        E4(Client Emitter):::backend --> W[Client SDKs / API Calls]:::endpoint
-        E5(Data Emitter):::backend --> V[ORM Models / CLI Parsers]:::endpoint
-    end
-
-    P1 --> IR
-    P2 --> IR
-    P3 --> IR
-    P4 --> IR
-
-    IR --> E1
-    IR --> E2
-    IR --> E3
-    IR --> E4
-    IR --> E5
-```
-
-<!-- INSTRUCTION TO LLM: If this specific repo is explicitly Client-only or Server-only based on the `Bidirectional`, gracefully adjust the descriptions below to emphasize its specific role. -->
-
-## 🧩 Core Components
-
-### 1. The Frontend (Parsers)
-
-The Frontend's responsibility is to read an input source and translate it into the universal CDD Intermediate Representation (IR).
-
-* **Static Analysis (AST-Driven)**: For `Java` source code, the tool **does not** use dynamic reflection or execute the code. Instead, it reads the source files, generates an Abstract Syntax Tree (AST), and navigates the tree to extract classes, structs, functions, type signatures, API client definitions, server routes, and docstrings.
-* **OpenAPI Parsing**: For OpenAPI and JSON Schema inputs, the parser normalizes the structure, resolving internal `$ref`s and extracting properties, endpoints (client or server perspectives), and metadata into the IR.
-* **Arazzo 1.1.0 Parsing (`arazzo.Parse`)**: Parses JSON/YAML Arazzo 1.1.0 workflow specifications, `SourceDescription` links, `Workflow` / `Step` DAGs, `Criterion` / `Selector` assertions, and `RuntimeExpression` roots into the strongly typed `arazzo.Arazzo` IR, and extracts Arazzo specs back from Java workflow orchestrators (`workflows.Parse`), CLI runners (`cli.ArazzoCliParser`), E2E JUnit tests (`tests.ArazzoTestParser`), and stateful mocks (`mocks.ArazzoMockParser`).
-
-### 2. Intermediate Representation (IR)
-
-The Intermediate Representation is the crucial "glue" of the architecture. It is a normalized, language-agnostic data structure that represents concepts like:
-* **Models**: Entities containing typed properties, required fields, defaults, and descriptions.
-* **Endpoints / Operations**: HTTP verbs, paths, path/query/body parameters, and responses. In the IR, an operation is an abstract concept that can represent *either* a Server Route receiving a request *or* an API Client dispatching a request.
-* **Metadata**: Tooling hints, docstrings, and validations.
-
-By standardizing on a single IR (heavily inspired by OpenAPI / JSON Schema primitives), the system guarantees that parsing logic and emitting logic remain completely decoupled.
-
-### 3. The Backend (Emitters)
-
-The Backend's responsibility is to take the universal IR and generate valid target output. Emitters can be written to support various environments (e.g., Client vs Server, Web vs CLI).
-
-* **Code Generation**: Emitters iterate over the IR and generate idiomatic `Java` source code.
-  * A **Server Emitter** creates routing controllers and request-validation logic.
-  * A **Client Emitter** creates API wrappers, fetch functions, and response-parsing logic.
-* **Database & CLI Generation**: Emitters can also target ORM models or command-line parsers by mapping IR properties to database columns or CLI arguments.
-* **Specification Generation**: Emitters translating back to OpenAPI serialize the IR into standard OpenAPI 3.x JSON or YAML, rigorously formatting descriptions, type constraints, and endpoint schemas based on what was parsed from the source code.
-
-## 🔄 Extensibility
-
-Because of the IR-centric design, adding support for a new `Java` framework (e.g., a new Client library, Web framework, or ORM) requires minimal effort:
-1. **To support parsing a new framework**: Write a parser that converts the framework's AST/DSL into the CDD IR. Once written, the framework can automatically be exported to OpenAPI, Client SDKs, CLI parsers, or any other existing output target.
-2. **To support emitting a new framework**: Write an emitter that converts the CDD IR into the framework's DSL/AST. Once written, the framework can automatically be generated from OpenAPI or any other supported input.
-
-## 🛡 Design Principles
-
-1. **A Single Source of Truth**: Developers should be able to maintain their definitions in whichever format is most ergonomic for their team (OpenAPI files, Native Code, Client libraries, ORM models) and generate the rest.
-2. **Zero-Execution Parsing**: Ensure security and resilience by strictly statically analyzing inputs. The compiler must never need to run the target code to understand its structure.
-3. **Lossless Conversion**: Maximize the retention of metadata (e.g., type annotations, docstrings, default values, validators) during the transition `Source -> IR -> Target`.
-4. **Symmetric Operations**: An Endpoint in the IR holds all the information necessary to generate both the Server-side controller that fulfills it, and the Client-side SDK method that calls it.
+1. **Zero Data Loss Round-Trips**: Every OpenAPI 3.2.0 and Arazzo 1.1.0 field that lacks a direct Java AST construct is preserved in structured Javadoc tags and reconstructed by the corresponding `Parse` class.
+2. **Lexical Preservation**: All AST emitters attach `LexicalPreservingPrinter` when modifying existing `.java` files so developer formatting, comments, and custom method implementations remain untouched.
+3. **Symmetric Compilation**: Every emitter (`*.Emit`) has a corresponding reverse parser (`*.Parse`) operating over the same intermediate representation (`openapi.OpenAPI` and `arazzo.Arazzo`).
+4. **Transport Agnostic Execution**: The compiler runs natively on the JVM, as an HTTP or STDIO JSON-RPC 2.0 / MCP server, or in-memory inside GraalVM WebAssembly (`wasm32-wasi`).

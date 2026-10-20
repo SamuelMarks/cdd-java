@@ -47,7 +47,7 @@ public class Parse {
 
 				String className = classDecl.getNameAsString();
 				Schema schema = new Schema();
-				schema.type = "object";
+				schema.type = openapi.SchemaType.ofSingle("object");
 
 				classDecl.getAnnotationByName("Table").ifPresent(ann -> {
 					if (ann instanceof NormalAnnotationExpr) {
@@ -59,7 +59,7 @@ public class Parse {
 					}
 				});
 
-				Map<String, Object> properties = new HashMap<>();
+				Map<String, openapi.ReferenceOr<Schema>> properties = new HashMap<>();
 				java.util.List<String> requiredList = new java.util.ArrayList<>();
 				for (FieldDeclaration fieldDecl : classDecl.getFields()) {
 					for (VariableDeclarator varDecl : fieldDecl.getVariables()) {
@@ -106,14 +106,14 @@ public class Parse {
 							requiredList.add(name);
 						}
 
-						properties.put(name, propSchema);
+						properties.put(name, openapi.ReferenceOr.ofValue(propSchema));
 					}
 				}
 				schema.properties = properties;
 				if (!requiredList.isEmpty()) {
 					schema.required = requiredList;
 				}
-				api.components.schemas.put(className, schema);
+				api.components.schemas.put(className, openapi.ReferenceOr.ofValue(schema));
 			}
 		} catch (Exception e) {
 			java.util.logging.Logger.getLogger(Parse.class.getName())

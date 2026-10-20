@@ -4,8 +4,6 @@ import arazzo.Arazzo;
 import arazzo.Criterion;
 import arazzo.Step;
 import arazzo.Workflow;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 import openapi.TypeMapper;
 
@@ -29,8 +27,6 @@ public class ArazzoTestEmitter {
 	 * @return The generated Java JUnit test source code.
 	 */
 	public static String emit(Arazzo spec) {
-		String encodedSpec = Base64.getEncoder()
-				.encodeToString(arazzo.Emit.toString(spec).getBytes(StandardCharsets.UTF_8));
 		String className = workflows.Emit.deriveClassName(spec) + "IntegrationTest";
 		StringBuilder sb = new StringBuilder();
 		sb.append("import org.junit.Test;\n");
@@ -39,7 +35,7 @@ public class ArazzoTestEmitter {
 		sb.append("/**\n");
 		sb.append(" * End-to-end workflow integration tests generated from Arazzo ")
 				.append(spec.arazzo != null ? spec.arazzo : "1.1.0").append(".\n");
-		sb.append(" * @arazzoSpecBase64 ").append(encodedSpec).append("\n");
+		workflows.Emit.appendSpecJavadoc(sb, " * ", spec);
 		sb.append(" */\n");
 		sb.append("public class ").append(className).append(" {\n");
 		sb.append("\t/** Default constructor. */\n");
@@ -50,7 +46,7 @@ public class ArazzoTestEmitter {
 			String mName = "test_" + TypeMapper.sanitizeIdentifier(wf.workflowId);
 			sb.append("\t/**\n");
 			sb.append("\t * E2E workflow test for ").append(wf.workflowId).append(".\n");
-			sb.append("\t * @workflowId ").append(wf.workflowId).append("\n");
+			workflows.Emit.appendWorkflowJavadoc(sb, "\t * ", wf, spec);
 			sb.append("\t */\n");
 			sb.append("\t@Test\n");
 			sb.append("\tpublic void ").append(mName).append("() {\n");

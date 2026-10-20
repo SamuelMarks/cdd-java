@@ -111,15 +111,32 @@ public class SecurityScheme {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(type, description, name, in, scheme, bearerFormat, flow, authorizationUrl,
+				tokenUrl, scopes, flows, openIdConnectUrl, oauth2MetadataUrl, deprecated, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof SecurityScheme)) {
+			return false;
+		}
+		return fieldValues().equals(((SecurityScheme) o).fieldValues());
 	}
 
 	/**
@@ -129,7 +146,7 @@ public class SecurityScheme {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -139,6 +156,6 @@ public class SecurityScheme {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "SecurityScheme" + fieldValues();
 	}
 }

@@ -85,11 +85,11 @@ public class Emit {
 				.setJavadocComment("Lists all entities.");
 		files.put("mocks/Dao.java", genericDaoCu.toString());
 
-		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+		for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			if (className.equals("Emit") || className.equals("Parse"))
 				continue;
-			Schema schemaMap = entry.getValue();
+			Schema schemaMap = entry.getValue().value;
 			if (schemaMap.enumValues == null) {
 				CompilationUnit cu = new CompilationUnit();
 				cu.setPackageDeclaration("mocks");
@@ -192,12 +192,12 @@ public class Emit {
 					.setJavadocComment("Lists all entities.\n@return A list of entities.\n@throws Exception on error");
 		}
 
-		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+		for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			if (className.equals("Emit") || className.equals("Parse")) {
 				continue;
 			}
-			Schema schemaMap = entry.getValue();
+			Schema schemaMap = entry.getValue().value;
 			if (schemaMap.enumValues == null) {
 				emitEntityDaos(cu, className, schemaMap);
 			}
@@ -399,11 +399,11 @@ public class Emit {
 					+ "      emf = Persistence.createEntityManagerFactory(\"default\", properties);\n"
 					+ "      em = emf.createEntityManager();\n" + "  }\n" + "}"));
 
-			for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 				String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 				if (className.equals("Emit") || className.equals("Parse"))
 					continue;
-				if (entry.getValue().enumValues != null)
+				if (entry.getValue().value.enumValues != null)
 					continue;
 
 				String methodName = "get" + className + "Dao";

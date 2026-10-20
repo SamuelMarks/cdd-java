@@ -94,7 +94,7 @@ public class ParseBranchTest {
 		OpenAPI api = Parse.parse(cli);
 		assertNotNull(api);
 		assertNotNull(api.components);
-		Schema s1 = api.components.schemas.get("S1");
+		Schema s1 = api.components.schemas.get("S1").value;
 		assertNotNull(s1);
 		assertNotNull(s1.discriminator);
 		assertEquals("p", s1.discriminator.propertyName);

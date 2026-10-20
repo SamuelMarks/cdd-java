@@ -1,5 +1,6 @@
 package openapi;
 
+import arazzo.PayloadValue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,7 @@ public class Schema {
 	/** The $ref property. */
 	public String $ref;
 	/** The type property. */
-	public Object type;
+	public SchemaType type;
 	/** The title property. */
 	public String title;
 	/** The multipleOf property. */
@@ -24,11 +25,11 @@ public class Schema {
 	/** The maximum property. */
 	public Number maximum;
 	/** The exclusiveMaximum property. */
-	public Number exclusiveMaximum;
+	public ExclusiveBound exclusiveMaximum;
 	/** The minimum property. */
 	public Number minimum;
 	/** The exclusiveMinimum property. */
-	public Number exclusiveMinimum;
+	public ExclusiveBound exclusiveMinimum;
 	/** The maxLength property. */
 	public Integer maxLength;
 	/** The minLength property. */
@@ -48,37 +49,37 @@ public class Schema {
 	/** The required property. */
 	public List<String> required;
 	/** The enumValues property. */
-	public List<Object> enumValues;
+	public List<PayloadValue> enumValues;
 
 	/** The allOf property. */
-	public List<Object> allOf;
+	public List<ReferenceOr<Schema>> allOf;
 	/** The anyOf property. */
-	public List<Object> anyOf;
+	public List<ReferenceOr<Schema>> anyOf;
 	/** The oneOf property. */
-	public List<Object> oneOf;
+	public List<ReferenceOr<Schema>> oneOf;
 	/** The not property. */
-	public Object not;
+	public ReferenceOr<Schema> not;
 
 	/** The items property. */
-	public Object items;
+	public ReferenceOr<Schema> items;
 	/** The properties property. */
-	public Map<String, Object> properties;
+	public Map<String, ReferenceOr<Schema>> properties;
 	/** The additionalProperties property. */
-	public Object additionalProperties;
+	public AdditionalProperties additionalProperties;
 	/** The description property. */
 	public String description;
 	/** The format property. */
 	public String format;
 	/** The defaultValue property. */
-	public Object defaultValue;
+	public PayloadValue defaultValue;
 	/** The readOnly property. */
 	public Boolean readOnly;
 	/** The writeOnly property. */
 	public Boolean writeOnly;
 	/** The example property. */
-	public Object example;
+	public PayloadValue example;
 	/** The examples property. */
-	public List<Object> examples;
+	public List<PayloadValue> examples;
 	/** The externalDocs property. */
 	public ExternalDocumentation externalDocs;
 	/** The deprecated property. */
@@ -100,26 +101,26 @@ public class Schema {
 	/** The vocabulary property. */
 	public Map<String, Boolean> vocabulary;
 	/** The defs property. */
-	public Map<String, Object> defs;
+	public Map<String, ReferenceOr<Schema>> defs;
 
 	/** The constValue property. */
-	public Object constValue;
+	public PayloadValue constValue;
 	/** The dependentRequired property. */
 	public Map<String, List<String>> dependentRequired;
 	/** The dependentSchemas property. */
-	public Map<String, Object> dependentSchemas;
+	public Map<String, ReferenceOr<Schema>> dependentSchemas;
 	/** The propertyNames property. */
-	public Object propertyNames;
+	public ReferenceOr<Schema> propertyNames;
 	/** The patternProperties property. */
-	public Map<String, Object> patternProperties;
+	public Map<String, ReferenceOr<Schema>> patternProperties;
 	/** The unevaluatedProperties property. */
-	public Object unevaluatedProperties;
+	public AdditionalProperties unevaluatedProperties;
 	/** The unevaluatedItems property. */
-	public Object unevaluatedItems;
+	public AdditionalProperties unevaluatedItems;
 	/** The prefixItems property. */
-	public List<Object> prefixItems;
+	public List<ReferenceOr<Schema>> prefixItems;
 	/** The contains property. */
-	public Object contains;
+	public ReferenceOr<Schema> contains;
 	/** The minContains property. */
 	public Integer minContains;
 	/** The maxContains property. */
@@ -151,15 +152,37 @@ public class Schema {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList($ref, type, title, multipleOf, maximum, exclusiveMaximum, minimum,
+				exclusiveMinimum, maxLength, minLength, pattern, maxItems, minItems, uniqueItems, maxProperties,
+				minProperties, required, enumValues, allOf, anyOf, oneOf, not, items, properties, additionalProperties,
+				description, format, defaultValue, readOnly, writeOnly, example, examples, externalDocs, deprecated,
+				xml, discriminator, id, schema, anchor, dynamicAnchor, vocabulary, defs, constValue, dependentRequired,
+				dependentSchemas, propertyNames, patternProperties, unevaluatedProperties, unevaluatedItems,
+				prefixItems, contains, minContains, maxContains, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Schema)) {
+			return false;
+		}
+		return fieldValues().equals(((Schema) o).fieldValues());
 	}
 
 	/**
@@ -169,7 +192,7 @@ public class Schema {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -179,6 +202,6 @@ public class Schema {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Schema" + fieldValues();
 	}
 }

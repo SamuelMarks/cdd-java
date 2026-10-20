@@ -3,7 +3,6 @@ package arazzo;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import openapi.TypeMapper;
 
 /**
  * Arazzo Request Body Object defining the MIME content type, base payload
@@ -62,15 +61,31 @@ public class ArazzoRequestBody {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(contentType, payload, replacements, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof ArazzoRequestBody)) {
+			return false;
+		}
+		return fieldValues().equals(((ArazzoRequestBody) o).fieldValues());
 	}
 
 	/**
@@ -80,7 +95,7 @@ public class ArazzoRequestBody {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -90,6 +105,6 @@ public class ArazzoRequestBody {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "ArazzoRequestBody" + fieldValues();
 	}
 }

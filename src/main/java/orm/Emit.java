@@ -33,12 +33,12 @@ public class Emit {
 		if (model.components == null || model.components.schemas == null)
 			return files;
 
-		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+		for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			if (className.equals("Emit") || className.equals("Parse")) {
 				continue;
 			}
-			Schema schemaMap = entry.getValue();
+			Schema schemaMap = entry.getValue().value;
 			if (schemaMap.enumValues == null) {
 				CompilationUnit cu = new CompilationUnit();
 				cu.setPackageDeclaration("models");
@@ -98,13 +98,13 @@ public class Emit {
 			cu.addImport("java.util.Map");
 		}
 
-		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+		for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			if (className.equals("Emit") || className.equals("Parse")) {
 				continue;
 			}
 
-			Schema schemaMap = entry.getValue();
+			Schema schemaMap = entry.getValue().value;
 			if (schemaMap.enumValues == null) {
 				emitEntity(cu, className, schemaMap, model);
 			}
@@ -146,9 +146,9 @@ public class Emit {
 			classDecl.addAnnotation(tableAnn);
 		}
 
-		Map<String, Object> properties = schemaMap.properties;
+		Map<String, openapi.ReferenceOr<Schema>> properties = schemaMap.properties;
 		if (properties != null) {
-			for (Map.Entry<String, Object> prop : properties.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> prop : properties.entrySet()) {
 				String propName = prop.getKey();
 				String safePropName = propName.replaceAll("[^a-zA-Z0-9_]", "_");
 				if (Character.isDigit(safePropName.charAt(0)))
@@ -158,8 +158,9 @@ public class Emit {
 					safePropName += "Value";
 				}
 
-				String type = resolveType(prop.getValue(), model);
-				boolean isRef = prop.getValue() instanceof Schema && ((Schema) prop.getValue()).$ref != null;
+				openapi.ReferenceOr<Schema> propVal = prop.getValue();
+				String type = resolveType(propVal, model);
+				boolean isRef = propVal != null && propVal.value.$ref != null;
 				boolean isRequired = schemaMap.required != null && schemaMap.required.contains(propName);
 
 				if (!classDecl.getFieldByName(safePropName).isPresent()) {

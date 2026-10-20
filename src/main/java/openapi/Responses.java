@@ -16,11 +16,11 @@ public class Responses {
 	/**
 	 * Default response.
 	 */
-	public Object defaultResponse;
+	public ReferenceOr<Response> defaultResponse;
 	/**
 	 * Status codes.
 	 */
-	public Map<String, Object> statusCodes = new HashMap<>();
+	public Map<String, ReferenceOr<Response>> statusCodes = new HashMap<>();
 	/**
 	 * Extensions.
 	 */
@@ -34,13 +34,20 @@ public class Responses {
 	 * @param value
 	 *            Value
 	 */
+	@SuppressWarnings("unchecked")
 	public void addProperty(String name, Object value) {
 		if (name.equals("default")) {
-			defaultResponse = value;
+			if (value instanceof ReferenceOr) {
+				defaultResponse = (ReferenceOr<Response>) value;
+			} else if (value instanceof Response) {
+				defaultResponse = ReferenceOr.ofValue((Response) value);
+			}
 		} else if (name.startsWith("x-")) {
 			extensions.put(name, value);
-		} else {
-			statusCodes.put(name, value);
+		} else if (value instanceof ReferenceOr) {
+			statusCodes.put(name, (ReferenceOr<Response>) value);
+		} else if (value instanceof Response) {
+			statusCodes.put(name, ReferenceOr.ofValue((Response) value));
 		}
 	}
 
@@ -56,15 +63,31 @@ public class Responses {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(defaultResponse, statusCodes, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Responses)) {
+			return false;
+		}
+		return fieldValues().equals(((Responses) o).fieldValues());
 	}
 
 	/**
@@ -74,7 +97,7 @@ public class Responses {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -84,6 +107,6 @@ public class Responses {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Responses" + fieldValues();
 	}
 }

@@ -45,6 +45,28 @@ public final class SchemaType {
 	}
 
 	/**
+	 * Creates a {@code SchemaType} from a single type name.
+	 *
+	 * @param single
+	 *            The single type name.
+	 * @return A new {@code SchemaType} instance.
+	 */
+	public static SchemaType ofSingle(String single) {
+		return new SchemaType(single);
+	}
+
+	/**
+	 * Creates a {@code SchemaType} from a list of type names.
+	 *
+	 * @param types
+	 *            The list of type names.
+	 * @return A new {@code SchemaType} instance.
+	 */
+	public static SchemaType ofMultiple(List<String> types) {
+		return new SchemaType(types);
+	}
+
+	/**
 	 * Returns {@code true} if this schema type represents a multi-type array.
 	 *
 	 * @return {@code true} if more than one type is present.

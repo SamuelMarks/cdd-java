@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """End-to-end verification script for Arazzo 1.1.0 SDK, CLI, and Server generation and round-tripping."""
+
 import glob
 import json
 import os
@@ -13,7 +14,8 @@ def main() -> int:
     jar_files = glob.glob("target/cdd-java-*-jar-with-dependencies.jar")
     if not jar_files:
         subprocess.run(
-            ["mvn", "package", "-DskipTests", "-Djacoco.skip=true", "-B", "-q"], check=True
+            ["mvn", "package", "-DskipTests", "-Djacoco.skip=true", "-B", "-q"],
+            check=True,
         )
         jar_files = glob.glob("target/cdd-java-*-jar-with-dependencies.jar")
     jar_path = os.path.abspath(jar_files[0])
@@ -36,13 +38,18 @@ def main() -> int:
                 "summary": "Find an available pet and place an order",
                 "inputs": {
                     "type": "object",
-                    "properties": {"status": {"type": "string"}, "quantity": {"type": "integer"}},
+                    "properties": {
+                        "status": {"type": "string"},
+                        "quantity": {"type": "integer"},
+                    },
                 },
                 "steps": [
                     {
                         "stepId": "findPets",
                         "operationId": "findPetsByStatus",
-                        "parameters": [{"name": "status", "in": "query", "value": "$inputs.status"}],
+                        "parameters": [
+                            {"name": "status", "in": "query", "value": "$inputs.status"}
+                        ],
                         "successCriteria": [{"condition": "$statusCode == 200"}],
                         "outputs": {"petId": "$response.body#/0/id"},
                     },
@@ -52,7 +59,10 @@ def main() -> int:
                         "dependsOn": ["findPets"],
                         "requestBody": {
                             "contentType": "application/json",
-                            "payload": {"petId": "$steps.findPets.outputs.petId", "quantity": 1},
+                            "payload": {
+                                "petId": "$steps.findPets.outputs.petId",
+                                "quantity": 1,
+                            },
                         },
                         "successCriteria": [{"condition": "$statusCode == 200"}],
                         "outputs": {"orderId": "$response.body#/id"},
@@ -71,7 +81,18 @@ def main() -> int:
         for target in ("to_sdk", "to_sdk_cli", "to_server"):
             out_dir = os.path.join(tmpdir, target)
             subprocess.run(
-                ["java", "-jar", jar_path, "from_arazzo", target, "-i", spec_file, "-o", out_dir, "--tests"],
+                [
+                    "java",
+                    "-jar",
+                    jar_path,
+                    "from_arazzo",
+                    target,
+                    "-i",
+                    spec_file,
+                    "-o",
+                    out_dir,
+                    "--tests",
+                ],
                 check=True,
             )
             rt_file = os.path.join(tmpdir, f"rt_{target}.json")

@@ -166,6 +166,8 @@ public class CliMainTest {
 	 */
 	@Test
 	public void testProcessInMemoryMissingPayload() throws Exception {
+		runMain(new String[]{"process_in_memory", "-h"});
+		runMain(new String[]{"process_in_memory", "--help"});
 		runMain(new String[]{"process_in_memory"});
 	}
 
@@ -278,6 +280,8 @@ public class CliMainTest {
 		runMain(new String[]{"to_openapi", "--help"});
 		runMain(new String[]{"to_docs_json", "--help"});
 		runMain(new String[]{"serve_json_rpc", "--help"});
+		runMain(new String[]{"mcp", "-h"});
+		runMain(new String[]{"mcp", "--help"});
 		runMain(new String[]{"sync", "--help"});
 		runMain(new String[]{"from_openapi", "unknown_sub", "-i", specFile.getAbsolutePath()});
 		runMain(new String[]{"from_openapi", "to_sdk"});
@@ -475,6 +479,8 @@ public class CliMainTest {
 		assertTrue(out.contains("-32602"));
 
 		// Test HTTP server mode and replacing existing server
+		System.setIn(new ByteArrayInputStream("".getBytes("UTF-8")));
+		runMain(new String[]{"mcp", "--wasi"});
 		System.setIn(new ByteArrayInputStream("".getBytes("UTF-8")));
 		runMain(new String[]{"serve_json_rpc", "-p", "0", "-l", "127.0.0.1"});
 		assertNotNull(CddCli.activeHttpServer);
@@ -684,7 +690,8 @@ public class CliMainTest {
 		File rtSdk = new File(tempDir, "rt_sdk.json");
 		File rtCli = new File(tempDir, "rt_cli.json");
 		runMain(new String[]{"to_arazzo", "-i", sdkOut.getAbsolutePath(), "-o", rtSdk.getAbsolutePath()});
-		runMain(new String[]{"to_arazzo", "-i", cliOut.getAbsolutePath(), "-o", rtCli.getAbsolutePath()});
+		runMain(new String[]{"to_arazzo", "-i", new File(cliOut, "WorkflowCli.java").getAbsolutePath(), "-o",
+				rtCli.getAbsolutePath()});
 		runMain(new String[]{"to_arazzo", "-i", tempDir.getAbsolutePath(), "-o",
 				new File(tempDir, "rt_from_spec.json").getAbsolutePath()});
 

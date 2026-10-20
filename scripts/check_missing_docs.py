@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verifies 100% Javadoc coverage across all files, classes, methods, fields, and parameters."""
+
 import glob
 import os
 import re
@@ -152,7 +153,9 @@ def check_file(file_path: str) -> list[str]:
     for match in decl_pattern.finditer(skeleton):
         decl_text = match.group(0).strip()
         before = skeleton[: match.start()]
-        before_stripped = re.sub(r"(?:\s*@[A-Za-z0-9_.]+(?:\([^)]*\))?)+\s*$", "", before).strip()
+        before_stripped = re.sub(
+            r"(?:\s*@[A-Za-z0-9_.]+(?:\([^)]*\))?)+\s*$", "", before
+        ).strip()
         if not before_stripped.endswith("*/"):
             errors.append(f"Missing Javadoc in {file_path}: {decl_text}")
             continue

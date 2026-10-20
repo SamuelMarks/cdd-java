@@ -87,7 +87,7 @@ public class Header {
 	/**
 	 * The schema property.
 	 */
-	public Object schema;
+	public ReferenceOr<Schema> schema;
 
 	/**
 	 * The example property.
@@ -97,7 +97,7 @@ public class Header {
 	/**
 	 * The examples property.
 	 */
-	public Map<String, Object> examples;
+	public Map<String, ReferenceOr<Example>> examples;
 
 	/**
 	 * The content property.
@@ -132,15 +132,34 @@ public class Header {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(description, required, deprecated, allowEmptyValue, type, format, items,
+				collectionFormat, defaultValue, maximum, exclusiveMaximum, minimum, exclusiveMinimum, maxLength,
+				minLength, pattern, maxItems, minItems, uniqueItems, enumValues, multipleOf, style, explode,
+				allowReserved, schema, example, examples, content, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Header)) {
+			return false;
+		}
+		return fieldValues().equals(((Header) o).fieldValues());
 	}
 
 	/**
@@ -150,7 +169,7 @@ public class Header {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -160,6 +179,6 @@ public class Header {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Header" + fieldValues();
 	}
 }

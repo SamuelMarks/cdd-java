@@ -1,7 +1,6 @@
 import static org.junit.Assert.*;
 
 import arazzo.*;
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -9,7 +8,8 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * Unit tests for all Arazzo 1.1.0 AST POJO classes, enums, and union wrappers.
+ * Strongly typed unit tests for all Arazzo 1.1.0 AST POJO classes, enums, and
+ * union wrappers.
  */
 public class ArazzoPojoTest {
 	/**
@@ -19,54 +19,165 @@ public class ArazzoPojoTest {
 	}
 
 	/**
-	 * Verifies structural equality, hashCode, toString, and extension helpers
-	 * across all mutable Arazzo POJO classes.
+	 * Asserts structural equality, inequality, hashCode, and toString invariants
+	 * for a pair of equal instances and a modified instance.
 	 *
-	 * @throws Exception
-	 *             If reflection or instantiation fails.
+	 * @param a
+	 *            First instance.
+	 * @param b
+	 *            Equal second instance.
+	 * @param diff
+	 *            Modified distinct instance.
+	 * @param <T>
+	 *            The POJO type.
+	 */
+	private static <T> void assertPojoContract(T a, T b, T diff) {
+		assertEquals(a, a);
+		assertEquals(a, b);
+		assertEquals(a.hashCode(), b.hashCode());
+		assertNotEquals(a, diff);
+		assertNotEquals(a, null);
+		assertNotEquals(a, "string");
+		assertNotNull(a.toString());
+	}
+
+	/**
+	 * Verifies structural equality, hashCode, toString, and extension helpers
+	 * across all 15 mutable Arazzo POJO classes explicitly without reflection.
 	 */
 	@Test
-	public void testAllArazzoPojos() throws Exception {
-		Class<?>[] pojoClasses = new Class<?>[]{Arazzo.class, ArazzoInfo.class, SourceDescription.class, Workflow.class,
-				Step.class, ReusableObject.class, ArazzoParameter.class, SuccessAction.class, FailureAction.class,
-				ArazzoComponents.class, ExpressionType.class, Criterion.class, Selector.class, PayloadReplacement.class,
-				ArazzoRequestBody.class};
+	public void testAllArazzoPojos() {
+		Arazzo a1 = new Arazzo();
+		Arazzo a2 = new Arazzo();
+		Arazzo aDiff = new Arazzo();
+		aDiff.$self = "https://example.com/arazzo.json";
+		aDiff.addExtension("x-custom", "val");
+		aDiff.addExtension("ignored", "val");
+		assertEquals("val", aDiff.getExtensions().get("x-custom"));
+		assertFalse(aDiff.getExtensions().containsKey("ignored"));
+		assertPojoContract(a1, a2, aDiff);
 
-		for (Class<?> clazz : pojoClasses) {
-			Object inst1 = clazz.getDeclaredConstructor().newInstance();
-			Object inst2 = clazz.getDeclaredConstructor().newInstance();
-			assertEquals(inst1, inst1);
-			assertEquals(inst1, inst2);
-			assertEquals(inst1.hashCode(), inst2.hashCode());
-			assertNotEquals(inst1, null);
-			assertNotEquals(inst1, "string");
-			assertNotNull(inst1.toString());
+		ArazzoInfo info1 = new ArazzoInfo();
+		ArazzoInfo info2 = new ArazzoInfo();
+		ArazzoInfo infoDiff = new ArazzoInfo();
+		infoDiff.title = "Flow";
+		infoDiff.addExtension("x-custom", "val");
+		infoDiff.addExtension("ignored", "val");
+		assertNotNull(infoDiff.getExtensions());
+		assertPojoContract(info1, info2, infoDiff);
 
-			try {
-				java.lang.reflect.Method addExt = clazz.getMethod("addExtension", String.class, Object.class);
-				java.lang.reflect.Method getExt = clazz.getMethod("getExtensions");
-				addExt.invoke(inst1, "x-custom", "val");
-				addExt.invoke(inst1, "ignored", "val");
-				Map<?, ?> extMap = (Map<?, ?>) getExt.invoke(inst1);
-				assertEquals("val", extMap.get("x-custom"));
-				assertFalse(extMap.containsKey("ignored"));
-				assertNotEquals(inst1, inst2);
-				addExt.invoke(inst2, "x-custom", "val");
-				assertEquals(inst1, inst2);
-			} catch (NoSuchMethodException ignored) {
-				// ReusableObject does not have extensions
-			}
+		SourceDescription sd1 = new SourceDescription();
+		SourceDescription sd2 = new SourceDescription();
+		SourceDescription sdDiff = new SourceDescription();
+		sdDiff.name = "petstore";
+		sdDiff.addExtension("x-custom", "val");
+		sdDiff.addExtension("ignored", "val");
+		assertNotNull(sdDiff.getExtensions());
+		assertPojoContract(sd1, sd2, sdDiff);
 
-			for (Field f : clazz.getFields()) {
-				if (f.getType() == String.class) {
-					f.set(inst1, "diff");
-					assertNotEquals(inst1, inst2);
-					f.set(inst2, "diff");
-					assertEquals(inst1, inst2);
-					break;
-				}
-			}
-		}
+		Workflow wf1 = new Workflow();
+		Workflow wf2 = new Workflow();
+		Workflow wfDiff = new Workflow();
+		wfDiff.workflowId = "wf1";
+		wfDiff.addExtension("x-custom", "val");
+		wfDiff.addExtension("ignored", "val");
+		assertNotNull(wfDiff.getExtensions());
+		assertPojoContract(wf1, wf2, wfDiff);
+
+		Step st1 = new Step();
+		Step st2 = new Step();
+		Step stDiff = new Step();
+		stDiff.stepId = "st1";
+		stDiff.addExtension("x-custom", "val");
+		stDiff.addExtension("ignored", "val");
+		assertNotNull(stDiff.getExtensions());
+		assertPojoContract(st1, st2, stDiff);
+
+		ReusableObject ro1 = new ReusableObject();
+		ReusableObject ro2 = new ReusableObject();
+		ReusableObject roDiff = new ReusableObject();
+		roDiff.reference = "$components.parameters.id";
+		assertPojoContract(ro1, ro2, roDiff);
+
+		ArazzoParameter ap1 = new ArazzoParameter();
+		ArazzoParameter ap2 = new ArazzoParameter();
+		ArazzoParameter apDiff = new ArazzoParameter();
+		apDiff.name = "petId";
+		apDiff.addExtension("x-custom", "val");
+		apDiff.addExtension("ignored", "val");
+		assertNotNull(apDiff.getExtensions());
+		assertPojoContract(ap1, ap2, apDiff);
+
+		SuccessAction sa1 = new SuccessAction();
+		SuccessAction sa2 = new SuccessAction();
+		SuccessAction saDiff = new SuccessAction();
+		saDiff.name = "done";
+		saDiff.addExtension("x-custom", "val");
+		saDiff.addExtension("ignored", "val");
+		assertNotNull(saDiff.getExtensions());
+		assertPojoContract(sa1, sa2, saDiff);
+
+		FailureAction fa1 = new FailureAction();
+		FailureAction fa2 = new FailureAction();
+		FailureAction faDiff = new FailureAction();
+		faDiff.name = "retry";
+		faDiff.addExtension("x-custom", "val");
+		faDiff.addExtension("ignored", "val");
+		assertNotNull(faDiff.getExtensions());
+		assertPojoContract(fa1, fa2, faDiff);
+
+		ArazzoComponents comp1 = new ArazzoComponents();
+		ArazzoComponents comp2 = new ArazzoComponents();
+		ArazzoComponents compDiff = new ArazzoComponents();
+		compDiff.addExtension("x-custom", "val");
+		compDiff.addExtension("ignored", "val");
+		assertNotNull(compDiff.getExtensions());
+		assertPojoContract(comp1, comp2, compDiff);
+
+		ExpressionType et1 = new ExpressionType();
+		ExpressionType et2 = new ExpressionType();
+		ExpressionType etDiff = new ExpressionType();
+		etDiff.version = "rfc9535";
+		etDiff.addExtension("x-custom", "val");
+		etDiff.addExtension("ignored", "val");
+		assertNotNull(etDiff.getExtensions());
+		assertPojoContract(et1, et2, etDiff);
+
+		Criterion c1 = new Criterion();
+		Criterion c2 = new Criterion();
+		Criterion cDiff = new Criterion();
+		cDiff.condition = "$statusCode == 200";
+		cDiff.addExtension("x-custom", "val");
+		cDiff.addExtension("ignored", "val");
+		assertNotNull(cDiff.getExtensions());
+		assertPojoContract(c1, c2, cDiff);
+
+		Selector sel1 = new Selector();
+		Selector sel2 = new Selector();
+		Selector selDiff = new Selector();
+		selDiff.selector = "$.id";
+		selDiff.addExtension("x-custom", "val");
+		selDiff.addExtension("ignored", "val");
+		assertNotNull(selDiff.getExtensions());
+		assertPojoContract(sel1, sel2, selDiff);
+
+		PayloadReplacement pr1 = new PayloadReplacement();
+		PayloadReplacement pr2 = new PayloadReplacement();
+		PayloadReplacement prDiff = new PayloadReplacement();
+		prDiff.target = "/id";
+		prDiff.addExtension("x-custom", "val");
+		prDiff.addExtension("ignored", "val");
+		assertNotNull(prDiff.getExtensions());
+		assertPojoContract(pr1, pr2, prDiff);
+
+		ArazzoRequestBody rb1 = new ArazzoRequestBody();
+		ArazzoRequestBody rb2 = new ArazzoRequestBody();
+		ArazzoRequestBody rbDiff = new ArazzoRequestBody();
+		rbDiff.contentType = "application/json";
+		rbDiff.addExtension("x-custom", "val");
+		rbDiff.addExtension("ignored", "val");
+		assertNotNull(rbDiff.getExtensions());
+		assertPojoContract(rb1, rb2, rbDiff);
 	}
 
 	/**

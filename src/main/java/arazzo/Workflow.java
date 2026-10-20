@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import openapi.ReferenceOr;
 import openapi.Schema;
-import openapi.TypeMapper;
 
 /**
  * Arazzo Workflow Object describing an executable sequence of API steps,
@@ -100,15 +99,32 @@ public class Workflow {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(workflowId, summary, description, inputs, dependsOn, steps, successActions,
+				failureActions, outputs, parameters, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Workflow)) {
+			return false;
+		}
+		return fieldValues().equals(((Workflow) o).fieldValues());
 	}
 
 	/**
@@ -118,7 +134,7 @@ public class Workflow {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -128,6 +144,6 @@ public class Workflow {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "Workflow" + fieldValues();
 	}
 }

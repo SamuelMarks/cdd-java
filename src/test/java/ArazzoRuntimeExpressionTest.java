@@ -499,7 +499,7 @@ public class ArazzoRuntimeExpressionTest {
 
 		spec.components.inputs = new LinkedHashMap<>();
 		Schema inSchema = new Schema();
-		inSchema.type = "object";
+		inSchema.type = openapi.SchemaType.ofSingle("object");
 		spec.components.inputs.put("LoginInput", inSchema);
 		assertNull(ArazzoResolver.resolveWorkflowInputs(null, spec));
 		Workflow wf = new Workflow();

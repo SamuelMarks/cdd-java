@@ -1,81 +1,330 @@
-import org.junit.Test;
 import static org.junit.Assert.*;
-import java.lang.reflect.*;
+
+import java.util.Arrays;
 import java.util.Collections;
 import openapi.*;
+import org.junit.Test;
 
 /**
- * Unit tests for all OpenAPI AST POJO classes and union wrappers.
+ * Strongly typed unit tests for all OpenAPI AST POJO classes, union wrappers,
+ * {@link IdentifierSanitizer}, and {@link JavaTypeMapper}.
  */
 public class OpenapiPojoTest {
 	/**
-	 * Verifies constructors, extensions, structural equality, hash codes, and
-	 * string representations of all OpenAPI model classes.
+	 * Default constructor.
+	 */
+	public OpenapiPojoTest() {
+	}
+
+	/**
+	 * Asserts structural equality, inequality, hashCode, and toString invariants
+	 * for a pair of equal instances and a modified instance.
 	 *
-	 * @throws Exception
-	 *             If reflective instantiation fails.
+	 * @param a
+	 *            First instance.
+	 * @param b
+	 *            Equal second instance.
+	 * @param diff
+	 *            Modified distinct instance.
+	 * @param <T>
+	 *            The POJO type.
+	 */
+	private static <T> void assertPojoContract(T a, T b, T diff) {
+		assertEquals(a, a);
+		assertEquals(a, b);
+		assertEquals(a.hashCode(), b.hashCode());
+		assertNotEquals(a, diff);
+		assertNotEquals(a, null);
+		assertNotEquals(a, "otherType");
+		assertNotNull(a.toString());
+	}
+
+	/**
+	 * Verifies all 31 OpenAPI model POJOs explicitly without reflection.
 	 */
 	@Test
-	public void testPojos() throws Exception {
-		String[] pojos = {"openapi.Callback", "openapi.Components", "openapi.Contact", "openapi.Discriminator",
-				"openapi.Encoding", "openapi.Example", "openapi.ExternalDocumentation", "openapi.Header",
-				"openapi.Info", "openapi.Items", "openapi.License", "openapi.Link", "openapi.MediaType",
-				"openapi.OAuthFlow", "openapi.OAuthFlows", "openapi.OpenAPI", "openapi.Operation", "openapi.Parameter",
-				"openapi.PathItem", "openapi.Paths", "openapi.Reference", "openapi.RequestBody", "openapi.Response",
-				"openapi.Responses", "openapi.Schema", "openapi.SecurityRequirement", "openapi.SecurityScheme",
-				"openapi.Server", "openapi.ServerVariable", "openapi.Tag", "openapi.XML"};
+	public void testPojos() {
+		Callback cb1 = new Callback();
+		Callback cb2 = new Callback();
+		Callback cbDiff = new Callback();
+		cbDiff.addProperty("x-ext", "extVal");
+		cbDiff.addProperty("http://expr", new PathItem());
+		cbDiff.addProperty("invalid", "val");
+		assertEquals(2, cbDiff.getProperties().size());
+		assertPojoContract(cb1, cb2, cbDiff);
 
-		for (String p : pojos) {
-			Class<?> clazz = Class.forName(p);
-			Object inst = clazz.getDeclaredConstructor().newInstance();
-			Object inst2 = clazz.getDeclaredConstructor().newInstance();
-			assertEquals(inst, inst);
-			assertEquals(inst, inst2);
-			assertNotEquals(inst, null);
-			assertNotEquals(inst, "otherType");
-			assertEquals(inst.hashCode(), inst2.hashCode());
-			assertNotNull(inst.toString());
+		Components comp1 = new Components();
+		Components comp2 = new Components();
+		Components compDiff = new Components();
+		compDiff.addExtension("x-test", "v");
+		compDiff.addExtension("invalid", "v");
+		assertNotNull(compDiff.getExtensions());
+		assertPojoContract(comp1, comp2, compDiff);
 
-			// Look for addExtension and getExtensions
-			try {
-				Method addExt = clazz.getMethod("addExtension", String.class, Object.class);
-				addExt.invoke(inst, "x-test", "val");
-				addExt.invoke(inst, "invalid", "val"); // branch coverage for startswith x-
-				Method getExt = clazz.getMethod("getExtensions");
-				assertNotNull(getExt.invoke(inst));
-				assertNotEquals(inst, inst2);
-			} catch (NoSuchMethodException e) {
-				// Ignore
-			}
-		}
+		Contact ct1 = new Contact();
+		Contact ct2 = new Contact();
+		Contact ctDiff = new Contact();
+		ctDiff.name = "Alice";
+		ctDiff.addExtension("x-test", "v");
+		ctDiff.addExtension("invalid", "v");
+		assertNotNull(ctDiff.getExtensions());
+		assertPojoContract(ct1, ct2, ctDiff);
 
-		// Paths
-		Paths paths = new Paths();
-		paths.addProperty("x-ext", "extVal");
-		paths.addProperty("/path", new PathItem());
-		paths.addProperty("invalid", "val");
-		paths.addProperty("/invalid_type", "val");
-		assertEquals(2, paths.getProperties().size());
+		Discriminator d1 = new Discriminator();
+		Discriminator d2 = new Discriminator();
+		Discriminator dDiff = new Discriminator();
+		dDiff.propertyName = "kind";
+		dDiff.addExtension("x-test", "v");
+		dDiff.addExtension("invalid", "v");
+		assertNotNull(dDiff.getExtensions());
+		assertPojoContract(d1, d2, dDiff);
 
-		// Responses
-		Responses responses = new Responses();
-		responses.addProperty("default", new Response());
-		responses.addProperty("x-ext", "extVal");
-		responses.addProperty("200", new Response());
-		responses.addProperty("invalid", "val");
-		responses.addProperty("201", "val"); // not a Response
-		assertEquals(4, responses.getProperties().size());
-		assertNotNull(responses.defaultResponse);
-		// Callback
-		Callback cb = new Callback();
-		cb.addProperty("x-ext", "extVal");
-		cb.addProperty("http://expr", new PathItem());
-		cb.addProperty("invalid", "val");
-		assertEquals(2, cb.getProperties().size());
-		// SecurityRequirement
-		SecurityRequirement sr = new SecurityRequirement();
-		sr.addRequirement("req", Collections.singletonList("scope"));
-		assertEquals(1, sr.getRequirements().size());
+		Encoding enc1 = new Encoding();
+		Encoding enc2 = new Encoding();
+		Encoding encDiff = new Encoding();
+		encDiff.contentType = "application/json";
+		encDiff.addExtension("x-test", "v");
+		encDiff.addExtension("invalid", "v");
+		assertNotNull(encDiff.getExtensions());
+		assertPojoContract(enc1, enc2, encDiff);
+
+		Example ex1 = new Example();
+		Example ex2 = new Example();
+		Example exDiff = new Example();
+		exDiff.summary = "Sample";
+		exDiff.addExtension("x-test", "v");
+		exDiff.addExtension("invalid", "v");
+		assertNotNull(exDiff.getExtensions());
+		assertPojoContract(ex1, ex2, exDiff);
+
+		ExternalDocumentation ed1 = new ExternalDocumentation();
+		ExternalDocumentation ed2 = new ExternalDocumentation();
+		ExternalDocumentation edDiff = new ExternalDocumentation();
+		edDiff.url = "https://example.com";
+		edDiff.addExtension("x-test", "v");
+		edDiff.addExtension("invalid", "v");
+		assertNotNull(edDiff.getExtensions());
+		assertPojoContract(ed1, ed2, edDiff);
+
+		Header h1 = new Header();
+		Header h2 = new Header();
+		Header hDiff = new Header();
+		hDiff.description = "X-Rate-Limit";
+		hDiff.addExtension("x-test", "v");
+		hDiff.addExtension("invalid", "v");
+		assertNotNull(hDiff.getExtensions());
+		assertPojoContract(h1, h2, hDiff);
+
+		Info info1 = new Info();
+		Info info2 = new Info();
+		Info infoDiff = new Info();
+		infoDiff.title = "Petstore";
+		infoDiff.addExtension("x-test", "v");
+		infoDiff.addExtension("invalid", "v");
+		assertNotNull(infoDiff.getExtensions());
+		assertPojoContract(info1, info2, infoDiff);
+
+		Items it1 = new Items();
+		Items it2 = new Items();
+		Items itDiff = new Items();
+		itDiff.type = "string";
+		itDiff.addExtension("x-test", "v");
+		itDiff.addExtension("invalid", "v");
+		assertNotNull(itDiff.getExtensions());
+		assertPojoContract(it1, it2, itDiff);
+
+		License lic1 = new License();
+		License lic2 = new License();
+		License licDiff = new License();
+		licDiff.name = "MIT";
+		licDiff.addExtension("x-test", "v");
+		licDiff.addExtension("invalid", "v");
+		assertNotNull(licDiff.getExtensions());
+		assertPojoContract(lic1, lic2, licDiff);
+
+		Link lnk1 = new Link();
+		Link lnk2 = new Link();
+		Link lnkDiff = new Link();
+		lnkDiff.operationId = "getUser";
+		lnkDiff.addExtension("x-test", "v");
+		lnkDiff.addExtension("invalid", "v");
+		assertNotNull(lnkDiff.getExtensions());
+		assertPojoContract(lnk1, lnk2, lnkDiff);
+
+		MediaType mt1 = new MediaType();
+		MediaType mt2 = new MediaType();
+		MediaType mtDiff = new MediaType();
+		mtDiff.example = "ex";
+		mtDiff.addExtension("x-test", "v");
+		mtDiff.addExtension("invalid", "v");
+		assertNotNull(mtDiff.getExtensions());
+		assertPojoContract(mt1, mt2, mtDiff);
+
+		OAuthFlow of1 = new OAuthFlow();
+		OAuthFlow of2 = new OAuthFlow();
+		OAuthFlow ofDiff = new OAuthFlow();
+		ofDiff.tokenUrl = "https://auth.example.com/token";
+		ofDiff.addExtension("x-test", "v");
+		ofDiff.addExtension("invalid", "v");
+		assertNotNull(ofDiff.getExtensions());
+		assertPojoContract(of1, of2, ofDiff);
+
+		OAuthFlows ofs1 = new OAuthFlows();
+		OAuthFlows ofs2 = new OAuthFlows();
+		OAuthFlows ofsDiff = new OAuthFlows();
+		ofsDiff.implicit = ofDiff;
+		ofsDiff.addExtension("x-test", "v");
+		ofsDiff.addExtension("invalid", "v");
+		assertNotNull(ofsDiff.getExtensions());
+		assertPojoContract(ofs1, ofs2, ofsDiff);
+
+		OpenAPI api1 = new OpenAPI();
+		OpenAPI api2 = new OpenAPI();
+		OpenAPI apiDiff = new OpenAPI();
+		apiDiff.openapi = "3.2.0";
+		apiDiff.addExtension("x-test", "v");
+		apiDiff.addExtension("invalid", "v");
+		assertNotNull(apiDiff.getExtensions());
+		assertPojoContract(api1, api2, apiDiff);
+
+		Operation op1 = new Operation();
+		Operation op2 = new Operation();
+		Operation opDiff = new Operation();
+		opDiff.operationId = "listPets";
+		opDiff.addExtension("x-test", "v");
+		opDiff.addExtension("invalid", "v");
+		assertNotNull(opDiff.getExtensions());
+		assertPojoContract(op1, op2, opDiff);
+
+		Parameter p1 = new Parameter();
+		Parameter p2 = new Parameter();
+		Parameter pDiff = new Parameter();
+		pDiff.name = "limit";
+		pDiff.addExtension("x-test", "v");
+		pDiff.addExtension("invalid", "v");
+		assertNotNull(pDiff.getExtensions());
+		assertPojoContract(p1, p2, pDiff);
+
+		PathItem pi1 = new PathItem();
+		PathItem pi2 = new PathItem();
+		PathItem piDiff = new PathItem();
+		piDiff.summary = "Pets endpoint";
+		piDiff.addExtension("x-test", "v");
+		piDiff.addExtension("invalid", "v");
+		assertNotNull(piDiff.getExtensions());
+		assertPojoContract(pi1, pi2, piDiff);
+
+		Paths paths1 = new Paths();
+		Paths paths2 = new Paths();
+		Paths pathsDiff = new Paths();
+		pathsDiff.addProperty("x-ext", "extVal");
+		pathsDiff.addProperty("/path", new PathItem());
+		pathsDiff.addProperty("invalid", "val");
+		pathsDiff.addProperty("/invalid_type", "val");
+		assertEquals(2, pathsDiff.getProperties().size());
+		assertPojoContract(paths1, paths2, pathsDiff);
+
+		Reference ref1 = new Reference();
+		Reference ref2 = new Reference();
+		Reference refDiff = new Reference();
+		refDiff.ref = "#/components/schemas/Pet";
+		refDiff.addExtension("x-test", "v");
+		refDiff.addExtension("invalid", "v");
+		assertNotNull(refDiff.getExtensions());
+		assertPojoContract(ref1, ref2, refDiff);
+
+		RequestBody rb1 = new RequestBody();
+		RequestBody rb2 = new RequestBody();
+		RequestBody rbDiff = new RequestBody();
+		rbDiff.description = "Body";
+		rbDiff.addExtension("x-test", "v");
+		rbDiff.addExtension("invalid", "v");
+		assertNotNull(rbDiff.getExtensions());
+		assertPojoContract(rb1, rb2, rbDiff);
+
+		Response resp1 = new Response();
+		Response resp2 = new Response();
+		Response respDiff = new Response();
+		respDiff.description = "OK";
+		respDiff.addExtension("x-test", "v");
+		respDiff.addExtension("invalid", "v");
+		assertNotNull(respDiff.getExtensions());
+		assertPojoContract(resp1, resp2, respDiff);
+
+		Responses resps1 = new Responses();
+		Responses resps2 = new Responses();
+		Responses respsDiff = new Responses();
+		respsDiff.addProperty("default", new Response());
+		respsDiff.addProperty("default", ReferenceOr.ofValue(new Response()));
+		respsDiff.addProperty("default", "ignore");
+		respsDiff.addProperty("x-ext", "extVal");
+		respsDiff.addProperty("200", new Response());
+		respsDiff.addProperty("201", ReferenceOr.ofValue(new Response()));
+		respsDiff.addProperty("invalid", "val");
+		assertEquals(3, respsDiff.getProperties().size());
+		assertNotNull(respsDiff.defaultResponse);
+		assertPojoContract(resps1, resps2, respsDiff);
+
+		Schema s1 = new Schema();
+		Schema s2 = new Schema();
+		Schema sDiff = new Schema();
+		sDiff.type = SchemaType.ofSingle("string");
+		sDiff.addExtension("x-test", "v");
+		sDiff.addExtension("invalid", "v");
+		assertNotNull(sDiff.getExtensions());
+		assertPojoContract(s1, s2, sDiff);
+
+		SecurityRequirement sr1 = new SecurityRequirement();
+		SecurityRequirement sr2 = new SecurityRequirement();
+		SecurityRequirement srDiff = new SecurityRequirement();
+		srDiff.addRequirement("req", Collections.singletonList("scope"));
+		assertEquals(1, srDiff.getRequirements().size());
+		assertPojoContract(sr1, sr2, srDiff);
+
+		SecurityScheme ss1 = new SecurityScheme();
+		SecurityScheme ss2 = new SecurityScheme();
+		SecurityScheme ssDiff = new SecurityScheme();
+		ssDiff.type = "http";
+		ssDiff.addExtension("x-test", "v");
+		ssDiff.addExtension("invalid", "v");
+		assertNotNull(ssDiff.getExtensions());
+		assertPojoContract(ss1, ss2, ssDiff);
+
+		Server srv1 = new Server();
+		Server srv2 = new Server();
+		Server srvDiff = new Server();
+		srvDiff.url = "https://api.example.com";
+		srvDiff.addExtension("x-test", "v");
+		srvDiff.addExtension("invalid", "v");
+		assertNotNull(srvDiff.getExtensions());
+		assertPojoContract(srv1, srv2, srvDiff);
+
+		ServerVariable sv1 = new ServerVariable();
+		ServerVariable sv2 = new ServerVariable();
+		ServerVariable svDiff = new ServerVariable();
+		svDiff.defaultValue = "v1";
+		svDiff.addExtension("x-test", "v");
+		svDiff.addExtension("invalid", "v");
+		assertNotNull(svDiff.getExtensions());
+		assertPojoContract(sv1, sv2, svDiff);
+
+		Tag tag1 = new Tag();
+		Tag tag2 = new Tag();
+		Tag tagDiff = new Tag();
+		tagDiff.name = "pets";
+		tagDiff.addExtension("x-test", "v");
+		tagDiff.addExtension("invalid", "v");
+		assertNotNull(tagDiff.getExtensions());
+		assertPojoContract(tag1, tag2, tagDiff);
+
+		XML xml1 = new XML();
+		XML xml2 = new XML();
+		XML xmlDiff = new XML();
+		xmlDiff.name = "pet";
+		xmlDiff.addExtension("x-test", "v");
+		xmlDiff.addExtension("invalid", "v");
+		assertNotNull(xmlDiff.getExtensions());
+		assertPojoContract(xml1, xml2, xmlDiff);
 
 		// ReferenceOr
 		ReferenceOr<String> valWrapper = ReferenceOr.ofValue("hello");
@@ -100,10 +349,10 @@ public class OpenapiPojoTest {
 		assertNotNull(refWrapper2);
 
 		// SchemaType
-		SchemaType singleType = new SchemaType("string");
+		SchemaType singleType = SchemaType.ofSingle("string");
 		SchemaType singleType2 = new SchemaType("string");
 		SchemaType nullSingle = new SchemaType((String) null);
-		SchemaType multiType = new SchemaType(java.util.Arrays.asList("string", "null"));
+		SchemaType multiType = SchemaType.ofMultiple(Arrays.asList("string", "null"));
 		SchemaType emptyMulti = new SchemaType((java.util.List<String>) null);
 		assertFalse(singleType.isMultiType());
 		assertTrue(multiType.isMultiType());
@@ -117,6 +366,24 @@ public class OpenapiPojoTest {
 		assertEquals(singleType.hashCode(), singleType2.hashCode());
 		assertEquals("string", singleType.toString());
 		assertEquals("[string, null]", multiType.toString());
+
+		// ExclusiveBound
+		ExclusiveBound ebBool = ExclusiveBound.ofBoolean(true);
+		ExclusiveBound ebBool2 = ExclusiveBound.ofBoolean(true);
+		ExclusiveBound ebNum = ExclusiveBound.ofNumber(10);
+		ExclusiveBound ebNum2 = ExclusiveBound.ofNumber(20);
+		assertTrue(ebBool.isBoolean());
+		assertFalse(ebBool.isNumber());
+		assertTrue(ebNum.isNumber());
+		assertFalse(ebNum.isBoolean());
+		assertEquals(ebBool, ebBool);
+		assertEquals(ebBool, ebBool2);
+		assertNotEquals(ebBool, ebNum);
+		assertNotEquals(ebNum, ebNum2);
+		assertNotEquals(ebBool, "notExclusiveBound");
+		assertEquals(ebBool.hashCode(), ebBool2.hashCode());
+		assertEquals("true", ebBool.toString());
+		assertEquals("10", ebNum.toString());
 
 		// AdditionalProperties
 		AdditionalProperties boolAp = AdditionalProperties.ofBoolean(true);
@@ -136,7 +403,25 @@ public class OpenapiPojoTest {
 		assertEquals(boolAp.hashCode(), boolAp2.hashCode());
 		assertEquals("true", boolAp.toString());
 		assertTrue(refAp.toString().contains("Ref("));
-		Field infoTitleField = Info.class.getField("title");
-		assertNull(TypeMapper.getFieldValue(infoTitleField, "wrongTargetType"));
+
+		// IdentifierSanitizer & JavaTypeMapper
+		assertEquals("abc_123", IdentifierSanitizer.sanitizeIdentifier("abc_123!"));
+		assertEquals("", IdentifierSanitizer.sanitizeIdentifier(null));
+		assertEquals("abc123", IdentifierSanitizer.sanitizeAlphanumeric("abc_123!"));
+		assertEquals("", IdentifierSanitizer.sanitizeAlphanumeric(null));
+		assertEquals("", IdentifierSanitizer.escape(null));
+		assertEquals("Object", JavaTypeMapper.toJavaType("notSchema", api1, false));
+		assertEquals("Pet", JavaTypeMapper.toJavaType(ReferenceOr.ofRef("#/components/schemas/Pet"), api1, false));
+		assertEquals("String", JavaTypeMapper.toJavaType(ReferenceOr.ofValue(sDiff), api1, false));
+
+		// CddException
+		CddException cddEx1 = new CddException(CddException.ErrorCode.PARSE_ERROR, "bad input");
+		assertEquals(CddException.ErrorCode.PARSE_ERROR, cddEx1.errorCode);
+		assertEquals("bad input", cddEx1.getMessage());
+		RuntimeException cause = new RuntimeException("io");
+		CddException cddEx2 = new CddException(CddException.ErrorCode.RESOLUTION_ERROR, "unresolved", cause);
+		assertEquals(CddException.ErrorCode.RESOLUTION_ERROR, cddEx2.errorCode);
+		assertEquals(cause, cddEx2.getCause());
+		assertEquals(CddException.ErrorCode.VALIDATION_ERROR, CddException.ErrorCode.valueOf("VALIDATION_ERROR"));
 	}
 }

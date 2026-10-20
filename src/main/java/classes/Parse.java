@@ -60,7 +60,7 @@ public class Parse {
 			for (EnumDeclaration enumDecl : cu.findAll(EnumDeclaration.class)) {
 				String enumName = enumDecl.getNameAsString();
 				Schema schema = new Schema();
-				schema.type = "string";
+				schema.type = openapi.SchemaType.ofSingle("string");
 
 				Optional<JavadocComment> javadoc = enumDecl.getJavadocComment();
 				if (javadoc.isPresent()) {
@@ -70,7 +70,7 @@ public class Parse {
 					}
 				}
 
-				List<Object> enumValues = new ArrayList<>();
+				List<arazzo.PayloadValue> enumValues = new ArrayList<>();
 				for (EnumConstantDeclaration constDecl : enumDecl.getEntries()) {
 					String val = constDecl.getNameAsString();
 					for (AnnotationExpr ann : constDecl.getAnnotations()) {
@@ -78,10 +78,10 @@ public class Parse {
 							val = ((SingleMemberAnnotationExpr) ann).getMemberValue().toString().replace("\"", "");
 						}
 					}
-					enumValues.add(val);
+					enumValues.add(arazzo.PayloadValue.ofString(val));
 				}
 				schema.enumValues = enumValues;
-				api.components.schemas.put(enumName, schema);
+				api.components.schemas.put(enumName, openapi.ReferenceOr.ofValue(schema));
 			}
 
 			for (ClassOrInterfaceDeclaration classDecl : cu.findAll(ClassOrInterfaceDeclaration.class)) {
@@ -96,7 +96,7 @@ public class Parse {
 				}
 
 				Schema schema = new Schema();
-				schema.type = "object";
+				schema.type = openapi.SchemaType.ofSingle("object");
 
 				Optional<JavadocComment> classJavadoc = classDecl.getJavadocComment();
 				if (classJavadoc.isPresent()) {
@@ -142,7 +142,7 @@ public class Parse {
 							discriminatorObj.addExtension("defaultMapping", tContent);
 							hasDisc = true;
 						} else if ("schemaExample".equals(tName))
-							schema.example = tContent;
+							schema.example = arazzo.PayloadValue.ofString(tContent);
 						else if ("schemaExternalDocs".equals(tName)) {
 							ExternalDocumentation extDocs = new ExternalDocumentation();
 							int spaceIdx = tContent.indexOf(' ');
@@ -182,16 +182,16 @@ public class Parse {
 
 				// Inheritance
 				if (!classDecl.getExtendedTypes().isEmpty()) {
-					List<Object> allOf = new ArrayList<>();
+					List<openapi.ReferenceOr<Schema>> allOf = new ArrayList<>();
 					for (ClassOrInterfaceType extType : classDecl.getExtendedTypes()) {
 						Schema refSchema = new Schema();
 						refSchema.$ref = "#/components/schemas/" + extType.getNameAsString();
-						allOf.add(refSchema);
+						allOf.add(openapi.ReferenceOr.ofValue(refSchema));
 					}
 					schema.allOf = allOf;
 				}
 
-				Map<String, Object> properties = new HashMap<>();
+				Map<String, openapi.ReferenceOr<Schema>> properties = new HashMap<>();
 				for (FieldDeclaration fieldDecl : classDecl.getFields()) {
 					if (!fieldDecl.isPrivate()) {
 						for (VariableDeclarator varDecl : fieldDecl.getVariables()) {
@@ -235,7 +235,7 @@ public class Parse {
 										xmlObj.wrapped = Boolean.parseBoolean(tContent);
 										hasXml = true;
 									} else if ("schemaExample".equals(tName))
-										propSchema.example = tContent;
+										propSchema.example = arazzo.PayloadValue.ofString(tContent);
 									else if ("schemaExternalDocs".equals(tName)) {
 										ExternalDocumentation extDocs = new ExternalDocumentation();
 										int spaceIdx = tContent.indexOf(' ');
@@ -254,12 +254,12 @@ public class Parse {
 
 							resolveType(type, propSchema);
 
-							properties.put(name, propSchema);
+							properties.put(name, openapi.ReferenceOr.ofValue(propSchema));
 						}
 					}
 				}
 				schema.properties = properties;
-				api.components.schemas.put(className, schema);
+				api.components.schemas.put(className, openapi.ReferenceOr.ofValue(schema));
 			}
 		} catch (Exception e) {
 			java.util.logging.Logger.getLogger(Parse.class.getName())

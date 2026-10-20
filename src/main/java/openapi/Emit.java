@@ -1,13 +1,15 @@
 package openapi;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import arazzo.PayloadValue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * Emits OpenAPI 3.2.0 and Swagger 2.0 descriptions from the {@link OpenAPI}
@@ -159,6 +161,155 @@ public class Emit {
 		if (isNonEmpty(list)) {
 			obj.put(key, new JSONArray(list));
 		}
+	}
+
+	/**
+	 * Puts a {@link PayloadValue} into a JSONObject if non-null.
+	 *
+	 * @param obj
+	 *            The target JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @param pv
+	 *            The {@link PayloadValue}.
+	 */
+	private static void putPayloadValue(JSONObject obj, String key, PayloadValue pv) {
+		if (pv != null) {
+			obj.put(key, arazzo.Emit.serializePayloadValue(pv));
+		}
+	}
+
+	/**
+	 * Puts a non-empty list of {@link PayloadValue} items into a JSONObject as a
+	 * JSONArray.
+	 *
+	 * @param obj
+	 *            The target JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @param list
+	 *            The list of {@link PayloadValue} items.
+	 */
+	private static void putPayloadValueList(JSONObject obj, String key, List<PayloadValue> list) {
+		if (isNonEmpty(list)) {
+			JSONArray arr = new JSONArray();
+			for (PayloadValue item : list) {
+				arr.put(arazzo.Emit.serializePayloadValue(item));
+			}
+			obj.put(key, arr);
+		}
+	}
+
+	/**
+	 * Puts an {@link ExclusiveBound} into a JSONObject if non-null.
+	 *
+	 * @param obj
+	 *            The target JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @param eb
+	 *            The {@link ExclusiveBound}.
+	 */
+	private static void putExclusiveBound(JSONObject obj, String key, ExclusiveBound eb) {
+		if (eb != null) {
+			obj.put(key, eb.isBoolean() ? eb.flag : eb.bound);
+		}
+	}
+
+	/**
+	 * Puts an {@link AdditionalProperties} constraint into a JSONObject if
+	 * non-null.
+	 *
+	 * @param obj
+	 *            The target JSONObject.
+	 * @param key
+	 *            The property name.
+	 * @param ap
+	 *            The {@link AdditionalProperties}.
+	 */
+	private static void putAdditionalProperties(JSONObject obj, String key, AdditionalProperties ap) {
+		if (ap != null) {
+			if (ap.isBoolean()) {
+				obj.put(key, ap.allowed);
+			} else {
+				obj.put(key, serializeRefOr(ap.schema, Emit::serializeSchema));
+			}
+		}
+	}
+
+	/**
+	 * Serializes a {@link Reference} object to JSON.
+	 *
+	 * @param r
+	 *            The {@link Reference}.
+	 * @return The serialized {@link JSONObject}.
+	 */
+	private static JSONObject serializeReference(Reference r) {
+		JSONObject obj = new JSONObject();
+		putIfNotNull(obj, "$ref", r.ref);
+		putIfNotNull(obj, "summary", r.summary);
+		putIfNotNull(obj, "description", r.description);
+		putExtensions(obj, r.extensions);
+		return obj;
+	}
+
+	/**
+	 * Serializes a {@link ReferenceOr} wrapper to a {@link JSONObject}.
+	 *
+	 * @param <T>
+	 *            The wrapped element type.
+	 * @param refOr
+	 *            The {@link ReferenceOr} wrapper.
+	 * @param serializer
+	 *            The inline serializer function.
+	 * @return The serialized {@link JSONObject}.
+	 */
+	private static <T> JSONObject serializeRefOr(ReferenceOr<T> refOr, Function<T, JSONObject> serializer) {
+		if (refOr.isRef()) {
+			return serializeReference(refOr.ref);
+		}
+		return serializer.apply(refOr.value);
+	}
+
+	/**
+	 * Serializes a map of {@link ReferenceOr} wrappers to a {@link JSONObject}.
+	 *
+	 * @param <T>
+	 *            The wrapped element type.
+	 * @param map
+	 *            The map of {@link ReferenceOr} wrappers.
+	 * @param serializer
+	 *            The inline serializer function.
+	 * @return The serialized {@link JSONObject}.
+	 */
+	private static <T> JSONObject serializeRefOrMap(Map<String, ReferenceOr<T>> map,
+			Function<T, JSONObject> serializer) {
+		JSONObject obj = new JSONObject();
+		for (Map.Entry<String, ReferenceOr<T>> e : map.entrySet()) {
+			if (e.getValue() != null) {
+				obj.put(e.getKey(), serializeRefOr(e.getValue(), serializer));
+			}
+		}
+		return obj;
+	}
+
+	/**
+	 * Serializes a list of {@link ReferenceOr} wrappers to a {@link JSONArray}.
+	 *
+	 * @param <T>
+	 *            The wrapped element type.
+	 * @param list
+	 *            The list of {@link ReferenceOr} wrappers.
+	 * @param serializer
+	 *            The inline serializer function.
+	 * @return The serialized {@link JSONArray}.
+	 */
+	private static <T> JSONArray serializeRefOrList(List<ReferenceOr<T>> list, Function<T, JSONObject> serializer) {
+		JSONArray arr = new JSONArray();
+		for (ReferenceOr<T> item : list) {
+			arr.put(serializeRefOr(item, serializer));
+		}
+		return arr;
 	}
 
 	/**
@@ -372,7 +523,7 @@ public class Emit {
 			piObj.put("servers", serializeServers(pi.servers));
 		}
 		if (isNonEmpty(pi.parameters)) {
-			piObj.put("parameters", serializeParameters(pi.parameters));
+			piObj.put("parameters", serializeRefOrList(pi.parameters, Emit::serializeParameter));
 		}
 		putExtensions(piObj, pi.extensions);
 		return piObj;
@@ -399,10 +550,10 @@ public class Emit {
 			obj.put("externalDocs", serializeExternalDocs(op.externalDocs));
 		}
 		if (isNonEmpty(op.parameters)) {
-			obj.put("parameters", serializeParameters(op.parameters));
+			obj.put("parameters", serializeRefOrList(op.parameters, Emit::serializeParameter));
 		}
-		if (op.requestBody instanceof RequestBody) {
-			obj.put("requestBody", serializeRequestBody((RequestBody) op.requestBody));
+		if (op.requestBody != null) {
+			obj.put("requestBody", serializeRefOr(op.requestBody, Emit::serializeRequestBody));
 		}
 		if (op.responses != null) {
 			JSONObject respObj = serializeResponses(op.responses);
@@ -411,7 +562,7 @@ public class Emit {
 			}
 		}
 		if (isNonEmpty(op.callbacks)) {
-			obj.put("callbacks", serializeCallbackMap(op.callbacks));
+			obj.put("callbacks", serializeRefOrMap(op.callbacks, Emit::serializeCallback));
 		}
 		if (isNonEmpty(op.security)) {
 			obj.put("security", serializeSecurity(op.security));
@@ -465,15 +616,15 @@ public class Emit {
 	 */
 	private static JSONObject serializeMediaType(MediaType mt) {
 		JSONObject mtObj = new JSONObject();
-		if (mt.schema instanceof Schema) {
-			mtObj.put("schema", serializeSchema((Schema) mt.schema));
+		if (mt.schema != null) {
+			mtObj.put("schema", serializeRefOr(mt.schema, Emit::serializeSchema));
 		}
-		if (mt.itemSchema instanceof Schema) {
-			mtObj.put("itemSchema", serializeSchema((Schema) mt.itemSchema));
+		if (mt.itemSchema != null) {
+			mtObj.put("itemSchema", serializeRefOr(mt.itemSchema, Emit::serializeSchema));
 		}
 		putIfNotNull(mtObj, "example", mt.example);
 		if (isNonEmpty(mt.examples)) {
-			mtObj.put("examples", serializeExampleObjMap(mt.examples));
+			mtObj.put("examples", serializeRefOrMap(mt.examples, Emit::serializeExample));
 		}
 		if (isNonEmpty(mt.encoding)) {
 			mtObj.put("encoding", serializeEncodingMap(mt.encoding));
@@ -532,7 +683,7 @@ public class Emit {
 		putIfNotNull(obj, "explode", enc.explode);
 		putIfNotNull(obj, "allowReserved", enc.allowReserved);
 		if (isNonEmpty(enc.headers)) {
-			obj.put("headers", serializeHeaderObjMap(enc.headers));
+			obj.put("headers", serializeRefOrMap(enc.headers, Emit::serializeHeader));
 		}
 		if (isNonEmpty(enc.encoding)) {
 			obj.put("encoding", serializeEncodingMap(enc.encoding));
@@ -556,13 +707,13 @@ public class Emit {
 	 */
 	private static JSONObject serializeResponses(Responses responses) {
 		JSONObject responsesObj = new JSONObject();
-		if (responses.defaultResponse instanceof Response) {
-			responsesObj.put("default", serializeResponse((Response) responses.defaultResponse));
+		if (responses.defaultResponse != null) {
+			responsesObj.put("default", serializeRefOr(responses.defaultResponse, Emit::serializeResponse));
 		}
 		if (responses.statusCodes != null) {
-			for (Map.Entry<String, Object> re : responses.statusCodes.entrySet()) {
-				if (re.getValue() instanceof Response) {
-					responsesObj.put(re.getKey(), serializeResponse((Response) re.getValue()));
+			for (Map.Entry<String, ReferenceOr<Response>> re : responses.statusCodes.entrySet()) {
+				if (re.getValue() != null) {
+					responsesObj.put(re.getKey(), serializeRefOr(re.getValue(), Emit::serializeResponse));
 				}
 			}
 		}
@@ -582,44 +733,22 @@ public class Emit {
 		putIfNotNull(rObj, "summary", r.summary);
 		putIfNotNull(rObj, "description", r.description);
 		if (r.schema != null) {
-			rObj.put("schema", serializeSchema(r.schema));
+			rObj.put("schema", serializeRefOr(r.schema, Emit::serializeSchema));
 		}
 		if (isNonEmpty(r.headers)) {
-			rObj.put("headers", serializeHeaderObjMap(r.headers));
+			rObj.put("headers", serializeRefOrMap(r.headers, Emit::serializeHeader));
 		}
 		if (isNonEmpty(r.examples)) {
-			rObj.put("examples", serializeExampleObjMap(r.examples));
+			rObj.put("examples", serializeRefOrMap(r.examples, Emit::serializeExample));
 		}
 		if (r.content != null) {
 			rObj.put("content", serializeMediaTypeMap(r.content));
 		}
 		if (isNonEmpty(r.links)) {
-			JSONObject lMap = new JSONObject();
-			for (Map.Entry<String, Link> le : r.links.entrySet()) {
-				lMap.put(le.getKey(), serializeLink(le.getValue()));
-			}
-			rObj.put("links", lMap);
+			rObj.put("links", serializeRefOrMap(r.links, Emit::serializeLink));
 		}
 		putExtensions(rObj, r.extensions);
 		return rObj;
-	}
-
-	/**
-	 * Serializes a list of OpenAPI {@link Parameter} objects into a
-	 * {@link JSONArray}.
-	 *
-	 * @param params
-	 *            The list of parameters to serialize.
-	 * @return The serialized {@link JSONArray}.
-	 */
-	private static JSONArray serializeParameters(List<Object> params) {
-		JSONArray arr = new JSONArray();
-		for (Object objP : params) {
-			if (objP instanceof Parameter) {
-				arr.put(serializeParameter((Parameter) objP));
-			}
-		}
-		return arr;
 	}
 
 	/**
@@ -660,15 +789,11 @@ public class Emit {
 		putNonEmptyList(pObj, "enum", p.enumValues);
 		putIfNotNull(pObj, "multipleOf", p.multipleOf);
 		if (p.schema != null) {
-			pObj.put("schema", serializeSchema(p.schema));
+			pObj.put("schema", serializeRefOr(p.schema, Emit::serializeSchema));
 		}
 		putIfNotNull(pObj, "example", p.example);
 		if (isNonEmpty(p.examples)) {
-			JSONObject exMap = new JSONObject();
-			for (Map.Entry<String, Example> ee : p.examples.entrySet()) {
-				exMap.put(ee.getKey(), serializeExample(ee.getValue()));
-			}
-			pObj.put("examples", exMap);
+			pObj.put("examples", serializeRefOrMap(p.examples, Emit::serializeExample));
 		}
 		if (isNonEmpty(p.content)) {
 			pObj.put("content", serializeMediaTypeMap(p.content));
@@ -712,12 +837,12 @@ public class Emit {
 		putIfNotNull(hObj, "uniqueItems", h.uniqueItems);
 		putNonEmptyList(hObj, "enum", h.enumValues);
 		putIfNotNull(hObj, "multipleOf", h.multipleOf);
-		if (h.schema instanceof Schema) {
-			hObj.put("schema", serializeSchema((Schema) h.schema));
+		if (h.schema != null) {
+			hObj.put("schema", serializeRefOr(h.schema, Emit::serializeSchema));
 		}
 		putIfNotNull(hObj, "example", h.example);
 		if (isNonEmpty(h.examples)) {
-			hObj.put("examples", serializeExampleObjMap(h.examples));
+			hObj.put("examples", serializeRefOrMap(h.examples, Emit::serializeExample));
 		}
 		if (isNonEmpty(h.content)) {
 			hObj.put("content", serializeMediaTypeMap(h.content));
@@ -810,11 +935,7 @@ public class Emit {
 	private static JSONObject serializeCallback(Callback cb) {
 		JSONObject cbObj = new JSONObject();
 		for (Map.Entry<String, PathItem> e : cb.pathItems.entrySet()) {
-			if ("$ref".equals(e.getKey())) {
-				cbObj.put("$ref", e.getValue().ref);
-			} else {
-				cbObj.put(e.getKey(), serializePathItem(e.getValue()));
-			}
+			cbObj.put(e.getKey(), serializePathItem(e.getValue()));
 		}
 		putExtensions(cbObj, cb.extensions);
 		return cbObj;
@@ -893,155 +1014,40 @@ public class Emit {
 	private static JSONObject serializeComponents(Components comp) {
 		JSONObject compObj = new JSONObject();
 		if (comp.schemas != null) {
-			JSONObject schemasObj = new JSONObject();
-			for (Map.Entry<String, Schema> e : comp.schemas.entrySet()) {
-				if (e.getValue() != null) {
-					schemasObj.put(e.getKey(), serializeSchema(e.getValue()));
-				}
-			}
-			compObj.put("schemas", schemasObj);
+			compObj.put("schemas", serializeRefOrMap(comp.schemas, Emit::serializeSchema));
 		}
 		if (isNonEmpty(comp.responses)) {
-			JSONObject rObj = new JSONObject();
-			for (Map.Entry<String, Object> e : comp.responses.entrySet()) {
-				rObj.put(e.getKey(), serializeResponse((Response) e.getValue()));
-			}
-			compObj.put("responses", rObj);
+			compObj.put("responses", serializeRefOrMap(comp.responses, Emit::serializeResponse));
 		}
 		if (isNonEmpty(comp.parameters)) {
-			JSONObject pObj = new JSONObject();
-			for (Map.Entry<String, Object> e : comp.parameters.entrySet()) {
-				pObj.put(e.getKey(), serializeParameter((Parameter) e.getValue()));
-			}
-			compObj.put("parameters", pObj);
+			compObj.put("parameters", serializeRefOrMap(comp.parameters, Emit::serializeParameter));
 		}
 		if (isNonEmpty(comp.examples)) {
-			compObj.put("examples", serializeExampleObjMap(comp.examples));
+			compObj.put("examples", serializeRefOrMap(comp.examples, Emit::serializeExample));
 		}
 		if (isNonEmpty(comp.requestBodies)) {
-			JSONObject rbObj = new JSONObject();
-			for (Map.Entry<String, Object> e : comp.requestBodies.entrySet()) {
-				rbObj.put(e.getKey(), serializeRequestBody((RequestBody) e.getValue()));
-			}
-			compObj.put("requestBodies", rbObj);
+			compObj.put("requestBodies", serializeRefOrMap(comp.requestBodies, Emit::serializeRequestBody));
 		}
 		if (isNonEmpty(comp.headers)) {
-			compObj.put("headers", serializeHeaderObjMap(comp.headers));
+			compObj.put("headers", serializeRefOrMap(comp.headers, Emit::serializeHeader));
 		}
 		if (isNonEmpty(comp.securitySchemes)) {
-			JSONObject ssObj = new JSONObject();
-			for (Map.Entry<String, Object> e : comp.securitySchemes.entrySet()) {
-				ssObj.put(e.getKey(), serializeSecurityScheme((SecurityScheme) e.getValue()));
-			}
-			compObj.put("securitySchemes", ssObj);
+			compObj.put("securitySchemes", serializeRefOrMap(comp.securitySchemes, Emit::serializeSecurityScheme));
 		}
 		if (isNonEmpty(comp.links)) {
-			JSONObject lObj = new JSONObject();
-			for (Map.Entry<String, Object> e : comp.links.entrySet()) {
-				lObj.put(e.getKey(), serializeLink((Link) e.getValue()));
-			}
-			compObj.put("links", lObj);
+			compObj.put("links", serializeRefOrMap(comp.links, Emit::serializeLink));
 		}
 		if (isNonEmpty(comp.callbacks)) {
-			compObj.put("callbacks", serializeCallbackMap(comp.callbacks));
+			compObj.put("callbacks", serializeRefOrMap(comp.callbacks, Emit::serializeCallback));
 		}
 		if (isNonEmpty(comp.pathItems)) {
-			JSONObject piObj = new JSONObject();
-			for (Map.Entry<String, PathItem> e : comp.pathItems.entrySet()) {
-				piObj.put(e.getKey(), serializePathItem(e.getValue()));
-			}
-			compObj.put("pathItems", piObj);
+			compObj.put("pathItems", serializeRefOrMap(comp.pathItems, Emit::serializePathItem));
 		}
 		if (isNonEmpty(comp.mediaTypes)) {
-			JSONObject mtObj = new JSONObject();
-			for (Map.Entry<String, Object> e : comp.mediaTypes.entrySet()) {
-				mtObj.put(e.getKey(), serializeMediaType((MediaType) e.getValue()));
-			}
-			compObj.put("mediaTypes", mtObj);
+			compObj.put("mediaTypes", serializeRefOrMap(comp.mediaTypes, Emit::serializeMediaType));
 		}
 		putExtensions(compObj, comp.extensions);
 		return compObj;
-	}
-
-	/**
-	 * Serializes a map of {@link Example} or raw objects to JSON.
-	 *
-	 * @param map
-	 *            The example map.
-	 * @return The serialized {@link JSONObject}.
-	 */
-	private static JSONObject serializeExampleObjMap(Map<String, Object> map) {
-		JSONObject obj = new JSONObject();
-		for (Map.Entry<String, Object> e : map.entrySet()) {
-			if (e.getValue() instanceof Example) {
-				obj.put(e.getKey(), serializeExample((Example) e.getValue()));
-			} else {
-				obj.put(e.getKey(), e.getValue());
-			}
-		}
-		return obj;
-	}
-
-	/**
-	 * Serializes a map of {@link Header} objects to JSON.
-	 *
-	 * @param map
-	 *            The header map.
-	 * @return The serialized {@link JSONObject}.
-	 */
-	private static JSONObject serializeHeaderObjMap(Map<String, Object> map) {
-		JSONObject obj = new JSONObject();
-		for (Map.Entry<String, Object> e : map.entrySet()) {
-			obj.put(e.getKey(), serializeHeader((Header) e.getValue()));
-		}
-		return obj;
-	}
-
-	/**
-	 * Serializes a map of {@link Callback} objects to JSON.
-	 *
-	 * @param map
-	 *            The callback map.
-	 * @return The serialized {@link JSONObject}.
-	 */
-	private static JSONObject serializeCallbackMap(Map<String, Object> map) {
-		JSONObject obj = new JSONObject();
-		for (Map.Entry<String, Object> e : map.entrySet()) {
-			obj.put(e.getKey(), serializeCallback((Callback) e.getValue()));
-		}
-		return obj;
-	}
-
-	/**
-	 * Serializes a map of {@link Schema} objects stored in an Object-valued map.
-	 *
-	 * @param map
-	 *            The schema map.
-	 * @return The serialized {@link JSONObject}.
-	 */
-	private static JSONObject serializeSchemaObjMap(Map<String, Object> map) {
-		JSONObject obj = new JSONObject();
-		for (Map.Entry<String, Object> pe : map.entrySet()) {
-			if (pe.getValue() instanceof Schema) {
-				obj.put(pe.getKey(), serializeSchema((Schema) pe.getValue()));
-			}
-		}
-		return obj;
-	}
-
-	/**
-	 * Serializes a list of {@link Schema} objects stored in an Object-valued list.
-	 *
-	 * @param list
-	 *            The schema list.
-	 * @return The serialized {@link JSONArray}.
-	 */
-	private static JSONArray serializeSchemaObjList(List<Object> list) {
-		JSONArray arr = new JSONArray();
-		for (Object item : list) {
-			arr.put(serializeSchema((Schema) item));
-		}
-		return arr;
 	}
 
 	/**
@@ -1054,19 +1060,21 @@ public class Emit {
 	public static JSONObject serializeSchema(Schema s) {
 		JSONObject obj = new JSONObject();
 		putIfNotNull(obj, "$ref", s.$ref);
-		if (s.type instanceof List) {
-			obj.put("type", new JSONArray((List<?>) s.type));
-		} else {
-			putIfNotNull(obj, "type", s.type);
+		if (s.type != null) {
+			if (s.type.isMultiType()) {
+				obj.put("type", new JSONArray(s.type.types));
+			} else {
+				putIfNotNull(obj, "type", s.type.single);
+			}
 		}
 		putIfNotNull(obj, "title", s.title);
 		putIfNotNull(obj, "format", s.format);
 		putIfNotNull(obj, "description", s.description);
 		putIfNotNull(obj, "multipleOf", s.multipleOf);
 		putIfNotNull(obj, "maximum", s.maximum);
-		putIfNotNull(obj, "exclusiveMaximum", s.exclusiveMaximum);
+		putExclusiveBound(obj, "exclusiveMaximum", s.exclusiveMaximum);
 		putIfNotNull(obj, "minimum", s.minimum);
-		putIfNotNull(obj, "exclusiveMinimum", s.exclusiveMinimum);
+		putExclusiveBound(obj, "exclusiveMinimum", s.exclusiveMinimum);
 		putIfNotNull(obj, "maxLength", s.maxLength);
 		putIfNotNull(obj, "minLength", s.minLength);
 		putIfNotNull(obj, "pattern", s.pattern);
@@ -1076,33 +1084,29 @@ public class Emit {
 		putIfNotNull(obj, "maxProperties", s.maxProperties);
 		putIfNotNull(obj, "minProperties", s.minProperties);
 		putNonEmptyList(obj, "required", s.required);
-		putNonEmptyList(obj, "enum", s.enumValues);
+		putPayloadValueList(obj, "enum", s.enumValues);
 		if (isNonEmpty(s.allOf))
-			obj.put("allOf", serializeSchemaObjList(s.allOf));
+			obj.put("allOf", serializeRefOrList(s.allOf, Emit::serializeSchema));
 		if (isNonEmpty(s.anyOf))
-			obj.put("anyOf", serializeSchemaObjList(s.anyOf));
+			obj.put("anyOf", serializeRefOrList(s.anyOf, Emit::serializeSchema));
 		if (isNonEmpty(s.oneOf))
-			obj.put("oneOf", serializeSchemaObjList(s.oneOf));
-		if (s.not instanceof Schema)
-			obj.put("not", serializeSchema((Schema) s.not));
-		if (s.items instanceof Schema) {
-			obj.put("items", serializeSchema((Schema) s.items));
+			obj.put("oneOf", serializeRefOrList(s.oneOf, Emit::serializeSchema));
+		if (s.not != null)
+			obj.put("not", serializeRefOr(s.not, Emit::serializeSchema));
+		if (s.items != null) {
+			obj.put("items", serializeRefOr(s.items, Emit::serializeSchema));
 		}
 		if (s.properties != null) {
-			obj.put("properties", serializeSchemaObjMap(s.properties));
+			obj.put("properties", serializeRefOrMap(s.properties, Emit::serializeSchema));
 		}
-		if (s.additionalProperties instanceof Schema) {
-			obj.put("additionalProperties", serializeSchema((Schema) s.additionalProperties));
-		} else {
-			putIfNotNull(obj, "additionalProperties", s.additionalProperties);
-		}
-		putIfNotNull(obj, "default", s.defaultValue);
-		putIfNotNull(obj, "const", s.constValue);
+		putAdditionalProperties(obj, "additionalProperties", s.additionalProperties);
+		putPayloadValue(obj, "default", s.defaultValue);
+		putPayloadValue(obj, "const", s.constValue);
 		putIfNotNull(obj, "readOnly", s.readOnly);
 		putIfNotNull(obj, "writeOnly", s.writeOnly);
 		putIfNotNull(obj, "deprecated", s.deprecated);
-		putIfNotNull(obj, "example", s.example);
-		putNonEmptyList(obj, "examples", s.examples);
+		putPayloadValue(obj, "example", s.example);
+		putPayloadValueList(obj, "examples", s.examples);
 		if (s.externalDocs != null) {
 			obj.put("externalDocs", serializeExternalDocs(s.externalDocs));
 		}
@@ -1135,7 +1139,7 @@ public class Emit {
 			obj.put("$vocabulary", new JSONObject(s.vocabulary));
 		}
 		if (isNonEmpty(s.defs)) {
-			obj.put("$defs", serializeSchemaObjMap(s.defs));
+			obj.put("$defs", serializeRefOrMap(s.defs, Emit::serializeSchema));
 		}
 		if (isNonEmpty(s.dependentRequired)) {
 			JSONObject drObj = new JSONObject();
@@ -1145,29 +1149,21 @@ public class Emit {
 			obj.put("dependentRequired", drObj);
 		}
 		if (isNonEmpty(s.dependentSchemas)) {
-			obj.put("dependentSchemas", serializeSchemaObjMap(s.dependentSchemas));
+			obj.put("dependentSchemas", serializeRefOrMap(s.dependentSchemas, Emit::serializeSchema));
 		}
-		if (s.propertyNames instanceof Schema) {
-			obj.put("propertyNames", serializeSchema((Schema) s.propertyNames));
+		if (s.propertyNames != null) {
+			obj.put("propertyNames", serializeRefOr(s.propertyNames, Emit::serializeSchema));
 		}
 		if (isNonEmpty(s.patternProperties)) {
-			obj.put("patternProperties", serializeSchemaObjMap(s.patternProperties));
+			obj.put("patternProperties", serializeRefOrMap(s.patternProperties, Emit::serializeSchema));
 		}
-		if (s.unevaluatedProperties instanceof Schema) {
-			obj.put("unevaluatedProperties", serializeSchema((Schema) s.unevaluatedProperties));
-		} else {
-			putIfNotNull(obj, "unevaluatedProperties", s.unevaluatedProperties);
-		}
-		if (s.unevaluatedItems instanceof Schema) {
-			obj.put("unevaluatedItems", serializeSchema((Schema) s.unevaluatedItems));
-		} else {
-			putIfNotNull(obj, "unevaluatedItems", s.unevaluatedItems);
-		}
+		putAdditionalProperties(obj, "unevaluatedProperties", s.unevaluatedProperties);
+		putAdditionalProperties(obj, "unevaluatedItems", s.unevaluatedItems);
 		if (isNonEmpty(s.prefixItems)) {
-			obj.put("prefixItems", serializeSchemaObjList(s.prefixItems));
+			obj.put("prefixItems", serializeRefOrList(s.prefixItems, Emit::serializeSchema));
 		}
-		if (s.contains instanceof Schema) {
-			obj.put("contains", serializeSchema((Schema) s.contains));
+		if (s.contains != null) {
+			obj.put("contains", serializeRefOr(s.contains, Emit::serializeSchema));
 		}
 		putIfNotNull(obj, "minContains", s.minContains);
 		putIfNotNull(obj, "maxContains", s.maxContains);

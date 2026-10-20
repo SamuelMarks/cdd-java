@@ -2,7 +2,6 @@ package arazzo;
 
 import java.util.HashMap;
 import java.util.Map;
-import openapi.TypeMapper;
 
 /**
  * Arazzo Payload Replacement Object describing an in-place value injection at a
@@ -61,15 +60,31 @@ public class PayloadReplacement {
 	}
 
 	/**
+	 * Returns all field values of this object for structural comparison and
+	 * hashing.
+	 *
+	 * @return The list of field values.
+	 */
+	private java.util.List<Object> fieldValues() {
+		return java.util.Arrays.asList(target, targetSelectorType, value, extensions);
+	}
+
+	/**
 	 * Compares this object with another for structural equality.
 	 *
 	 * @param o
 	 *            The object to compare against.
-	 * @return {@code true} if equal.
+	 * @return {@code true} if equal; {@code false} otherwise.
 	 */
 	@Override
 	public boolean equals(Object o) {
-		return TypeMapper.structuralEquals(this, o);
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof PayloadReplacement)) {
+			return false;
+		}
+		return fieldValues().equals(((PayloadReplacement) o).fieldValues());
 	}
 
 	/**
@@ -79,7 +94,7 @@ public class PayloadReplacement {
 	 */
 	@Override
 	public int hashCode() {
-		return TypeMapper.structuralHashCode(this);
+		return fieldValues().hashCode();
 	}
 
 	/**
@@ -89,6 +104,6 @@ public class PayloadReplacement {
 	 */
 	@Override
 	public String toString() {
-		return TypeMapper.structuralToString(this);
+		return "PayloadReplacement" + fieldValues();
 	}
 }

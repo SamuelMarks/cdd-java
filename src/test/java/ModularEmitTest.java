@@ -34,19 +34,19 @@ public class ModularEmitTest {
 		api.components.schemas = new HashMap<>();
 
 		Schema schema = new Schema();
-		schema.type = "object";
+		schema.type = openapi.SchemaType.ofSingle("object");
 		schema.properties = new HashMap<>();
 		Schema prop = new Schema();
-		prop.type = "string";
-		schema.properties.put("name", prop);
-		api.components.schemas.put("User", schema);
+		prop.type = openapi.SchemaType.ofSingle("string");
+		schema.properties.put("name", openapi.ReferenceOr.ofValue(prop));
+		api.components.schemas.put("User", openapi.ReferenceOr.ofValue(schema));
 
 		Schema postSchema = new Schema();
-		postSchema.type = "object";
+		postSchema.type = openapi.SchemaType.ofSingle("object");
 		postSchema.properties = new HashMap<>();
-		postSchema.properties.put("id", prop);
-		api.components.schemas.put("Post", postSchema);
-		api.components.schemas.put("NoProps", new Schema());
+		postSchema.properties.put("id", openapi.ReferenceOr.ofValue(prop));
+		api.components.schemas.put("Post", openapi.ReferenceOr.ofValue(postSchema));
+		api.components.schemas.put("NoProps", openapi.ReferenceOr.ofValue(new Schema()));
 
 		api.paths = new Paths();
 		api.paths.pathItems = new HashMap<>();
@@ -120,8 +120,9 @@ public class ModularEmitTest {
 		assertEquals(0, servertests.Emit.emitModular(emptyApi).size());
 		emptyApi.components.schemas = new HashMap<>();
 		Schema enumSchema = new Schema();
-		enumSchema.enumValues = java.util.Arrays.asList("a", "b");
-		emptyApi.components.schemas.put("AnEnum", enumSchema);
+		enumSchema.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("a"),
+				arazzo.PayloadValue.ofString("b"));
+		emptyApi.components.schemas.put("AnEnum", openapi.ReferenceOr.ofValue(enumSchema));
 
 		Map<String, String> classesModels = classes.Emit.emitModular(emptyApi);
 		assertTrue(classesModels.containsKey("models/AnEnum.java"));
@@ -150,73 +151,79 @@ public class ModularEmitTest {
 		allTypes.properties = new HashMap<>();
 
 		Schema strProp = new Schema();
-		strProp.type = "string";
-		allTypes.properties.put("email", strProp);
-		allTypes.properties.put("name", strProp);
-		allTypes.properties.put("phone", strProp);
-		allTypes.properties.put("other", strProp);
-		allTypes.properties.put("id", strProp);
+		strProp.type = openapi.SchemaType.ofSingle("string");
+		allTypes.properties.put("email", openapi.ReferenceOr.ofValue(strProp));
+		allTypes.properties.put("name", openapi.ReferenceOr.ofValue(strProp));
+		allTypes.properties.put("phone", openapi.ReferenceOr.ofValue(strProp));
+		allTypes.properties.put("other", openapi.ReferenceOr.ofValue(strProp));
+		allTypes.properties.put("id", openapi.ReferenceOr.ofValue(strProp));
 
 		Schema intProp = new Schema();
-		intProp.type = "integer";
-		allTypes.properties.put("my_int", intProp);
+		intProp.type = openapi.SchemaType.ofSingle("integer");
+		allTypes.properties.put("my_int", openapi.ReferenceOr.ofValue(intProp));
 
 		Schema longProp = new Schema();
-		longProp.type = "integer";
+		longProp.type = openapi.SchemaType.ofSingle("integer");
 		longProp.format = "int64";
-		allTypes.properties.put("my_long", longProp);
+		allTypes.properties.put("my_long", openapi.ReferenceOr.ofValue(longProp));
 
 		Schema boolProp = new Schema();
-		boolProp.type = "boolean";
-		allTypes.properties.put("my_bool", boolProp);
+		boolProp.type = openapi.SchemaType.ofSingle("boolean");
+		allTypes.properties.put("my_bool", openapi.ReferenceOr.ofValue(boolProp));
 
 		Schema doubleProp = new Schema();
-		doubleProp.type = "number";
-		allTypes.properties.put("my_double", doubleProp);
+		doubleProp.type = openapi.SchemaType.ofSingle("number");
+		allTypes.properties.put("my_double", openapi.ReferenceOr.ofValue(doubleProp));
 
 		Schema floatProp = new Schema();
-		floatProp.type = "number";
+		floatProp.type = openapi.SchemaType.ofSingle("number");
 		floatProp.format = "float";
-		allTypes.properties.put("my_float", floatProp);
+		allTypes.properties.put("my_float", openapi.ReferenceOr.ofValue(floatProp));
 
 		Schema dateProp = new Schema();
-		dateProp.type = "string";
+		dateProp.type = openapi.SchemaType.ofSingle("string");
 		dateProp.format = "date";
-		allTypes.properties.put("my_date", dateProp);
+		allTypes.properties.put("my_date", openapi.ReferenceOr.ofValue(dateProp));
 
 		Schema datetimeProp = new Schema();
-		datetimeProp.type = "string";
+		datetimeProp.type = openapi.SchemaType.ofSingle("string");
 		datetimeProp.format = "date-time";
-		allTypes.properties.put("my_datetime", datetimeProp);
+		allTypes.properties.put("my_datetime", openapi.ReferenceOr.ofValue(datetimeProp));
 
 		Schema uuidProp = new Schema();
-		uuidProp.type = "string";
+		uuidProp.type = openapi.SchemaType.ofSingle("string");
 		uuidProp.format = "uuid";
-		allTypes.properties.put("my_uuid", uuidProp);
+		allTypes.properties.put("my_uuid", openapi.ReferenceOr.ofValue(uuidProp));
 
 		Schema binProp = new Schema();
-		binProp.type = "string";
+		binProp.type = openapi.SchemaType.ofSingle("string");
 		binProp.format = "binary";
-		allTypes.properties.put("my_bin", binProp);
+		allTypes.properties.put("my_bin", openapi.ReferenceOr.ofValue(binProp));
 
 		Schema objProp = new Schema();
-		objProp.type = "object";
-		allTypes.properties.put("my_obj", objProp);
+		objProp.type = openapi.SchemaType.ofSingle("object");
+		allTypes.properties.put("my_obj", openapi.ReferenceOr.ofValue(objProp));
 
 		Schema arrProp = new Schema();
-		arrProp.type = "array";
-		arrProp.items = strProp;
-		allTypes.properties.put("my_arr", arrProp);
+		arrProp.type = openapi.SchemaType.ofSingle("array");
+		arrProp.items = openapi.ReferenceOr.ofValue(strProp);
+		allTypes.properties.put("my_arr", openapi.ReferenceOr.ofValue(arrProp));
 
 		Schema anyProp = new Schema();
-		anyProp.type = "something_else";
-		allTypes.properties.put("my_any", anyProp);
+		anyProp.type = openapi.SchemaType.ofSingle("something_else");
+		allTypes.properties.put("my_any", openapi.ReferenceOr.ofValue(anyProp));
+
+		Schema enumFieldProp = new Schema();
+		enumFieldProp.type = openapi.SchemaType.ofSingle("string");
+		enumFieldProp.enumValues = java.util.Arrays.asList(arazzo.PayloadValue.ofString("VAL1"),
+				arazzo.PayloadValue.ofString("VAL2"));
+		allTypes.properties.put("my_enum_prop", openapi.ReferenceOr.ofValue(enumFieldProp));
 
 		Schema fkProp = new Schema();
 		fkProp.$ref = "#/components/schemas/User";
-		allTypes.properties.put("user_id", fkProp);
+		allTypes.properties.put("user_id", openapi.ReferenceOr.ofValue(fkProp));
 
-		emptyApi.components.schemas.put("AllTypes", allTypes);
+		emptyApi.components.schemas.put("AllTypes", openapi.ReferenceOr.ofValue(allTypes));
 		Map<String, String> seederCode = seeder.Emit.emitModular(emptyApi);
 		assertTrue(seederCode.containsKey("seeder/Seeder.java"));
 		orm.Emit.emitModular(emptyApi);
@@ -224,15 +231,15 @@ public class ModularEmitTest {
 		Schema badName = new Schema();
 		badName.properties = new HashMap<>();
 		Schema nProp = new Schema();
-		nProp.type = "string";
-		badName.properties.put("enum", nProp);
-		badName.properties.put("default", nProp);
-		badName.properties.put("class", nProp);
-		badName.properties.put("const", nProp);
-		badName.properties.put("1bad", nProp);
-		emptyApi.components.schemas.put("BadName", badName);
-		emptyApi.components.schemas.put("Emit", badName);
-		emptyApi.components.schemas.put("Parse", badName);
+		nProp.type = openapi.SchemaType.ofSingle("string");
+		badName.properties.put("enum", openapi.ReferenceOr.ofValue(nProp));
+		badName.properties.put("default", openapi.ReferenceOr.ofValue(nProp));
+		badName.properties.put("class", openapi.ReferenceOr.ofValue(nProp));
+		badName.properties.put("const", openapi.ReferenceOr.ofValue(nProp));
+		badName.properties.put("1bad", openapi.ReferenceOr.ofValue(nProp));
+		emptyApi.components.schemas.put("BadName", openapi.ReferenceOr.ofValue(badName));
+		emptyApi.components.schemas.put("Emit", openapi.ReferenceOr.ofValue(badName));
+		emptyApi.components.schemas.put("Parse", openapi.ReferenceOr.ofValue(badName));
 
 		seederCode = seeder.Emit.emitModular(emptyApi);
 		assertTrue(seederCode.containsKey("seeder/Seeder.java"));
@@ -259,8 +266,48 @@ public class ModularEmitTest {
 		assertEquals(0, servertests.Emit.emitModular(nullPathsApi).size());
 
 		PathItem deleteOnly = new PathItem();
-		deleteOnly.delete = new Operation();
+		Operation delOp = new Operation();
+		delOp.responses = new openapi.Responses();
+		delOp.responses.statusCodes = new HashMap<>();
+		delOp.responses.statusCodes.put("200", openapi.ReferenceOr.ofValue(new openapi.Response()));
+		deleteOnly.delete = delOp;
 		api.paths.pathItems.put("/del", deleteOnly);
+
+		PathItem customStatusPi = new PathItem();
+		Operation postCustom = new Operation();
+		openapi.RequestBody rbRef = new openapi.RequestBody();
+		rbRef.content = new HashMap<>();
+		openapi.MediaType mtRef = new openapi.MediaType();
+		Schema sRef = new Schema();
+		sRef.$ref = "#/components/schemas/User";
+		mtRef.schema = openapi.ReferenceOr.ofValue(sRef);
+		rbRef.content.put("application/json", mtRef);
+		postCustom.requestBody = openapi.ReferenceOr.ofValue(rbRef);
+		postCustom.responses = new openapi.Responses();
+		postCustom.responses.statusCodes = new HashMap<>();
+		postCustom.responses.statusCodes.put("204", openapi.ReferenceOr.ofValue(new openapi.Response()));
+		customStatusPi.post = postCustom;
+		Operation get201 = new Operation();
+		get201.responses = new openapi.Responses();
+		get201.responses.statusCodes = new HashMap<>();
+		get201.responses.statusCodes.put("201", openapi.ReferenceOr.ofValue(new openapi.Response()));
+		customStatusPi.get = get201;
+		api.paths.pathItems.put("/customAction", customStatusPi);
+
+		PathItem nonRefBodyPi = new PathItem();
+		Operation putNonRef = new Operation();
+		openapi.RequestBody rbNonRef = new openapi.RequestBody();
+		rbNonRef.content = new HashMap<>();
+		openapi.MediaType mtNonRef = new openapi.MediaType();
+		mtNonRef.schema = openapi.ReferenceOr.ofValue(new Schema());
+		rbNonRef.content.put("application/json", mtNonRef);
+		putNonRef.requestBody = openapi.ReferenceOr.ofValue(rbNonRef);
+		putNonRef.responses = new openapi.Responses();
+		putNonRef.responses.statusCodes = new HashMap<>();
+		putNonRef.responses.statusCodes.put("202", openapi.ReferenceOr.ofValue(new openapi.Response()));
+		nonRefBodyPi.put = putNonRef;
+		api.paths.pathItems.put("/nonRefBody", nonRefBodyPi);
+
 		serverroutes.Emit.emitModular(api);
 
 		String fullSeeder = seeder.Emit.emit(emptyApi, null);

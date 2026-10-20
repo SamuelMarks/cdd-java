@@ -58,11 +58,11 @@ public class Emit {
 
 		StringBuilder body = new StringBuilder();
 		body.append("{\n");
-		for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+		for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 			String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 			if (className.equals("Emit") || className.equals("Parse"))
 				continue;
-			if (entry.getValue().enumValues != null)
+			if (entry.getValue().value.enumValues != null)
 				continue;
 
 			body.append("  entityPool.put(\"").append(className).append("\", new ArrayList<>());\n");
@@ -74,7 +74,7 @@ public class Emit {
 			body.append("      entityPool.get(\"").append(className).append("\").add(entity);\n");
 			body.append("  }\n");
 
-			emitGeneratorMethod(seederClass, className, entry.getValue(), model);
+			emitGeneratorMethod(seederClass, className, entry.getValue().value, model);
 		}
 		body.append("}\n");
 		seedMethod.setBody(StaticJavaParser.parseBlock(body.toString()));
@@ -132,11 +132,11 @@ public class Emit {
 			StringBuilder body = new StringBuilder();
 			body.append("{\n");
 
-			for (Map.Entry<String, Schema> entry : model.components.schemas.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> entry : model.components.schemas.entrySet()) {
 				String className = entry.getKey().replaceAll("[^a-zA-Z0-9_]", "");
 				if (className.equals("Emit") || className.equals("Parse"))
 					continue;
-				if (entry.getValue().enumValues != null)
+				if (entry.getValue().value.enumValues != null)
 					continue;
 
 				body.append("  entityPool.put(\"").append(className).append("\", new ArrayList<>());\n");
@@ -148,7 +148,7 @@ public class Emit {
 				body.append("      entityPool.get(\"").append(className).append("\").add(entity);\n");
 				body.append("  }\n");
 
-				emitGeneratorMethod(seederClass, className, entry.getValue(), model);
+				emitGeneratorMethod(seederClass, className, entry.getValue().value, model);
 			}
 			body.append("}\n");
 			seedMethod.setBody(StaticJavaParser.parseBlock(body.toString()));
@@ -186,7 +186,7 @@ public class Emit {
 		b.append("  ").append(className).append(" obj = new ").append(className).append("();\n");
 
 		if (schemaMap.properties != null) {
-			for (Map.Entry<String, Object> prop : schemaMap.properties.entrySet()) {
+			for (Map.Entry<String, openapi.ReferenceOr<Schema>> prop : schemaMap.properties.entrySet()) {
 				String propName = prop.getKey();
 				String safePropName = propName.replaceAll("[^a-zA-Z0-9_]", "_");
 				if (Character.isDigit(safePropName.charAt(0)))
@@ -200,7 +200,12 @@ public class Emit {
 					continue; // Auto-generated ID
 
 				String type = resolveType(prop.getValue(), model);
-				if (type.equals("String")) {
+				Schema propSchema = prop.getValue().value;
+				if (propSchema.enumValues != null) {
+					String firstVal = String.valueOf(propSchema.enumValues.get(0)).replace("\\", "\\\\").replace("\"",
+							"\\\"");
+					b.append("  obj.").append(safePropName).append(" = \"").append(firstVal).append("\";\n");
+				} else if (type.equals("String")) {
 					if (propName.toLowerCase().contains("email")) {
 						b.append("  obj.").append(safePropName).append(" = faker.internet().emailAddress();\n");
 					} else if (propName.toLowerCase().contains("name")) {
@@ -225,8 +230,15 @@ public class Emit {
 					b.append("  obj.").append(safePropName).append(" = java.time.OffsetDateTime.now();\n");
 				} else if (type.equals("java.time.LocalDate")) {
 					b.append("  obj.").append(safePropName).append(" = java.time.LocalDate.now();\n");
-				} else if (!type.startsWith("List<") && !type.startsWith("Map<") && !type.equals("Object")
-						&& !type.equals("byte[]") && !type.equals("java.util.UUID")) {
+				} else if (type.equals("java.util.UUID")) {
+					b.append("  obj.").append(safePropName).append(" = java.util.UUID.randomUUID();\n");
+				} else if (type.equals("byte[]")) {
+					b.append("  obj.").append(safePropName).append(" = faker.lorem().word().getBytes();\n");
+				} else if (type.startsWith("List<")) {
+					b.append("  obj.").append(safePropName).append(" = new ArrayList<>();\n");
+				} else if (type.startsWith("Map<")) {
+					b.append("  obj.").append(safePropName).append(" = new HashMap<>();\n");
+				} else if (!type.equals("Object")) {
 					// Foreign Key Reference
 					b.append("  if (entityPool.containsKey(\"").append(type).append("\") && !entityPool.get(\"")
 							.append(type).append("\").isEmpty()) {\n");

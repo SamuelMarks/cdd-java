@@ -60,21 +60,21 @@ public class CliParseEmitTest {
 
 		api.components.schemas = new HashMap<>();
 		Schema sch1 = new Schema();
-		sch1.type = "object";
+		sch1.type = SchemaType.ofSingle("object");
 		sch1.discriminator = new Discriminator();
 		sch1.discriminator.propertyName = "type";
 		sch1.discriminator.defaultMapping = "defaultType";
 		sch1.discriminator.mapping = new HashMap<>();
 		sch1.discriminator.mapping.put("dog", "DogSchema");
 
-		sch1.allOf = Arrays.asList(new Schema());
-		sch1.anyOf = Arrays.asList(new Schema());
-		sch1.oneOf = Arrays.asList(new Schema());
-		sch1.not = new Schema();
-		sch1.items = new Items();
+		sch1.allOf = Arrays.asList(ReferenceOr.ofValue(new Schema()));
+		sch1.anyOf = Arrays.asList(ReferenceOr.ofValue(new Schema()));
+		sch1.oneOf = Arrays.asList(ReferenceOr.ofValue(new Schema()));
+		sch1.not = ReferenceOr.ofValue(new Schema());
+		sch1.items = ReferenceOr.ofValue(new Schema());
 		sch1.properties = new HashMap<>();
-		sch1.properties.put("prop1", new Schema());
-		sch1.additionalProperties = new HashMap<>();
+		sch1.properties.put("prop1", ReferenceOr.ofValue(new Schema()));
+		sch1.additionalProperties = AdditionalProperties.ofSchema(new Schema());
 		sch1.xml = new XML();
 		sch1.xml.name = "xmlName";
 		sch1.xml.namespace = "xmlNamespace";
@@ -84,24 +84,24 @@ public class CliParseEmitTest {
 		sch1.externalDocs = new ExternalDocumentation();
 		sch1.externalDocs.url = "url";
 		sch1.externalDocs.description = "desc";
-		sch1.enumValues = Arrays.asList("val1", "val2");
-		api.components.schemas.put("Schema1", sch1);
+		sch1.enumValues = Arrays.asList(arazzo.PayloadValue.ofString("val1"), arazzo.PayloadValue.ofString("val2"));
+		api.components.schemas.put("Schema1", ReferenceOr.ofValue(sch1));
 		api.components.schemas.put("NullSchema", null);
 
 		Schema schXml2 = new Schema();
 		schXml2.xml = new XML();
 		schXml2.xml.attribute = false;
 		schXml2.xml.wrapped = false;
-		api.components.schemas.put("SchemaXml2", schXml2);
+		api.components.schemas.put("SchemaXml2", ReferenceOr.ofValue(schXml2));
 
 		api.components.responses = new HashMap<>();
-		api.components.responses.put("res1", new Object());
+		api.components.responses.put("res1", ReferenceOr.ofValue(new Response()));
 		api.components.parameters = new HashMap<>();
-		api.components.parameters.put("param1", new Object());
+		api.components.parameters.put("param1", ReferenceOr.ofValue(new Parameter()));
 		api.components.requestBodies = new HashMap<>();
-		api.components.requestBodies.put("rb1", new Object());
+		api.components.requestBodies.put("rb1", ReferenceOr.ofValue(new RequestBody()));
 		api.components.headers = new HashMap<>();
-		api.components.headers.put("h1", new Object());
+		api.components.headers.put("h1", ReferenceOr.ofValue(new Header()));
 
 		api.components.securitySchemes = new HashMap<>();
 		SecurityScheme sc1 = new SecurityScheme();
@@ -111,18 +111,18 @@ public class CliParseEmitTest {
 		sc1.description = "apikey desc";
 		sc1.oauth2MetadataUrl = "oauth2meta";
 		sc1.deprecated = true;
-		api.components.securitySchemes.put("api_key", sc1);
+		api.components.securitySchemes.put("api_key", ReferenceOr.ofValue(sc1));
 
 		SecurityScheme sc2 = new SecurityScheme();
 		sc2.type = "http";
 		sc2.scheme = "bearer";
 		sc2.bearerFormat = "JWT";
-		api.components.securitySchemes.put("bearerAuth", sc2);
+		api.components.securitySchemes.put("bearerAuth", ReferenceOr.ofValue(sc2));
 
 		SecurityScheme sc3 = new SecurityScheme();
 		sc3.type = "mutualTLS";
 		sc3.deprecated = false;
-		api.components.securitySchemes.put("mTLS", sc3);
+		api.components.securitySchemes.put("mTLS", ReferenceOr.ofValue(sc3));
 
 		SecurityScheme sc4 = new SecurityScheme();
 		sc4.type = "oauth2";
@@ -162,7 +162,7 @@ public class CliParseEmitTest {
 		sc4.flows.deviceAuthorization.scopes = new HashMap<>();
 		sc4.flows.deviceAuthorization.scopes.put("dev", "dev access");
 
-		api.components.securitySchemes.put("oauth2", sc4);
+		api.components.securitySchemes.put("oauth2", ReferenceOr.ofValue(sc4));
 
 		SecurityScheme sc4_empty = new SecurityScheme();
 		sc4_empty.flows = new OAuthFlows();
@@ -171,14 +171,14 @@ public class CliParseEmitTest {
 		sc4_empty.flows.clientCredentials = new OAuthFlow();
 		sc4_empty.flows.authorizationCode = new OAuthFlow();
 		sc4_empty.flows.deviceAuthorization = new OAuthFlow();
-		api.components.securitySchemes.put("oauth2_empty", sc4_empty);
+		api.components.securitySchemes.put("oauth2_empty", ReferenceOr.ofValue(sc4_empty));
 
 		SecurityScheme sc5 = new SecurityScheme();
 		sc5.type = "openIdConnect";
 		sc5.openIdConnectUrl = "openIdUrl";
-		api.components.securitySchemes.put("openIdConnect", sc5);
+		api.components.securitySchemes.put("openIdConnect", ReferenceOr.ofValue(sc5));
 
-		api.components.securitySchemes.put("not_a_scheme", new Object());
+		api.components.securitySchemes.put("not_a_scheme", null);
 
 		api.components.links = new HashMap<>();
 		Link lnk1 = new Link();
@@ -190,15 +190,15 @@ public class CliParseEmitTest {
 		lnk1.server.url = "serverUrl";
 		lnk1.parameters = new HashMap<>();
 		lnk1.parameters.put("p1", "v1");
-		api.components.links.put("link1", lnk1);
-		api.components.links.put("link2", new Object());
+		api.components.links.put("link1", ReferenceOr.ofValue(lnk1));
+		api.components.links.put("link2", null);
 
 		api.components.callbacks = new HashMap<>();
-		api.components.callbacks.put("cb1", new Object());
+		api.components.callbacks.put("cb1", ReferenceOr.ofValue(new Callback()));
 		api.components.pathItems = new HashMap<>();
-		api.components.pathItems.put("pi1", new PathItem());
+		api.components.pathItems.put("pi1", ReferenceOr.ofValue(new PathItem()));
 		api.components.mediaTypes = new HashMap<>();
-		api.components.mediaTypes.put("mt1", new Object());
+		api.components.mediaTypes.put("mt1", ReferenceOr.ofValue(new MediaType()));
 
 		api.paths = new Paths();
 		api.paths.pathItems = new HashMap<>();
@@ -236,7 +236,7 @@ public class CliParseEmitTest {
 		op.externalDocs.description = "exDesc";
 
 		op.callbacks = new HashMap<>();
-		op.callbacks.put("cb1", new Callback());
+		op.callbacks.put("cb1", ReferenceOr.ofValue(new Callback()));
 
 		op.parameters = new ArrayList<>();
 		Parameter p1 = new Parameter();
@@ -250,19 +250,19 @@ public class CliParseEmitTest {
 		ex1.summary = "exSum";
 		ex1.description = "exDesc";
 		ex1.value = "exVal";
-		p1.examples.put("ex1", ex1);
+		p1.examples.put("ex1", ReferenceOr.ofValue(ex1));
 		p1.examples.put("ex2", null); // branch coverage
-		op.parameters.add(p1);
-		op.parameters.add(new Object());
+		op.parameters.add(ReferenceOr.ofValue(p1));
+		op.parameters.add(null);
 
 		RequestBody rb = new RequestBody();
 		rb.required = true;
 		rb.description = "rbDesc";
 		rb.content = new HashMap<>();
 		MediaType mt = new MediaType();
-		Map<String, Object> mtSch = new HashMap<>();
-		mtSch.put("type", "string");
-		mt.itemSchema = mtSch;
+		Schema mtSch = new Schema();
+		mtSch.type = SchemaType.ofSingle("string");
+		mt.itemSchema = ReferenceOr.ofValue(mtSch);
 
 		Encoding e1 = new Encoding();
 		e1.contentType = "application/json";
@@ -285,7 +285,7 @@ public class CliParseEmitTest {
 		mt.encoding.put("enc2", new Encoding()); // empty encoding
 
 		rb.content.put("application/json", mt);
-		op.requestBody = rb;
+		op.requestBody = ReferenceOr.ofValue(rb);
 
 		op.responses = new Responses();
 		op.responses.statusCodes = new HashMap<>();
@@ -299,8 +299,8 @@ public class CliParseEmitTest {
 		h1.required = true;
 		h1.deprecated = true;
 		h1.description = "h1Desc";
-		r1.headers.put("h1", h1);
-		r1.headers.put("h2", new Object());
+		r1.headers.put("h1", ReferenceOr.ofValue(h1));
+		r1.headers.put("h2", null);
 
 		r1.links = new HashMap<>();
 		Link lnk2 = new Link();
@@ -312,10 +312,10 @@ public class CliParseEmitTest {
 		lnk2.server.url = "serverUrl";
 		lnk2.parameters = new HashMap<>();
 		lnk2.parameters.put("p1", "v1");
-		r1.links.put("l1", lnk2);
+		r1.links.put("l1", ReferenceOr.ofValue(lnk2));
 
-		op.responses.statusCodes.put("200", r1);
-		op.responses.statusCodes.put("201", new Object());
+		op.responses.statusCodes.put("200", ReferenceOr.ofValue(r1));
+		op.responses.statusCodes.put("201", null);
 
 		Response r2 = new Response();
 		r2.description = "defaultDesc";
@@ -324,10 +324,10 @@ public class CliParseEmitTest {
 		r2.headers = new HashMap<>();
 		Header h2 = new Header();
 		h2.description = "h2Desc";
-		r2.headers.put("h2", h2);
+		r2.headers.put("h2", ReferenceOr.ofValue(h2));
 		r2.links = new HashMap<>();
-		r2.links.put("l2", lnk2);
-		op.responses.defaultResponse = r2;
+		r2.links.put("l2", ReferenceOr.ofValue(lnk2));
+		op.responses.defaultResponse = ReferenceOr.ofValue(r2);
 
 		return op;
 	}
@@ -419,7 +419,7 @@ public class CliParseEmitTest {
 		nullSch.xml = new XML();
 		nullSch.xml.attribute = null;
 		nullSch.xml.wrapped = null;
-		nullProps.components.schemas.put("nullSch", nullSch);
+		nullProps.components.schemas.put("nullSch", ReferenceOr.ofValue(nullSch));
 		nullProps.components.securitySchemes = new HashMap<>();
 		SecurityScheme nullSs = new SecurityScheme();
 		nullSs.flows = new OAuthFlows();
@@ -428,11 +428,11 @@ public class CliParseEmitTest {
 		nullSs.flows.clientCredentials = new OAuthFlow();
 		nullSs.flows.authorizationCode = new OAuthFlow();
 		nullSs.flows.deviceAuthorization = new OAuthFlow();
-		nullProps.components.securitySchemes.put("nullSs", nullSs);
+		nullProps.components.securitySchemes.put("nullSs", ReferenceOr.ofValue(nullSs));
 		nullProps.components.links = new HashMap<>();
 		Link nullLnk = new Link();
 		nullLnk.server = new Server();
-		nullProps.components.links.put("nullLnk", nullLnk);
+		nullProps.components.links.put("nullLnk", ReferenceOr.ofValue(nullLnk));
 
 		nullProps.paths = new Paths();
 		nullProps.paths.pathItems = new HashMap<>();
@@ -443,13 +443,13 @@ public class CliParseEmitTest {
 		Parameter nullP = new Parameter();
 		nullP.required = null;
 		nullP.deprecated = null;
-		nullPi.get.parameters.add(nullP);
+		nullPi.get.parameters.add(ReferenceOr.ofValue(nullP));
 
 		RequestBody nullRb = new RequestBody();
 		nullRb.required = null;
 		nullRb.content = new HashMap<>();
 		MediaType nullMt = new MediaType();
-		nullMt.itemSchema = new HashMap<>();
+		nullMt.itemSchema = ReferenceOr.ofValue(new Schema());
 		nullMt.prefixEncoding = Arrays.asList(new Encoding());
 		nullMt.itemEncoding = new Encoding();
 		nullMt.encoding = new HashMap<>();
@@ -458,7 +458,7 @@ public class CliParseEmitTest {
 		nullEnc.itemEncoding = new Encoding();
 		nullMt.encoding.put("nullEnc", nullEnc);
 		nullRb.content.put("application/json", nullMt);
-		nullPi.get.requestBody = nullRb;
+		nullPi.get.requestBody = ReferenceOr.ofValue(nullRb);
 
 		nullPi.get.responses = new Responses();
 		nullPi.get.responses.statusCodes = new HashMap<>();
@@ -467,11 +467,11 @@ public class CliParseEmitTest {
 		Header nullH = new Header();
 		nullH.required = null;
 		nullH.deprecated = null;
-		nullResp.headers.put("h", nullH);
+		nullResp.headers.put("h", ReferenceOr.ofValue(nullH));
 		nullResp.links = new HashMap<>();
-		nullResp.links.put("l", nullLnk);
-		nullPi.get.responses.statusCodes.put("200", nullResp);
-		nullPi.get.responses.defaultResponse = nullResp;
+		nullResp.links.put("l", ReferenceOr.ofValue(nullLnk));
+		nullPi.get.responses.statusCodes.put("200", ReferenceOr.ofValue(nullResp));
+		nullPi.get.responses.defaultResponse = ReferenceOr.ofValue(nullResp);
 
 		nullProps.paths.pathItems.put("/null", nullPi);
 
@@ -489,13 +489,13 @@ public class CliParseEmitTest {
 		falseSch.xml = new XML();
 		falseSch.xml.attribute = false;
 		falseSch.xml.wrapped = false;
-		falseProps.components.schemas.put("f1", falseSch);
-		falseProps.components.schemas.put("f2", new Schema());
+		falseProps.components.schemas.put("f1", ReferenceOr.ofValue(falseSch));
+		falseProps.components.schemas.put("f2", ReferenceOr.ofValue(new Schema()));
 
 		SecurityScheme falseSc = new SecurityScheme();
 		falseSc.deprecated = false;
 		falseSc.flows = new OAuthFlows();
-		falseProps.components.securitySchemes.put("sc1", falseSc);
+		falseProps.components.securitySchemes.put("sc1", ReferenceOr.ofValue(falseSc));
 
 		falseProps.paths = new Paths();
 		falseProps.paths.pathItems = new HashMap<>();
@@ -508,15 +508,15 @@ public class CliParseEmitTest {
 		falseP.deprecated = false;
 		falseP.examples = new HashMap<>();
 		Example falseEx = new Example(); // all nulls
-		falseP.examples.put("ex1", falseEx);
-		falsePi.get.parameters.add(falseP);
+		falseP.examples.put("ex1", ReferenceOr.ofValue(falseEx));
+		falsePi.get.parameters.add(ReferenceOr.ofValue(falseP));
 
 		RequestBody falseRb = new RequestBody();
 		falseRb.required = false;
 		falseRb.content = new HashMap<>();
 		MediaType falseMt = new MediaType();
 		falseRb.content.put("application/json", falseMt);
-		falsePi.get.requestBody = falseRb;
+		falsePi.get.requestBody = ReferenceOr.ofValue(falseRb);
 
 		falsePi.get.responses = new Responses();
 		falsePi.get.responses.statusCodes = new HashMap<>();
@@ -525,9 +525,9 @@ public class CliParseEmitTest {
 		Header falseH = new Header();
 		falseH.required = false;
 		falseH.deprecated = false;
-		falseResp.headers.put("h1", falseH);
-		falsePi.get.responses.statusCodes.put("200", falseResp);
-		falsePi.get.responses.defaultResponse = falseResp;
+		falseResp.headers.put("h1", ReferenceOr.ofValue(falseH));
+		falsePi.get.responses.statusCodes.put("200", ReferenceOr.ofValue(falseResp));
+		falsePi.get.responses.defaultResponse = ReferenceOr.ofValue(falseResp);
 
 		falseProps.paths.pathItems.put("/false", falsePi);
 
@@ -573,9 +573,9 @@ public class CliParseEmitTest {
 		r200.description = "ok";
 		r200.content = new HashMap<>();
 		MediaType rMt = new MediaType();
-		Map<String, Object> itemSch = new HashMap<>();
-		itemSch.put("type", "string");
-		rMt.itemSchema = itemSch;
+		Schema itemSch = new Schema();
+		itemSch.type = SchemaType.ofSingle("string");
+		rMt.itemSchema = ReferenceOr.ofValue(itemSch);
 		Encoding prefEnc = new Encoding();
 		prefEnc.contentType = "text/plain";
 		rMt.prefixEncoding = java.util.Arrays.asList(prefEnc);
@@ -589,15 +589,15 @@ public class CliParseEmitTest {
 		propEnc.itemEncoding = itemEnc;
 		rMt.encoding.put("prop1", propEnc);
 		r200.content.put("application/json", rMt);
-		respOp.responses.statusCodes.put("200", r200);
+		respOp.responses.statusCodes.put("200", ReferenceOr.ofValue(r200));
 		respPi.get = respOp;
 		respEncApi.paths.pathItems.put("/resp-enc", respPi);
 
 		String emittedRespCli = Emit.emitCli(respEncApi);
 		assertNotNull(com.github.javaparser.StaticJavaParser.parse(emittedRespCli));
 		OpenAPI roundTripRespEnc = Parse.parse(emittedRespCli);
-		Response parsedR200 = (Response) roundTripRespEnc.paths.pathItems.get("/resp-enc").get.responses.statusCodes
-				.get("200");
+		Response parsedR200 = roundTripRespEnc.paths.pathItems.get("/resp-enc").get.responses.statusCodes
+				.get("200").value;
 		assertNotNull(parsedR200);
 		MediaType parsedRMt = parsedR200.content.get("application/json");
 		assertNotNull(parsedRMt);
