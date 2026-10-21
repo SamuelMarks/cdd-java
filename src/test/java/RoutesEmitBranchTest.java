@@ -205,6 +205,10 @@ public class RoutesEmitBranchTest {
 		encMap.put("eSparse", new Encoding());
 		edgeMt.encoding = encMap;
 		edgeRb.content.put("application/json", edgeMt);
+		MediaType refMt = new MediaType();
+		refMt.schema = ReferenceOr.ofRef("#/components/schemas/RefSchema");
+		refMt.itemSchema = ReferenceOr.ofRef("#/components/schemas/RefItemSchema");
+		edgeRb.content.put("application/xml", refMt);
 		qOp.requestBody = ReferenceOr.ofValue(edgeRb);
 
 		String edgeFull = Emit.emit(edgeApi, null);

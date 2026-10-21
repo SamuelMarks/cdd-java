@@ -308,19 +308,41 @@ public class Emit {
 				Response resp = respObj.value;
 				if (resp.content != null) {
 					openapi.MediaType mt = resp.content.get("application/json");
-					if (mt.example != null) {
-						return valueToJsonString(mt.example);
-					}
-					if (mt.schema != null) {
-						return synthesizeSchemaValue(mt.schema.value, model).toString();
+					if (mt != null) {
+						if (mt.example != null) {
+							return valueToJsonString(mt.example);
+						}
+						if (mt.schema != null) {
+							return synthesizeSchemaRefOrValue(mt.schema, model).toString();
+						}
 					}
 				}
 				if (resp.schema != null) {
-					return synthesizeSchemaValue(resp.schema.value, model).toString();
+					return synthesizeSchemaRefOrValue(resp.schema, model).toString();
 				}
 			}
 		}
 		return "{\"mock\": \"true\"}";
+	}
+
+	/**
+	 * Synthesizes a mock JSON value ({@link JSONObject}, {@link JSONArray}, or
+	 * scalar) from a {@link openapi.ReferenceOr}{@code <}{@link Schema}{@code >}.
+	 *
+	 * @param refOr
+	 *            The {@link openapi.ReferenceOr}{@code <}{@link Schema}{@code >}
+	 *            wrapper.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @return The synthesized value object.
+	 */
+	private static Object synthesizeSchemaRefOrValue(openapi.ReferenceOr<Schema> refOr, OpenAPI model) {
+		Schema s = refOr.value;
+		if (s == null) {
+			s = new Schema();
+			s.$ref = refOr.resolveRefString();
+		}
+		return synthesizeSchemaValue(s, model);
 	}
 
 	/**
@@ -345,7 +367,7 @@ public class Emit {
 		if ("array".equals(typeStr)) {
 			JSONArray arr = new JSONArray();
 			if (resolved.items != null) {
-				arr.put(synthesizeSchemaValue(resolved.items.value, model));
+				arr.put(synthesizeSchemaRefOrValue(resolved.items, model));
 			}
 			return arr;
 		}
@@ -365,7 +387,7 @@ public class Emit {
 		if (resolved.properties != null) {
 			for (java.util.Map.Entry<String, openapi.ReferenceOr<Schema>> propEntry : resolved.properties.entrySet()) {
 				if (propEntry.getValue() != null) {
-					obj.put(propEntry.getKey(), synthesizeSchemaValue(propEntry.getValue().value, model));
+					obj.put(propEntry.getKey(), synthesizeSchemaRefOrValue(propEntry.getValue(), model));
 				}
 			}
 			return obj;
@@ -386,7 +408,7 @@ public class Emit {
 	 */
 	private static Schema dereferenceSchema(Schema schema, OpenAPI model) {
 		if (schema.$ref != null && model != null && model.components != null) {
-			String name = schema.$ref.substring("#/components/schemas/".length());
+			String name = schema.$ref.substring(schema.$ref.lastIndexOf('/') + 1);
 			openapi.ReferenceOr<Schema> target = model.components.schemas.get(name);
 			if (target != null) {
 				return target.value;

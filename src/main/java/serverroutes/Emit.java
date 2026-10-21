@@ -191,9 +191,12 @@ public class Emit {
 		Operation op = pi.post != null ? pi.post : pi.put;
 		if (op != null && op.requestBody != null) {
 			openapi.RequestBody rb = op.requestBody.value;
-			openapi.Schema s = rb.content.get("application/json").schema.value;
-			if (s.$ref != null) {
-				return s.$ref.substring("#/components/schemas/".length()).replaceAll("[^a-zA-Z0-9_]", "");
+			openapi.MediaType mt = rb.content != null ? rb.content.get("application/json") : null;
+			if (mt != null) {
+				String ref = mt.schema.resolveRefString();
+				if (ref != null) {
+					return ref.substring(ref.lastIndexOf('/') + 1).replaceAll("[^a-zA-Z0-9_]", "");
+				}
 			}
 		}
 		return singularName;

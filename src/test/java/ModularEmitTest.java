@@ -309,6 +309,21 @@ public class ModularEmitTest {
 		nonRefBodyPi.put = putNonRef;
 		api.paths.pathItems.put("/nonRefBody", nonRefBodyPi);
 
+		PathItem nonJsonBodyPi = new PathItem();
+		Operation postNonJson = new Operation();
+		openapi.RequestBody rbNonJson = new openapi.RequestBody();
+		rbNonJson.content = new HashMap<>();
+		rbNonJson.content.put("text/plain", new openapi.MediaType());
+		postNonJson.requestBody = openapi.ReferenceOr.ofValue(rbNonJson);
+		nonJsonBodyPi.post = postNonJson;
+		api.paths.pathItems.put("/nonJsonBody", nonJsonBodyPi);
+
+		PathItem nullContentBodyPi = new PathItem();
+		Operation postNullContent = new Operation();
+		postNullContent.requestBody = openapi.ReferenceOr.ofValue(new openapi.RequestBody());
+		nullContentBodyPi.post = postNullContent;
+		api.paths.pathItems.put("/nullContentBody", nullContentBodyPi);
+
 		serverroutes.Emit.emitModular(api);
 		assertFalse(serverroutes.Emit.hasEntityModel("User", new OpenAPI()));
 		OpenAPI emptyCompApi = new OpenAPI();

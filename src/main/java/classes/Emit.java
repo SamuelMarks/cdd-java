@@ -274,9 +274,6 @@ public class Emit {
 	 * @return The resolved Java type string.
 	 */
 	private static String resolveType(openapi.ReferenceOr<Schema> schemaObj, OpenAPI model) {
-		if (schemaObj != null && schemaObj.resolveRefString() != null) {
-			return "Object";
-		}
 		return openapi.TypeMapper.toJavaType(schemaObj, model, false);
 	}
 }

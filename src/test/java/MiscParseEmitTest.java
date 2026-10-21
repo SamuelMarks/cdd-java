@@ -268,6 +268,12 @@ public class MiscParseEmitTest {
 		pSchEx.schema = ReferenceOr.ofValue(schEx);
 		op5.parameters.add(ReferenceOr.ofValue(pSchEx));
 
+		Parameter pRefSch = new Parameter();
+		pRefSch.name = "refSchParam";
+		pRefSch.in = "query";
+		pRefSch.schema = ReferenceOr.ofRef("#/components/schemas/RefParamSchema");
+		op5.parameters.add(ReferenceOr.ofValue(pRefSch));
+
 		Parameter pBodyArr = new Parameter();
 		pBodyArr.name = "bodyArr";
 		pBodyArr.in = "body";
@@ -301,6 +307,13 @@ public class MiscParseEmitTest {
 		op5.requestBody = ReferenceOr.ofValue(rbJson);
 
 		pi5.get = op5;
+		Operation op5PostNonJson = new Operation();
+		op5PostNonJson.operationId = "postNonJson";
+		RequestBody rbNonJson = new RequestBody();
+		rbNonJson.content = new java.util.HashMap<>();
+		rbNonJson.content.put("text/plain", new MediaType());
+		op5PostNonJson.requestBody = ReferenceOr.ofValue(rbNonJson);
+		pi5.post = op5PostNonJson;
 		api5.paths.pathItems.put("/testSafeNamePath", pi5);
 		String out5 = tests.Emit.emit(api5, null);
 		assertTrue(out5.contains("\"exVal\""));
@@ -471,9 +484,7 @@ public class MiscParseEmitTest {
 		Response r200 = new Response();
 		r200.content = new java.util.HashMap<>();
 		MediaType mt200 = new MediaType();
-		Schema refSchema = new Schema();
-		refSchema.$ref = "#/components/schemas/Item";
-		mt200.schema = ReferenceOr.ofValue(refSchema);
+		mt200.schema = ReferenceOr.ofRef("#/components/schemas/Item");
 		r200.content.put("application/json", mt200);
 		getOp.responses.statusCodes.put("200", ReferenceOr.ofValue(r200));
 		pi1.get = getOp;
@@ -539,6 +550,25 @@ public class MiscParseEmitTest {
 		op204Only.responses.statusCodes.put("204", ReferenceOr.ofValue(new Response()));
 		pi6.patch = op204Only;
 		api.paths.pathItems.put("/test6", pi6);
+
+		PathItem piNonJson = new PathItem();
+		Operation opNonJson = new Operation();
+		opNonJson.responses = new Responses();
+		opNonJson.responses.statusCodes = new java.util.HashMap<>();
+		Response rNonJson = new Response();
+		rNonJson.content = new java.util.HashMap<>();
+		rNonJson.content.put("text/plain", new MediaType());
+		opNonJson.responses.statusCodes.put("200", ReferenceOr.ofValue(rNonJson));
+		piNonJson.get = opNonJson;
+		api.paths.pathItems.put("/testNonJson", piNonJson);
+
+		PathItem pi7 = new PathItem();
+		Operation opRefResp = new Operation();
+		opRefResp.responses = new Responses();
+		opRefResp.responses.statusCodes = new java.util.HashMap<>();
+		opRefResp.responses.statusCodes.put("200", ReferenceOr.ofRef("#/components/responses/RefResp"));
+		pi7.post = opRefResp;
+		api.paths.pathItems.put("/test7", pi7);
 
 		Schema missingRef = new Schema();
 		missingRef.$ref = "#/components/schemas/DoesNotExist";

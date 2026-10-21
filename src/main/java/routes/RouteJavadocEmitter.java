@@ -150,11 +150,11 @@ public class RouteJavadocEmitter {
 			openapi.MediaType mt = mEntry.getValue();
 			docBuilder.append(" * @").append(tagPrefix).append("Content ").append(statusPrefix).append(mtStr)
 					.append("\n");
-			if (mt.schema != null && mt.schema.value.type != null) {
+			if (mt.schema != null && mt.schema.value != null && mt.schema.value.type != null) {
 				docBuilder.append(" * @").append(tagPrefix).append("ContentSchema ").append(statusPrefix).append(mtStr)
 						.append(" ").append(mt.schema.value.type.single).append("\n");
 			}
-			if (mt.itemSchema != null && mt.itemSchema.value.type != null) {
+			if (mt.itemSchema != null && mt.itemSchema.value != null && mt.itemSchema.value.type != null) {
 				docBuilder.append(" * @").append(tagPrefix).append("ContentItemSchema ").append(statusPrefix)
 						.append(mtStr).append(" ").append(mt.itemSchema.value.type.single).append("\n");
 			}

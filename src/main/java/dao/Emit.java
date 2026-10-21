@@ -95,6 +95,7 @@ public class Emit {
 				cu.setPackageDeclaration("mocks");
 				cu.addImport("models." + className);
 				cu.addImport("java.util.List");
+				cu.addImport("java.util.ArrayList");
 				cu.addImport("jakarta.persistence.EntityManager");
 
 				emitEntityDaos(cu, className, schemaMap);
@@ -266,24 +267,19 @@ public class Emit {
 
 			stubDao.addMethod("create", Modifier.Keyword.PUBLIC).setType(className).addParameter(className, "entity")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser
-							.parseBlock("{ throw new UnsupportedOperationException(\"NotImplementedError\"); }"));
+					.setBody(StaticJavaParser.parseBlock("{ return entity; }"));
 			stubDao.addMethod("get", Modifier.Keyword.PUBLIC).setType(className).addParameter("Object", "id")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser
-							.parseBlock("{ throw new UnsupportedOperationException(\"NotImplementedError\"); }"));
+					.setBody(StaticJavaParser.parseBlock("{ return new " + className + "(); }"));
 			stubDao.addMethod("update", Modifier.Keyword.PUBLIC).setType(className).addParameter(className, "entity")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser
-							.parseBlock("{ throw new UnsupportedOperationException(\"NotImplementedError\"); }"));
+					.setBody(StaticJavaParser.parseBlock("{ return entity; }"));
 			stubDao.addMethod("delete", Modifier.Keyword.PUBLIC).setType("void").addParameter("Object", "id")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser
-							.parseBlock("{ throw new UnsupportedOperationException(\"NotImplementedError\"); }"));
+					.setBody(StaticJavaParser.parseBlock("{ }"));
 			stubDao.addMethod("list", Modifier.Keyword.PUBLIC).setType("List<" + className + ">")
 					.addThrownException(StaticJavaParser.parseClassOrInterfaceType("exceptions.ServerException"))
-					.setBody(StaticJavaParser
-							.parseBlock("{ throw new UnsupportedOperationException(\"NotImplementedError\"); }"));
+					.setBody(StaticJavaParser.parseBlock("{ return new ArrayList<>(); }"));
 		}
 
 		String concreteDaoName = "Concrete" + className + "Dao";

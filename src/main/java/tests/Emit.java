@@ -283,7 +283,10 @@ public class Emit {
 	private static Object extractRequestBodySchema(openapi.ReferenceOr<RequestBody> rbObj) {
 		RequestBody rb = rbObj.value;
 		if (rb.content != null) {
-			return rb.content.get("application/json").schema.value;
+			openapi.MediaType mt = rb.content.get("application/json");
+			if (mt != null) {
+				return mt.schema.value;
+			}
 		}
 		return null;
 	}
@@ -329,7 +332,7 @@ public class Emit {
 		if (p.example != null) {
 			return "\"" + String.valueOf(p.example).replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
 		}
-		if (p.schema != null) {
+		if (p.schema != null && p.schema.value != null) {
 			Schema s = p.schema.value;
 			if (s.defaultValue != null) {
 				return "\"" + String.valueOf(s.defaultValue).replace("\\", "\\\\").replace("\"", "\\\"") + "\"";

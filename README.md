@@ -3,7 +3,7 @@ cdd-java: Java ⇄ OpenAPI
 
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![interactive WASM web demo](https://img.shields.io/badge/interactive-WASM_web_demo-blueviolet?logo=webassembly)](https://offscale.github.io/cdd-java/)
-[![CI/CD](https://github.com/offscale/cdd-java/workflows/CI/badge.svg)](https://github.com/offscale/cdd-java/actions)
+[![CI](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/cdd-java/actions/workflows/ci.yml)
 [![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/offscale/cdd-java/actions)
 [![Doc Coverage](https://img.shields.io/badge/docs-100%25-brightgreen.svg)](https://offscale.github.io/cdd-java/)
 [![OpenAPI 3.2.0](https://img.shields.io/badge/OpenAPI-3.2.0-6BA539?logo=openapiinitiative&logoColor=white)](https://spec.openapis.org/oas/v3.2.0)
