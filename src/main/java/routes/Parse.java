@@ -74,6 +74,10 @@ public class Parse {
 					continue;
 				}
 
+				if (classDecl.getNameAsString().equals("AuthAdapter")) {
+					continue;
+				}
+
 				for (MethodDeclaration methodDecl : classDecl.getMethods()) {
 					if (methodDecl.getTypeAsString().contains("HttpResponse")) {
 						parseRouteMethod(methodDecl, api, parsedCallbacks);

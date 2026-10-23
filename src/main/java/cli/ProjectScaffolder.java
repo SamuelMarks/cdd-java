@@ -123,16 +123,38 @@ public class ProjectScaffolder {
 	}
 
 	/**
-	 * Writes the Maven {@code pom.xml} scaffolding file into the specified
-	 * directory.
+	 * Generates the default {@code README.md} content for generated server and SDK
+	 * projects, documenting the decoupled CDD server modes and administrative
+	 * webhook trigger endpoints.
+	 *
+	 * @return The Markdown content for {@code README.md}.
+	 */
+	public static String generateServerReadme() {
+		return String.join("\n", "# Generated CDD Project", "", "## Server Modes", "",
+				"- `start` (No DB configured): **Stub Mode**. Server runs using traditional scaffolds, endpoints return `NotImplementedError` or empty bodies.",
+				"- `start` (With `DATABASE_URL`): **Production Mode**. Uses actual ORM interactions against a real database.",
+				"- `start --ephemeral`: **Sandbox Mode**. Uses actual ORM interactions against a fresh, throwaway database.",
+				"- `start --ephemeral --seed`: **Full Mock Mode**. Ephemeral database, automatically populated with a localized fake data graph.",
+				"", "## Advanced Mock Capabilities & Administrative Endpoints", "",
+				"- `--strict-validation`: Enables strict OpenAPI request validation middleware (`400 Bad Request` on constraint failure).",
+				"- `--enforce-auth`: Enforces authentication middleware (`401 Unauthorized` / `403 Forbidden`).",
+				"- `--start-auth-server`: Starts integrated Identity Provider endpoints (`POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`).",
+				"- `POST /_mock/trigger-webhook/{webhook_name}`: Administrative endpoint to dispatch outgoing webhook payloads (`{\"targetUrl\": \"https://...\", \"payload\": {...}}`) to a registered target URL.",
+				"");
+	}
+
+	/**
+	 * Writes the Maven {@code pom.xml} and {@code README.md} scaffolding files into
+	 * the specified directory.
 	 *
 	 * @param dir
 	 *            The target project directory.
 	 * @throws IOException
-	 *             If writing {@code pom.xml} fails.
+	 *             If writing scaffolding files fails.
 	 */
 	public static void generateScaffolding(File dir) throws IOException {
 		writeOutput(new File(dir, "pom.xml"), generatePomXml());
+		writeOutput(new File(dir, "README.md"), generateServerReadme());
 	}
 
 	/**

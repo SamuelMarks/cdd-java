@@ -109,12 +109,41 @@ public class Emit {
 		sb.append(
 				"                        } else if (\"notifications/initialized\".equals(method) || \"initialized\".equals(method)) {\n");
 		sb.append("                            continue;\n");
-		sb.append("                        } else if (\"ping\".equals(method)) {\n");
+		sb.append(
+				"                        } else if (\"ping\".equals(method) || \"close\".equals(method) || \"shutdown\".equals(method)) {\n");
 		sb.append(
 				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{},\\\"id\\\":\" + idStr + \"}\";\n");
 		sb.append(
-				"                        } else if (\"$/cancelRequest\".equals(method) || \"cancelled\".equals(method)) {\n");
+				"                        } else if (\"$/cancelRequest\".equals(method) || \"cancelled\".equals(method) || \"notifications/disconnected\".equals(method) || \"exit\".equals(method)) {\n");
 		sb.append("                            continue;\n");
+		sb.append("                        } else if (\"roots/list\".equals(method)) {\n");
+		sb.append(
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"roots\\\":[{\\\"uri\\\":\\\"file:///workspace\\\",\\\"name\\\":\\\"workspace\\\"}]},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                        } else if (\"resources/list\".equals(method)) {\n");
+		sb.append(
+				"                            response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"resources\\\":[{\\\"uri\\\":\\\"cdd://openapi/spec\\\",\\\"name\\\":\\\"OpenAPI Specification\\\",\\\"mimeType\\\":\\\"application/json\\\"}]},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                        } else if (\"resources/read\".equals(method)) {\n");
+		sb.append("                            JsonNode params = req.get(\"params\");\n");
+		sb.append(
+				"                            String uri = (params != null && params.has(\"uri\")) ? params.get(\"uri\").asText() : \"\";\n");
+		sb.append("                            if (uri.contains(\"..\")) {\n");
+		sb.append(
+				"                                response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"error\\\":{\\\"code\\\":-32602,\\\"message\\\":\\\"Root boundary violation\\\"},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                            } else {\n");
+		sb.append(
+				"                                response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"contents\\\":[{\\\"uri\\\":\\\"\" + uri + \"\\\",\\\"mimeType\\\":\\\"application/json\\\",\\\"text\\\":\\\"{}\\\"}]},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                            }\n");
+		sb.append("                        } else if (\"sampling/createMessage\".equals(method)) {\n");
+		sb.append("                            JsonNode params = req.get(\"params\");\n");
+		sb.append(
+				"                            boolean approved = (params == null || !params.has(\"approved\") || params.get(\"approved\").asBoolean(true));\n");
+		sb.append("                            if (!approved) {\n");
+		sb.append(
+				"                                response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"error\\\":{\\\"code\\\":-32602,\\\"message\\\":\\\"Sampling rejected by human-in-the-loop\\\"},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                            } else {\n");
+		sb.append(
+				"                                response = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":{\\\"role\\\":\\\"assistant\\\",\\\"content\\\":{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"Approved\\\"},\\\"model\\\":\\\"sdk-mcp\\\",\\\"stopReason\\\":\\\"endTurn\\\"},\\\"id\\\":\" + idStr + \"}\";\n");
+		sb.append("                            }\n");
 		sb.append("                        } else if (\"tools/list\".equals(method)) {\n");
 		sb.append("                            ObjectNode result = mapper.createObjectNode();\n");
 		sb.append("                            ArrayNode tools = mapper.createArrayNode();\n");

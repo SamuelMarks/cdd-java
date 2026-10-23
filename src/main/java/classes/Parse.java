@@ -91,7 +91,7 @@ public class Parse {
 
 				String className = classDecl.getNameAsString();
 				if (className.endsWith("Client") || className.endsWith("MockServer")
-						|| className.endsWith("IntegrationTest")) {
+						|| className.endsWith("IntegrationTest") || className.equals("AuthAdapter")) {
 					continue;
 				}
 

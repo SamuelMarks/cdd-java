@@ -110,6 +110,8 @@ public class ModularEmitTest {
 		assertEquals(0, mocks.Emit.emitModular(emptyApi).size());
 		emptyApi.paths.pathItems = new HashMap<>();
 		assertEquals(0, serverroutes.Emit.emitModular(emptyApi).size());
+		assertEquals(1, servermain.Emit.emitModular(emptyApi).size());
+		assertEquals(0, servertests.Emit.emitModular(emptyApi).size());
 		assertEquals(0, mocks.Emit.emitModular(emptyApi).size());
 
 		emptyApi.components = new Components();
@@ -325,6 +327,9 @@ public class ModularEmitTest {
 		api.paths.pathItems.put("/nullContentBody", nullContentBodyPi);
 
 		serverroutes.Emit.emitModular(api);
+		assertTrue(serverroutes.Emit.emitMiddlewareRoutes(new OpenAPI()).contains("false"));
+		assertTrue(serverroutes.Emit.emitMiddlewareRoutes(api).contains("SELECT u FROM User u"));
+		assertTrue(cli.ProjectScaffolder.generateServerReadme().contains("Full Mock Mode"));
 		assertFalse(serverroutes.Emit.hasEntityModel("User", new OpenAPI()));
 		OpenAPI emptyCompApi = new OpenAPI();
 		emptyCompApi.components = new Components();

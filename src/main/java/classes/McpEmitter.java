@@ -202,6 +202,126 @@ public class McpEmitter {
 		addMcpClass(mcpAdapter, "ListRootsResult", "Result", "java.util.List<Root>", "roots");
 		addMcpClass(mcpAdapter, "RootsListChangedNotification", "Notification");
 
+		ClassOrInterfaceDeclaration transportIface = new ClassOrInterfaceDeclaration();
+		transportIface.setName("McpTransport");
+		transportIface.setInterface(true);
+		transportIface.setModifiers(Modifier.Keyword.PUBLIC, Modifier.Keyword.STATIC);
+		com.github.javaparser.ast.body.MethodDeclaration sendMd = transportIface.addMethod("send");
+		sendMd.setType("String");
+		sendMd.addParameter("String", "payload");
+		sendMd.setBody(null);
+		com.github.javaparser.ast.body.MethodDeclaration closeTransportMd = transportIface.addMethod("close");
+		closeTransportMd.setType("void");
+		closeTransportMd.setBody(null);
+		mcpAdapter.addMember(transportIface);
+
+		mcpAdapter.addField("McpTransport", "transport", Modifier.Keyword.PUBLIC);
+		mcpAdapter.addFieldWithInitializer("boolean", "closed",
+				new com.github.javaparser.ast.expr.BooleanLiteralExpr(false), Modifier.Keyword.PUBLIC);
+		mcpAdapter.addField("java.util.function.Consumer<ProgressNotificationParams>", "progressListener",
+				Modifier.Keyword.PUBLIC);
+
+		com.github.javaparser.ast.body.MethodDeclaration closeMd = mcpAdapter.addMethod("close",
+				Modifier.Keyword.PUBLIC);
+		closeMd.setType("void");
+		closeMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock(
+				"{\n  this.closed = true;\n  if (this.transport != null) {\n    this.transport.close();\n  }\n}"));
+
+		com.github.javaparser.ast.body.MethodDeclaration readResMd = mcpAdapter.addMethod("readResource",
+				Modifier.Keyword.PUBLIC);
+		readResMd.setType("TextResourceContents");
+		readResMd.addParameter("String", "uri");
+		readResMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock("{\n"
+				+ "  if (uri == null || uri.contains(\"..\")) {\n"
+				+ "    throw new SecurityException(\"Root boundary violation: \" + uri);\n" + "  }\n"
+				+ "  TextResourceContents res = new TextResourceContents();\n" + "  res.uri = uri;\n"
+				+ "  res.mimeType = \"application/json\";\n" + "  res.text = \"{}\";\n" + "  return res;\n" + "}"));
+
 		return mcpAdapter;
+	}
+
+	/**
+	 * Creates and attaches the {@code AuthAdapter} inner class to the given client
+	 * class declaration for integrated Identity Provider (IdP) authentication
+	 * ({@code register}, {@code login}, {@code refresh}, and {@code logout}).
+	 *
+	 * @param clientDecl
+	 *            The target SDK client {@link ClassOrInterfaceDeclaration}.
+	 * @param clientClassName
+	 *            The enclosing SDK client class name.
+	 * @return The created {@code AuthAdapter} {@link ClassOrInterfaceDeclaration}.
+	 */
+	public static ClassOrInterfaceDeclaration createAuthAdapter(ClassOrInterfaceDeclaration clientDecl,
+			String clientClassName) {
+		ClassOrInterfaceDeclaration authAdapter = new ClassOrInterfaceDeclaration().setName("AuthAdapter")
+				.setModifier(Modifier.Keyword.PUBLIC, true);
+		clientDecl.addMember(authAdapter);
+
+		com.github.javaparser.ast.body.MethodDeclaration regMd = authAdapter.addMethod("register",
+				Modifier.Keyword.PUBLIC);
+		regMd.setType("HttpResponse<String>");
+		regMd.addParameter("String", "username");
+		regMd.addParameter("String", "password");
+		regMd.addThrownException(com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType("Exception"));
+		regMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock("{\n"
+				+ "  String payload = \"{\\\"username\\\":\\\"\" + username + \"\\\",\\\"password\\\":\\\"\" + password + \"\\\"}\";\n"
+				+ "  HttpRequest req = HttpRequest.newBuilder().uri(URI.create(" + clientClassName
+				+ ".this.baseUrl + \"/auth/register\"))\n" + "      .header(\"Content-Type\", \"application/json\")\n"
+				+ "      .POST(HttpRequest.BodyPublishers.ofString(payload)).build();\n"
+				+ "  HttpResponse<String> res = " + clientClassName
+				+ ".this.httpClient.send(req, HttpResponse.BodyHandlers.ofString());\n"
+				+ "  extractAndStoreToken(res.body());\n" + "  return res;\n" + "}"));
+
+		com.github.javaparser.ast.body.MethodDeclaration loginMd = authAdapter.addMethod("login",
+				Modifier.Keyword.PUBLIC);
+		loginMd.setType("HttpResponse<String>");
+		loginMd.addParameter("String", "username");
+		loginMd.addParameter("String", "password");
+		loginMd.addThrownException(com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType("Exception"));
+		loginMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock("{\n"
+				+ "  String payload = \"{\\\"username\\\":\\\"\" + username + \"\\\",\\\"password\\\":\\\"\" + password + \"\\\"}\";\n"
+				+ "  HttpRequest req = HttpRequest.newBuilder().uri(URI.create(" + clientClassName
+				+ ".this.baseUrl + \"/auth/login\"))\n" + "      .header(\"Content-Type\", \"application/json\")\n"
+				+ "      .POST(HttpRequest.BodyPublishers.ofString(payload)).build();\n"
+				+ "  HttpResponse<String> res = " + clientClassName
+				+ ".this.httpClient.send(req, HttpResponse.BodyHandlers.ofString());\n"
+				+ "  extractAndStoreToken(res.body());\n" + "  return res;\n" + "}"));
+
+		com.github.javaparser.ast.body.MethodDeclaration refreshMd = authAdapter.addMethod("refresh",
+				Modifier.Keyword.PUBLIC);
+		refreshMd.setType("HttpResponse<String>");
+		refreshMd.addThrownException(com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType("Exception"));
+		refreshMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock("{\n"
+				+ "  HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(" + clientClassName
+				+ ".this.baseUrl + \"/auth/refresh\"));\n" + "  if (" + clientClassName
+				+ ".this.authorizationToken != null) {\n" + "      builder.header(\"Authorization\", " + clientClassName
+				+ ".this.authorizationToken);\n" + "  }\n" + "  HttpResponse<String> res = " + clientClassName
+				+ ".this.httpClient.send(builder.POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());\n"
+				+ "  extractAndStoreToken(res.body());\n" + "  return res;\n" + "}"));
+
+		com.github.javaparser.ast.body.MethodDeclaration logoutMd = authAdapter.addMethod("logout",
+				Modifier.Keyword.PUBLIC);
+		logoutMd.setType("HttpResponse<String>");
+		logoutMd.addThrownException(com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType("Exception"));
+		logoutMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock("{\n"
+				+ "  HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(" + clientClassName
+				+ ".this.baseUrl + \"/auth/logout\"));\n" + "  if (" + clientClassName
+				+ ".this.authorizationToken != null) {\n" + "      builder.header(\"Authorization\", " + clientClassName
+				+ ".this.authorizationToken);\n" + "  }\n" + "  HttpResponse<String> res = " + clientClassName
+				+ ".this.httpClient.send(builder.POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());\n"
+				+ "  " + clientClassName + ".this.authorizationToken = null;\n" + "  return res;\n" + "}"));
+
+		com.github.javaparser.ast.body.MethodDeclaration extractMd = authAdapter.addMethod("extractAndStoreToken",
+				Modifier.Keyword.PRIVATE);
+		extractMd.addParameter("String", "body");
+		extractMd.setBody(com.github.javaparser.StaticJavaParser.parseBlock("{\n"
+				+ "  if (body != null && body.contains(\"\\\"token\\\"\")) {\n"
+				+ "      int idx = body.indexOf(\"\\\"token\\\"\");\n" + "      int colon = body.indexOf(':', idx);\n"
+				+ "      int q1 = body.indexOf('\"', colon + 1);\n" + "      int q2 = body.indexOf('\"', q1 + 1);\n"
+				+ "      if (q1 > 0 && q2 > q1) {\n" + "          " + clientClassName
+				+ ".this.authorizationToken = \"Bearer \" + body.substring(q1 + 1, q2);\n" + "      }\n" + "  }\n"
+				+ "}"));
+
+		return authAdapter;
 	}
 }

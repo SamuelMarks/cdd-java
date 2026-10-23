@@ -342,20 +342,43 @@ public class Emit {
 		if (dbConfig == null) {
 			dbConfig = cu.addClass("DbConfig");
 			dbConfig.removeModifier(Modifier.Keyword.PUBLIC);
-			dbConfig.setJavadocComment("Database Connection configuration class.");
-			dbConfig.addField("boolean", "ephemeral", Modifier.Keyword.PUBLIC)
-					.setJavadocComment("Whether to use an ephemeral DB.");
+			dbConfig.setJavadocComment("Database and Server CLI configuration class.");
+			dbConfig.addField("boolean", "ephemeral", Modifier.Keyword.PUBLIC).setJavadocComment(
+					"Whether to use an ephemeral database (--ephemeral): Triggers Concrete DAOs with a throwaway DB.");
+			dbConfig.addField("boolean", "seed", Modifier.Keyword.PUBLIC).setJavadocComment(
+					"Whether to seed the database on startup (--seed): Runs the fake data seeder on startup.");
+			dbConfig.addField("boolean", "strictValidation", Modifier.Keyword.PUBLIC).setJavadocComment(
+					"Whether to enforce strict request validation (--strict-validation): Validates requests against OpenAPI schemas.");
+			dbConfig.addField("boolean", "enforceAuth", Modifier.Keyword.PUBLIC).setJavadocComment(
+					"Whether to enforce authentication (--enforce-auth): Validates bearer/API-key/OAuth2 credentials.");
+			dbConfig.addField("boolean", "startAuthServer", Modifier.Keyword.PUBLIC).setJavadocComment(
+					"Whether to mount the integrated Identity Provider endpoints (--start-auth-server).");
 			dbConfig.addField("String", "databaseUrl", Modifier.Keyword.PUBLIC).setJavadocComment("The database URL.");
 
 			MethodDeclaration loadMethod = dbConfig.addMethod("load", Modifier.Keyword.PUBLIC, Modifier.Keyword.STATIC);
 			loadMethod.setType("DbConfig");
 			loadMethod.setJavadocComment(
 					"Loads configuration from environment variables.\n@return The loaded DbConfig instance.");
-			loadMethod.setBody(StaticJavaParser.parseBlock("{\n" + "  DbConfig config = new DbConfig();\n"
+			loadMethod.setBody(StaticJavaParser.parseBlock("{\n" + "  return fromArgs(new String[0]);\n" + "}"));
+
+			MethodDeclaration fromArgsMethod = dbConfig.addMethod("fromArgs", Modifier.Keyword.PUBLIC,
+					Modifier.Keyword.STATIC);
+			fromArgsMethod.setType("DbConfig");
+			fromArgsMethod.addParameter("String[]", "args");
+			fromArgsMethod.setJavadocComment(
+					"Parses CLI arguments (--ephemeral, --seed, --strict-validation, --enforce-auth, --start-auth-server) and environment variables.\n@param args Command-line arguments.\n@return The resolved DbConfig instance.");
+			fromArgsMethod.setBody(StaticJavaParser.parseBlock("{\n" + "  DbConfig config = new DbConfig();\n"
 					+ "  config.databaseUrl = System.getenv(\"DATABASE_URL\");\n"
 					+ "  String ephemeralEnv = System.getenv(\"EPHEMERAL_DB\");\n"
 					+ "  config.ephemeral = \"true\".equalsIgnoreCase(ephemeralEnv) || \"1\".equals(ephemeralEnv);\n"
-					+ "  return config;\n" + "}"));
+					+ "  config.seed = System.getenv(\"SEED_DB\") != null;\n" + "  if (args != null) {\n"
+					+ "      for (String arg : args) {\n"
+					+ "          if (\"--ephemeral\".equals(arg) || \"-e\".equals(arg)) { config.ephemeral = true; }\n"
+					+ "          else if (\"--seed\".equals(arg) || \"-s\".equals(arg)) { config.seed = true; }\n"
+					+ "          else if (\"--strict-validation\".equals(arg)) { config.strictValidation = true; }\n"
+					+ "          else if (\"--enforce-auth\".equals(arg)) { config.enforceAuth = true; }\n"
+					+ "          else if (\"--start-auth-server\".equals(arg)) { config.startAuthServer = true; }\n"
+					+ "      }\n" + "  }\n" + "  return config;\n" + "}"));
 		}
 	}
 

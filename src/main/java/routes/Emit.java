@@ -426,6 +426,9 @@ public class Emit {
 
 		sb.append("    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()\n");
 		sb.append("        .uri(URI.create(uriBuilder.toString()));\n");
+		sb.append("    if (this.authorizationToken != null) {\n");
+		sb.append("        requestBuilder.header(\"Authorization\", this.authorizationToken);\n");
+		sb.append("    }\n");
 
 		if (hasHeader) {
 			for (Parameter p : allParams) {
@@ -484,7 +487,8 @@ public class Emit {
 			clientDecl.addField("String", "authorizationToken", com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
 			clientDecl.addConstructor(com.github.javaparser.ast.Modifier.Keyword.PUBLIC)
 					.addParameter("String", "baseUrl").setBody(StaticJavaParser.parseBlock(
-							"{ this.baseUrl = baseUrl; this.httpClient = HttpClient.newHttpClient(); this.mcp = new McpAdapter(); }"));
+							"{ this.baseUrl = baseUrl; this.httpClient = HttpClient.newHttpClient(); this.mcp = new McpAdapter(); this.auth = new AuthAdapter(); }"));
+			classes.McpEmitter.createAuthAdapter(clientDecl, clientClass);
 			ClassOrInterfaceDeclaration mcpAdapter = classes.McpEmitter.createMcpAdapter(clientDecl);
 			com.github.javaparser.ast.body.MethodDeclaration getTools = mcpAdapter.addMethod("getTools",
 					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
@@ -551,6 +555,7 @@ public class Emit {
 			resBody.append("}\n");
 			getResources.setBody(StaticJavaParser.parseBlock(resBody.toString()));
 			clientDecl.addField("McpAdapter", "mcp", com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
+			clientDecl.addField("AuthAdapter", "auth", com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
 		}
 	}
 

@@ -251,6 +251,9 @@ public class ArazzoResolver {
 		if (wf.inputs.isValue()) {
 			return wf.inputs.value;
 		}
+		if (!wf.inputs.isRef()) {
+			return null;
+		}
 		String ref = wf.inputs.ref.ref;
 		if (spec != null && spec.components != null && spec.components.inputs != null) {
 			String key = ref.contains("/")

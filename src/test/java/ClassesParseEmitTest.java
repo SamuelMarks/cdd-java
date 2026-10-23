@@ -472,4 +472,38 @@ public class ClassesParseEmitTest {
 		assertFalse(modular.containsKey("models/Emit.java"));
 		assertTrue(modular.containsKey("models/SparseObj.java"));
 	}
+
+	/**
+	 * Verifies that all emitted Model Context Protocol (MCP) 1.0.0 schema DTOs
+	 * inside {@code McpAdapter} round-trip cleanly through {@link classes.Parse}
+	 * into {@code api.components.schemas}.
+	 */
+	@Test
+	public void testMcpSchemasRoundTrip() {
+		OpenAPI api = new OpenAPI();
+		String sdkSource = Emit.emit(api, null);
+		OpenAPI extracted = Parse.parse(sdkSource);
+		assertNotNull(extracted.components);
+		assertNotNull(extracted.components.schemas);
+		String[] mcpSchemas = {"Annotated", "BlobResourceContents", "CallToolRequest", "CallToolResult",
+				"CancelledNotification", "ClientCapabilities", "ClientNotification", "ClientRequest", "ClientResult",
+				"CompleteRequest", "CompleteResult", "CreateMessageRequest", "CreateMessageResult", "Cursor",
+				"EmbeddedResource", "EmptyResult", "GetPromptRequest", "GetPromptResult", "ImageContent",
+				"Implementation", "InitializeRequest", "InitializeResult", "InitializedNotification", "JSONRPCError",
+				"JSONRPCMessage", "JSONRPCNotification", "JSONRPCRequest", "JSONRPCResponse", "ListPromptsRequest",
+				"ListPromptsResult", "ListResourceTemplatesRequest", "ListResourceTemplatesResult",
+				"ListResourcesRequest", "ListResourcesResult", "ListRootsRequest", "ListRootsResult",
+				"ListToolsRequest", "ListToolsResult", "LoggingLevel", "LoggingMessageNotification", "ModelHint",
+				"ModelPreferences", "Notification", "PaginatedRequest", "PaginatedResult", "PingRequest", "Prompt",
+				"PromptArgument", "PromptListChangedNotification", "PromptMessage", "PromptReference",
+				"ProgressNotification", "ProgressToken", "ReadResourceRequest", "ReadResourceResult", "Request",
+				"RequestId", "Resource", "ResourceContents", "ResourceListChangedNotification", "ResourceReference",
+				"ResourceTemplate", "ResourceUpdatedNotification", "Result", "Role", "Root",
+				"RootsListChangedNotification", "SamplingMessage", "ServerCapabilities", "ServerNotification",
+				"ServerRequest", "ServerResult", "SetLevelRequest", "SubscribeRequest", "TextContent",
+				"TextResourceContents", "Tool", "ToolListChangedNotification", "UnsubscribeRequest"};
+		for (String name : mcpSchemas) {
+			assertTrue("Missing MCP schema: " + name, extracted.components.schemas.containsKey(name));
+		}
+	}
 }

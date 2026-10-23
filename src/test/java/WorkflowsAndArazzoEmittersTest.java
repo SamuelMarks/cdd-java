@@ -427,4 +427,300 @@ public class WorkflowsAndArazzoEmittersTest {
 		assertNotNull(
 				mocks.ArazzoMockParser.parse("public class PlainMock { public void custom() { put(\"a\", \"b\"); } }"));
 	}
+
+	/**
+	 * Verifies exhaustive round-trip and edge-case coverage of
+	 * {@link ArazzoJavadocCodec} across reusable components, workflow actions, step
+	 * attributes, JSON selectors, and specification extensions.
+	 */
+	@Test
+	public void testExhaustiveArazzoJavadocCodecRoundTrip() {
+		Arazzo spec = new Arazzo();
+		spec.arazzo = "1.1.0";
+		spec.$self = "https://example.com/exhaustive.json";
+		spec.extensions.put("x-root", PayloadValue.ofString("rVal"));
+		spec.info = new ArazzoInfo();
+		spec.info.title = "Exhaustive";
+		spec.info.summary = "Sum";
+		spec.info.description = "Desc";
+		spec.info.version = "1.1.0";
+		spec.info.extensions.put("x-info", PayloadValue.ofNumber(42));
+
+		SourceDescription sd1 = new SourceDescription();
+		sd1.name = "api1";
+		sd1.type = SourceType.OPENAPI;
+		sd1.url = "./api1.json";
+		sd1.extensions.put("x-sd", PayloadValue.ofString("sdVal"));
+		SourceDescription sd2 = new SourceDescription();
+		sd2.name = "api2";
+		sd2.type = SourceType.ARAZZO;
+		sd2.url = "./api2.json";
+		spec.sourceDescriptions = Arrays.asList(sd1, sd2);
+
+		spec.components = new ArazzoComponents();
+		spec.components.inputs = new LinkedHashMap<>();
+		Schema compSchema = new Schema();
+		compSchema.type = openapi.SchemaType.ofSingle("object");
+		compSchema.properties = new LinkedHashMap<>();
+		Schema strSchema = new Schema();
+		strSchema.type = openapi.SchemaType.ofSingle("string");
+		compSchema.properties.put("apiKey", ReferenceOr.ofValue(strSchema));
+		spec.components.inputs.put("AuthIn", compSchema);
+		spec.components.inputs.put("OtherIn", compSchema);
+
+		spec.components.parameters = new LinkedHashMap<>();
+		ArazzoParameter compParam = new ArazzoParameter();
+		compParam.name = "X-Key";
+		compParam.in = ParameterIn.HEADER;
+		compParam.value = PayloadValue.ofString("$inputs.apiKey");
+		compParam.extensions.put("x-cp", PayloadValue.ofString("cp"));
+		spec.components.parameters.put("sharedKey", compParam);
+		spec.components.parameters.put("sharedKey2", compParam);
+
+		spec.components.successActions = new LinkedHashMap<>();
+		SuccessAction compSa = new SuccessAction();
+		compSa.name = "compDone";
+		compSa.type = SuccessActionType.END;
+		spec.components.successActions.put("doneAct", compSa);
+		spec.components.successActions.put("doneAct2", compSa);
+
+		spec.components.failureActions = new LinkedHashMap<>();
+		FailureAction compFa = new FailureAction();
+		compFa.name = "compRetry";
+		compFa.type = FailureActionType.RETRY;
+		compFa.retryAfter = 2.0;
+		compFa.retryLimit = 3;
+		spec.components.failureActions.put("retryAct", compFa);
+		spec.components.failureActions.put("retryAct2", compFa);
+		spec.components.extensions.put("x-comp", PayloadValue.ofString("cVal"));
+
+		Workflow wf = new Workflow();
+		wf.workflowId = "complexFlow";
+		openapi.Reference inRef = new openapi.Reference();
+		inRef.ref = "$components.inputs.AuthIn";
+		wf.inputs = ReferenceOr.ofRef(inRef);
+		wf.extensions.put("x-wf", PayloadValue.ofString("wfVal"));
+
+		ArazzoParameter wfExtParam = new ArazzoParameter();
+		wfExtParam.name = "pExt";
+		wfExtParam.in = ParameterIn.QUERY;
+		wfExtParam.value = PayloadValue.ofString("v");
+		wfExtParam.extensions.put("x-p", PayloadValue.ofString("pv"));
+		wf.parameters = Arrays.asList(ReusableOr.ofReference("$components.parameters.sharedKey"),
+				ReusableOr.ofItem(wfExtParam), new ReusableOr<>(null, null));
+
+		SuccessAction wfSa = new SuccessAction();
+		wfSa.name = "wfGoto";
+		wfSa.type = SuccessActionType.GOTO;
+		wfSa.workflowId = "otherWf";
+		wf.successActions = Arrays.asList(ReusableOr.ofReference("$components.successActions.doneAct"),
+				ReusableOr.ofItem(wfSa));
+
+		FailureAction wfFa = new FailureAction();
+		wfFa.name = "wfFail";
+		wfFa.type = FailureActionType.END;
+		wf.failureActions = Arrays.asList(ReusableOr.ofReference("$components.failureActions.retryAct"),
+				ReusableOr.ofItem(wfFa));
+
+		Step s = new Step();
+		s.stepId = "richStep";
+		s.description = "Line 1\nLine 2";
+		s.operationPath = "{$sourceDescriptions.api1.url}#/paths/~1items/get";
+		s.workflowId = "subWf";
+		s.channelPath = "/events";
+		s.timeout = 1000;
+		s.correlationId = "$request.header.X-Corr";
+		s.action = StepActionType.SEND;
+		s.dependsOn = Arrays.asList("dep1", "dep2");
+		s.extensions.put("x-st", PayloadValue.ofString("stVal"));
+
+		ArazzoParameter stExtParam = new ArazzoParameter();
+		stExtParam.name = "spExt";
+		stExtParam.in = ParameterIn.HEADER;
+		stExtParam.value = PayloadValue.ofString("sv");
+		stExtParam.extensions.put("x-sp", PayloadValue.ofString("spv"));
+		s.parameters = Arrays.asList(ReusableOr.ofReference("$components.parameters.sharedKey"),
+				ReusableOr.ofItem(stExtParam), new ReusableOr<>(null, null));
+
+		s.requestBody = new ArazzoRequestBody();
+		s.requestBody.contentType = "application/json";
+		s.requestBody.payload = PayloadValue.ofString("{\"a\":1}");
+
+		Step sBodyExt = new Step();
+		sBodyExt.stepId = "bodyExtStep";
+		sBodyExt.requestBody = new ArazzoRequestBody();
+		sBodyExt.requestBody.extensions.put("x-rb", PayloadValue.ofString("rbv"));
+
+		Step sReplJson = new Step();
+		sReplJson.stepId = "replJsonStep";
+		sReplJson.requestBody = new ArazzoRequestBody();
+		PayloadReplacement pr1 = new PayloadReplacement();
+		pr1.target = "/a";
+		pr1.targetSelectorType = CriterionTypeOrExpression.ofSimple(CriterionEngineType.JSONPOINTER);
+		pr1.value = PayloadValue.ofString("x");
+		PayloadReplacement pr2 = new PayloadReplacement();
+		pr2.target = "/b";
+		pr2.value = PayloadValue.ofString("y");
+		pr2.extensions.put("x-pr", PayloadValue.ofString("prv"));
+		sReplJson.requestBody.replacements = Arrays.asList(pr1, pr2);
+
+		Criterion critExt = new Criterion();
+		critExt.condition = "$statusCode == 200";
+		critExt.extensions.put("x-cr", PayloadValue.ofString("crv"));
+		ExpressionType et = new ExpressionType();
+		et.type = CriterionEngineType.JSONPATH;
+		et.version = "rfc9535";
+		Criterion critExpr = new Criterion();
+		critExpr.condition = "$.ok == true";
+		critExpr.type = CriterionTypeOrExpression.ofExpressionType(et);
+		s.successCriteria = Arrays.asList(critExt, critExpr);
+
+		SuccessAction saWf = new SuccessAction();
+		saWf.name = "saWf";
+		saWf.type = SuccessActionType.GOTO;
+		saWf.workflowId = "w2";
+		SuccessAction saParams = new SuccessAction();
+		saParams.name = "saP";
+		saParams.type = SuccessActionType.GOTO;
+		saParams.parameters = Collections.singletonList(ReusableOr.ofItem(stExtParam));
+		SuccessAction saCrit = new SuccessAction();
+		saCrit.name = "saC";
+		saCrit.type = SuccessActionType.END;
+		saCrit.criteria = Collections.singletonList(critExt);
+		SuccessAction saExt = new SuccessAction();
+		saExt.name = "saE";
+		saExt.type = SuccessActionType.END;
+		saExt.extensions.put("x-sa", PayloadValue.ofString("sav"));
+		s.onSuccess = Arrays.asList(ReusableOr.ofReference("$components.successActions.doneAct"),
+				ReusableOr.ofItem(saWf), ReusableOr.ofItem(saParams), ReusableOr.ofItem(saCrit),
+				ReusableOr.ofItem(saExt), new ReusableOr<>(null, null));
+
+		FailureAction faWf = new FailureAction();
+		faWf.name = "faWf";
+		faWf.type = FailureActionType.GOTO;
+		faWf.workflowId = "w2";
+		FailureAction faParams = new FailureAction();
+		faParams.name = "faP";
+		faParams.type = FailureActionType.GOTO;
+		faParams.parameters = Collections.singletonList(ReusableOr.ofItem(stExtParam));
+		FailureAction faRetryAfter = new FailureAction();
+		faRetryAfter.name = "faRA";
+		faRetryAfter.type = FailureActionType.RETRY;
+		faRetryAfter.retryAfter = 1.0;
+		FailureAction faRetryLimit = new FailureAction();
+		faRetryLimit.name = "faRL";
+		faRetryLimit.type = FailureActionType.RETRY;
+		faRetryLimit.retryLimit = 2;
+		FailureAction faCrit = new FailureAction();
+		faCrit.name = "faC";
+		faCrit.type = FailureActionType.END;
+		faCrit.criteria = Collections.singletonList(critExt);
+		FailureAction faExt = new FailureAction();
+		faExt.name = "faE";
+		faExt.type = FailureActionType.END;
+		faExt.extensions.put("x-fa", PayloadValue.ofString("fav"));
+		s.onFailure = Arrays.asList(ReusableOr.ofReference("$components.failureActions.retryAct"),
+				ReusableOr.ofItem(faWf), ReusableOr.ofItem(faParams), ReusableOr.ofItem(faRetryAfter),
+				ReusableOr.ofItem(faRetryLimit), ReusableOr.ofItem(faCrit), ReusableOr.ofItem(faExt),
+				new ReusableOr<>(null, null));
+
+		Selector selCtx = new Selector();
+		selCtx.context = "$response.body";
+		selCtx.selector = "$.id";
+		Selector selType = new Selector();
+		selType.selector = "/id";
+		selType.type = CriterionTypeOrExpression.ofSimple(CriterionEngineType.JSONPOINTER);
+		Selector selExt = new Selector();
+		selExt.selector = "$.name";
+		selExt.extensions.put("x-s", PayloadValue.ofString("sv"));
+		s.outputs = new LinkedHashMap<>();
+		s.outputs.put("o1", OutputValue.ofSelector(selCtx));
+		s.outputs.put("o2", OutputValue.ofSelector(selType));
+		s.outputs.put("o3", OutputValue.ofSelector(selExt));
+
+		wf.steps = Arrays.asList(s, sBodyExt, sReplJson);
+		wf.outputs = new LinkedHashMap<>();
+		wf.outputs.put("wo1", OutputValue.ofSelector(selCtx));
+		wf.outputs.put("wo2", OutputValue.ofSelector(selType));
+		wf.outputs.put("wo3", OutputValue.ofSelector(selExt));
+		spec.workflows = Collections.singletonList(wf);
+
+		String emittedJava = workflows.Emit.emit(spec);
+		Arazzo parsedJava = workflows.Parse.parse(emittedJava);
+		assertEquals(spec.extensions, parsedJava.extensions);
+		assertEquals(spec.info, parsedJava.info);
+		assertEquals(spec.sourceDescriptions, parsedJava.sourceDescriptions);
+		assertEquals(spec.components, parsedJava.components);
+		assertEquals(spec.workflows.get(0).inputs, parsedJava.workflows.get(0).inputs);
+		assertEquals(spec.workflows.get(0).successActions, parsedJava.workflows.get(0).successActions);
+		assertEquals(spec.workflows.get(0).failureActions, parsedJava.workflows.get(0).failureActions);
+		assertEquals(spec.workflows.get(0).extensions, parsedJava.workflows.get(0).extensions);
+		assertEquals(spec.workflows.get(0).outputs, parsedJava.workflows.get(0).outputs);
+		assertEquals("Line 1 Line 2", parsedJava.workflows.get(0).steps.get(0).description);
+		assertEquals(spec.workflows.get(0).steps.get(0).operationPath,
+				parsedJava.workflows.get(0).steps.get(0).operationPath);
+		assertEquals(spec.workflows.get(0).steps.get(0).workflowId,
+				parsedJava.workflows.get(0).steps.get(0).workflowId);
+		assertEquals(spec.workflows.get(0).steps.get(0).channelPath,
+				parsedJava.workflows.get(0).steps.get(0).channelPath);
+		assertEquals(spec.workflows.get(0).steps.get(0).timeout, parsedJava.workflows.get(0).steps.get(0).timeout);
+		assertEquals(spec.workflows.get(0).steps.get(0).correlationId,
+				parsedJava.workflows.get(0).steps.get(0).correlationId);
+		assertEquals(spec.workflows.get(0).steps.get(0).action, parsedJava.workflows.get(0).steps.get(0).action);
+		assertEquals(spec.workflows.get(0).steps.get(0).dependsOn, parsedJava.workflows.get(0).steps.get(0).dependsOn);
+		assertEquals(spec.workflows.get(0).steps.get(0).extensions,
+				parsedJava.workflows.get(0).steps.get(0).extensions);
+		assertEquals(spec.workflows.get(0).steps.get(0).requestBody,
+				parsedJava.workflows.get(0).steps.get(0).requestBody);
+		assertEquals(spec.workflows.get(0).steps.get(0).successCriteria,
+				parsedJava.workflows.get(0).steps.get(0).successCriteria);
+		assertEquals(spec.workflows.get(0).steps.get(0).outputs, parsedJava.workflows.get(0).steps.get(0).outputs);
+		assertEquals(spec.workflows.get(0).steps.get(2).requestBody,
+				parsedJava.workflows.get(0).steps.get(2).requestBody);
+
+		// Test malformed/missing step guard branches in ArazzoJavadocCodec
+		Arazzo guardSpec = new Arazzo();
+		guardSpec.info = new ArazzoInfo();
+		ArazzoJavadocCodec.parseSpecJavadoc(
+				"@arazzoExt bad\n@infoExt bad\n@sourceDescriptionExt s k str:v\n@sourceDescriptionExt bad\n"
+						+ "@componentInput bad\n@componentParameter bad\n@componentSuccessAction bad\n"
+						+ "@componentFailureAction bad\n@componentExt bad\n",
+				guardSpec);
+		guardSpec.sourceDescriptions = new java.util.ArrayList<>(Collections.singletonList(sd1));
+		ArazzoJavadocCodec.parseSpecJavadoc("@sourceDescriptionExt missing k str:v\n", guardSpec);
+
+		Workflow guardWf = new Workflow();
+		guardWf.steps = new java.util.ArrayList<>();
+		ArazzoJavadocCodec.parseWorkflowJavadoc("@workflowExt bad\n"
+				+ "@stepDescription missing desc\n@stepDescription bad\n"
+				+ "@stepOperationPath missing /p\n@stepOperationPath bad\n"
+				+ "@stepWorkflowId missing w\n@stepWorkflowId bad\n"
+				+ "@stepChannelPath missing /c\n@stepChannelPath bad\n" + "@stepTimeout missing 10\n@stepTimeout bad\n"
+				+ "@stepCorrelationId missing id\n@stepCorrelationId bad\n"
+				+ "@stepAction missing send\n@stepAction bad\n" + "@stepDependsOn missing d\n@stepDependsOn bad\n"
+				+ "@stepExt missing x-k str:v\n@stepExt bad\n"
+				+ "@stepParamJson missing {\"name\":\"p\"}\n@stepParamJson bad\n"
+				+ "@stepRequestBodyJson missing {}\n@stepRequestBodyJson bad\n"
+				+ "@stepReplacementJson missing {\"target\":\"/a\",\"value\":\"b\"}\n@stepReplacementJson bad\n"
+				+ "@stepCriterionJson missing {\"condition\":\"true\"}\n@stepCriterionJson bad\n"
+				+ "@stepOnSuccessJson missing {\"type\":\"end\"}\n@stepOnSuccessJson bad\n"
+				+ "@stepOnFailureJson missing {\"type\":\"end\"}\n@stepOnFailureJson bad\n"
+				+ "@stepMeta s1 -\n@stepReplacementJson s1 {\"target\":\"/a\",\"value\":\"b\"}\n", guardWf);
+		assertEquals(1, guardWf.steps.size());
+		assertEquals(1, guardWf.steps.get(0).requestBody.replacements.size());
+
+		// Also test empty collections in spec.components
+		Arazzo emptyCompSpec = new Arazzo();
+		emptyCompSpec.components = new ArazzoComponents();
+		StringBuilder emptyCompSb = new StringBuilder();
+		ArazzoJavadocCodec.appendSpecJavadoc(emptyCompSb, " * ", emptyCompSpec);
+		assertEquals("", emptyCompSb.toString());
+
+		Workflow wfNullInRef = new Workflow();
+		wfNullInRef.workflowId = "wNullRef";
+		wfNullInRef.inputs = new ReferenceOr<>(null, null);
+		StringBuilder wfSb = new StringBuilder();
+		ArazzoJavadocCodec.appendWorkflowJavadoc(wfSb, " * ", wfNullInRef, emptyCompSpec);
+		assertTrue(wfSb.toString().contains("@workflowId wNullRef"));
+	}
 }

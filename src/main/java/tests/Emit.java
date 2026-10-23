@@ -93,6 +93,23 @@ public class Emit {
 		sb.append("    public static void tearDownClass() {\n");
 		sb.append("        if (mockServer != null) mockServer.stop(0);\n");
 		sb.append("    }\n\n");
+		sb.append("    @Test\n");
+		sb.append("    public void testIntegratedAuthLifecycle() throws Exception {\n");
+		sb.append("        mockStatus = 200;\n");
+		sb.append("        mockResponse = \"{\\\"token\\\":\\\"mock-jwt-123\\\"}\";\n");
+		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass)
+				.append("(\"http://localhost:\" + mockPort);\n");
+		sb.append("        HttpResponse<String> reg = client.auth.register(\"user\", \"pass\");\n");
+		sb.append("        assertEquals(200, reg.statusCode());\n");
+		sb.append("        assertEquals(\"Bearer mock-jwt-123\", client.authorizationToken);\n");
+		sb.append("        HttpResponse<String> login = client.auth.login(\"user\", \"pass\");\n");
+		sb.append("        assertEquals(200, login.statusCode());\n");
+		sb.append("        HttpResponse<String> refresh = client.auth.refresh();\n");
+		sb.append("        assertEquals(200, refresh.statusCode());\n");
+		sb.append("        HttpResponse<String> logout = client.auth.logout();\n");
+		sb.append("        assertEquals(200, logout.statusCode());\n");
+		sb.append("        assertNull(client.authorizationToken);\n");
+		sb.append("    }\n\n");
 		if (model.paths != null && model.paths.pathItems != null) {
 			for (Map.Entry<String, PathItem> entry : model.paths.pathItems.entrySet()) {
 				String path = entry.getKey();

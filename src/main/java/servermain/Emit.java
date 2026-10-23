@@ -39,22 +39,44 @@ public class Emit {
 		cu.addImport("seeder.*");
 
 		ClassOrInterfaceDeclaration mainClass = cu.addClass("Main").setModifier(Modifier.Keyword.PUBLIC, true);
-		mainClass.setJavadocComment("Modular Mock Server entrypoint.");
+		mainClass.setJavadocComment("Modular Mock Server entrypoint supporting orthogonal CLI options.");
+
+		MethodDeclaration helpMethod = mainClass.addMethod("printHelp", Modifier.Keyword.PUBLIC,
+				Modifier.Keyword.STATIC);
+		helpMethod.setJavadocComment(
+				"Prints CLI usage and help text for server flags (--ephemeral, --seed, --strict-validation, --enforce-auth, --start-auth-server).");
+		BlockStmt helpBody = new BlockStmt();
+		helpBody.addStatement(StaticJavaParser.parseStatement(
+				"System.out.println(\"Usage: servermain.Main [--ephemeral] [--seed] [--strict-validation] [--enforce-auth] [--start-auth-server]\");"));
+		helpBody.addStatement(StaticJavaParser.parseStatement(
+				"System.out.println(\"  --ephemeral          Triggers Concrete DAOs and overrides DATABASE_URL with a throwaway database.\");"));
+		helpBody.addStatement(StaticJavaParser.parseStatement(
+				"System.out.println(\"  --seed               Runs the fake data seeder on startup (requires a concrete DB connection).\");"));
+		helpBody.addStatement(StaticJavaParser.parseStatement(
+				"System.out.println(\"  --strict-validation  Enables strict OpenAPI request validation middleware.\");"));
+		helpBody.addStatement(StaticJavaParser.parseStatement(
+				"System.out.println(\"  --enforce-auth       Enforces authentication middleware on protected endpoints.\");"));
+		helpBody.addStatement(StaticJavaParser.parseStatement(
+				"System.out.println(\"  --start-auth-server  Starts the integrated Identity Provider (/auth/*) endpoints.\");"));
+		helpMethod.setBody(helpBody);
 
 		MethodDeclaration mainMethod = mainClass.addMethod("main", Modifier.Keyword.PUBLIC, Modifier.Keyword.STATIC);
 		mainMethod.addParameter("String[]", "args");
 		mainMethod.addThrownException(StaticJavaParser.parseClassOrInterfaceType("Exception"));
-		mainMethod.setJavadocComment("Main method.");
+		mainMethod.setJavadocComment(
+				"Main method.\n@param args Command-line arguments.\n@throws Exception on startup error.");
 
 		BlockStmt body = new BlockStmt();
-		body.addStatement(StaticJavaParser.parseStatement("DbConfig config = DbConfig.load();"));
+		body.addStatement(StaticJavaParser.parseStatement("DbConfig config = DbConfig.fromArgs(args);"));
 		body.addStatement(StaticJavaParser.parseStatement("DaoFactory.init(config);"));
 		body.addStatement(StaticJavaParser.parseStatement(
-				"if (config.ephemeral && System.getenv(\"SEED_DB\") != null) { Seeder.seedDatabase(DaoFactory.em); }"));
+				"if (config.seed && !DaoFactory.useStub && DaoFactory.em != null) { Seeder.seedDatabase(DaoFactory.em); }"));
 		body.addStatement(StaticJavaParser.parseStatement(
 				"Javalin app = Javalin.create(c -> { c.plugins.enableCors(cors -> { cors.add(it -> { it.anyHost(); }); }); }).start(8080);"));
 
-		if (model.paths != null && model.paths.pathItems != null) {
+		if (model.paths != null && model.paths.pathItems != null && !model.paths.pathItems.isEmpty()) {
+			body.addStatement(
+					StaticJavaParser.parseStatement("MiddlewareRoutes.register(app, new DaoFactory(), config);"));
 			java.util.Set<String> registered = new java.util.HashSet<>();
 			for (Map.Entry<String, openapi.PathItem> entry : model.paths.pathItems.entrySet()) {
 				String resourceName = serverroutes.Emit.getResourceName(entry.getKey());

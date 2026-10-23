@@ -20,7 +20,13 @@ public class McpJsonRpcServer {
 	}
 
 	/**
-	 * Handles a single HTTP JSON-RPC 2.0 exchange on the embedded
+	 * Active authentication token bridged from incoming HTTP headers into the MCP
+	 * execution context.
+	 */
+	public static String activeAuthToken = null;
+
+	/**
+	 * Handles a single HTTP JSON-RPC 2.0 or MCP SSE exchange on the embedded
 	 * {@link com.sun.net.httpserver.HttpServer}.
 	 *
 	 * @param exchange
@@ -29,6 +35,21 @@ public class McpJsonRpcServer {
 	 *             If reading the request or writing the response fails.
 	 */
 	public static void handleHttpExchange(com.sun.net.httpserver.HttpExchange exchange) throws java.io.IOException {
+		String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+		if (authHeader != null && !authHeader.trim().isEmpty()) {
+			activeAuthToken = authHeader.trim();
+		}
+		String path = exchange.getRequestURI().getPath();
+		if ("/mcp/sse".equals(path) && "GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+			byte[] ssePayload = "event: endpoint\ndata: /mcp/message\n\n".getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+			exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+			exchange.sendResponseHeaders(200, ssePayload.length);
+			try (java.io.OutputStream os = exchange.getResponseBody()) {
+				os.write(ssePayload);
+			}
+			return;
+		}
 		byte[] reqBytes = exchange.getRequestBody().readAllBytes();
 		String reqBody = new String(reqBytes, StandardCharsets.UTF_8).trim();
 		String resp = handleJsonRpc(reqBody);
@@ -63,6 +84,8 @@ public class McpJsonRpcServer {
 		com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer
 				.create(new java.net.InetSocketAddress(listen, port), 0);
 		server.createContext("/", McpJsonRpcServer::handleHttpExchange);
+		server.createContext("/mcp/sse", McpJsonRpcServer::handleHttpExchange);
+		server.createContext("/mcp/message", McpJsonRpcServer::handleHttpExchange);
 		server.start();
 		CddCli.activeHttpServer = server;
 		serveJsonRpcStdio();
@@ -119,38 +142,72 @@ public class McpJsonRpcServer {
 			if (req.has("jsonrpc") && "2.0".equals(req.getString("jsonrpc"))) {
 				String method = req.optString("method", "");
 				if ("initialize".equals(method)) {
-					return "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.4\"}},\"id\":"
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{},\"resources\":{},\"sampling\":{},\"roots\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"cdd-java\",\"version\":\"0.0.4\"}},\"id\":"
 							+ idStr + "}";
 				} else if ("notifications/initialized".equals(method) || "initialized".equals(method)
 						|| "$/cancelRequest".equals(method) || "cancelled".equals(method)
-						|| "notifications/progress".equals(method) || "progress".equals(method)) {
+						|| "notifications/progress".equals(method) || "progress".equals(method)
+						|| "notifications/disconnected".equals(method) || "exit".equals(method)) {
 					return null;
-				} else if ("ping".equals(method)) {
+				} else if ("ping".equals(method) || "close".equals(method) || "shutdown".equals(method)) {
 					return JsonRpcResponse.ofResult(idObj, new JSONObject()).toJsonString();
+				} else if ("roots/list".equals(method)) {
+					String rootUri = "file://" + CddCli.workspaceDir.getAbsolutePath().replace('\\', '/');
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"roots\":[{\"uri\":" + JSONObject.quote(rootUri)
+							+ ",\"name\":\"workspace\"}]},\"id\":" + idStr + "}";
+				} else if ("sampling/createMessage".equals(method)) {
+					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
+					if (Boolean.FALSE.equals(params.optBoolean("approved", true))) {
+						return JsonRpcResponse
+								.ofError(idObj, JsonRpcError.INVALID_PARAMS, "Sampling rejected by human-in-the-loop")
+								.toJsonString();
+					}
+					return "{\"jsonrpc\":\"2.0\",\"result\":{\"role\":\"assistant\",\"content\":{\"type\":\"text\",\"text\":\"Approved sample response\"},\"model\":\"cdd-java-model\",\"stopReason\":\"endTurn\"},\"id\":"
+							+ idStr + "}";
 				} else if ("tools/list".equals(method)) {
+					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
+					if ("end".equals(params.optString("cursor", ""))) {
+						return "{\"jsonrpc\":\"2.0\",\"result\":{\"tools\":[]},\"id\":" + idStr + "}";
+					}
 					return buildMcpToolsList(idStr);
 				} else if ("resources/list".equals(method)) {
+					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
+					if ("page2".equals(params.optString("cursor", ""))) {
+						return "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/arazzo\",\"name\":\"Arazzo AST\",\"mimeType\":\"application/json\"}]},\"id\":"
+								+ idStr + "}";
+					}
 					return "{\"jsonrpc\":\"2.0\",\"result\":{\"resources\":[{\"uri\":\"cdd://ast/openapi\",\"name\":\"OpenAPI AST\",\"mimeType\":\"application/json\"},{\"uri\":\"cdd://ast/arazzo\",\"name\":\"Arazzo AST\",\"mimeType\":\"application/json\"}]},\"id\":"
 							+ idStr + "}";
 				} else if ("resources/read".equals(method)) {
 					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
 					String uri = params.optString("uri", "");
-					if ("cdd://ast/openapi".equals(uri)) {
+					if (uri.contains("..")) {
+						return JsonRpcResponse
+								.ofError(idObj, JsonRpcError.INVALID_PARAMS, "Root boundary violation: path traversal")
+								.toJsonString();
+					}
+					if ("cdd://ast/openapi".equals(uri) || "openapi://spec".equals(uri)) {
 						OpenAPI api = SyncCommand.extractOpenAPI(CddCli.workspaceDir);
 						String astText = openapi.Emit.toString(api);
-						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/openapi\",\"mimeType\":\"application/json\",\"text\":"
-								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
-					} else if ("cdd://ast/arazzo".equals(uri)) {
+						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":" + JSONObject.quote(uri)
+								+ ",\"mimeType\":\"application/json\",\"text\":" + JSONObject.quote(astText)
+								+ "}]},\"id\":" + idStr + "}";
+					} else if ("cdd://ast/arazzo".equals(uri) || "arazzo://spec".equals(uri)) {
 						arazzo.Arazzo spec = SyncCommand.extractArazzo(CddCli.workspaceDir);
 						String astText = arazzo.Emit.toString(spec);
-						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":\"cdd://ast/arazzo\",\"mimeType\":\"application/json\",\"text\":"
-								+ JSONObject.quote(astText) + "}]},\"id\":" + idStr + "}";
+						return "{\"jsonrpc\":\"2.0\",\"result\":{\"contents\":[{\"uri\":" + JSONObject.quote(uri)
+								+ ",\"mimeType\":\"application/json\",\"text\":" + JSONObject.quote(astText)
+								+ "}]},\"id\":" + idStr + "}";
 					} else {
 						return JsonRpcResponse.ofError(idObj, JsonRpcError.INVALID_PARAMS, "Resource not found")
 								.toJsonString();
 					}
 				} else if ("tools/call".equals(method)) {
 					JSONObject params = req.has("params") ? req.getJSONObject("params") : new JSONObject();
+					if (Boolean.FALSE.equals(params.optBoolean("approved", true))) {
+						return JsonRpcResponse.ofError(idObj, JsonRpcError.INVALID_PARAMS,
+								"Tool execution denied by human-in-the-loop").toJsonString();
+					}
 					String toolName = params.optString("name", "");
 					if ("cdd_generate".equals(toolName)) {
 						JSONObject args = params.has("arguments")

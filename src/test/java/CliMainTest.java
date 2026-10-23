@@ -449,16 +449,30 @@ public class CliMainTest {
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"initialized\"}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":21}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"close\",\"id\":22}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"shutdown\",\"id\":23}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\"}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"cancelled\"}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\"}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"progress\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/disconnected\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"roots/list\",\"id\":24}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"sampling/createMessage\",\"id\":25}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"sampling/createMessage\",\"params\":{\"approved\":true},\"id\":26}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"sampling/createMessage\",\"params\":{\"approved\":false},\"id\":27}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":3}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"params\":{\"cursor\":\"end\"},\"id\":301}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/list\",\"id\":31}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/list\",\"params\":{\"cursor\":\"page2\"},\"id\":311}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"cdd://ast/openapi\"},\"id\":32}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"openapi://spec\"},\"id\":321}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"arazzo://spec\"},\"id\":322}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"file://../secret\"},\"id\":323}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"unknown\"},\"id\":33}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"id\":34}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"cdd_generate\",\"arguments\":{\"command\":[\"to_openapi\",\"-h\"]}},\"id\":4}\n"
+				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"cdd_generate\",\"approved\":false},\"id\":401}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"cdd_generate\"},\"id\":41}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown_tool\"},\"id\":5}\n"
 				+ "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"id\":6}\n"
@@ -496,13 +510,35 @@ public class CliMainTest {
 		int port = CddCli.activeHttpServer.getAddress().getPort();
 		java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
 		java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
-				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/"))
+				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/")).header("Authorization", "Bearer test-token")
 				.POST(java.net.http.HttpRequest.BodyPublishers
 						.ofString("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}"))
 				.build();
 		java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
 		assertEquals(200, resp.statusCode());
 		assertTrue(resp.body().contains("\"result\":{}"));
+		assertEquals("Bearer test-token", cli.McpJsonRpcServer.activeAuthToken);
+
+		java.net.http.HttpRequest blankAuthReq = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/mcp/message")).header("Authorization", "   ")
+				.POST(java.net.http.HttpRequest.BodyPublishers
+						.ofString("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":2}"))
+				.build();
+		assertEquals(200, client.send(blankAuthReq, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode());
+
+		java.net.http.HttpRequest sseGetReq = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/mcp/sse")).GET().build();
+		java.net.http.HttpResponse<String> sseGetResp = client.send(sseGetReq,
+				java.net.http.HttpResponse.BodyHandlers.ofString());
+		assertEquals(200, sseGetResp.statusCode());
+		assertTrue(sseGetResp.body().contains("event: endpoint"));
+
+		java.net.http.HttpRequest ssePostReq = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/mcp/sse"))
+				.POST(java.net.http.HttpRequest.BodyPublishers
+						.ofString("{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":3}"))
+				.build();
+		assertEquals(200, client.send(ssePostReq, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode());
 
 		java.net.http.HttpRequest notifReq = java.net.http.HttpRequest.newBuilder()
 				.uri(java.net.URI.create("http://127.0.0.1:" + port + "/"))
