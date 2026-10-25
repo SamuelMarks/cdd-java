@@ -319,6 +319,85 @@ public class MiscParseEmitTest {
 		assertTrue(out5.contains("\"exVal\""));
 		assertTrue(out5.contains("\"defVal\""));
 		assertTrue(out5.contains("\"schExVal\""));
+
+		// Response schema resolution branches in tests.Emit
+		OpenAPI apiResp = new OpenAPI();
+		apiResp.paths = new Paths();
+		PathItem piResp = new PathItem();
+
+		// 200 with Swagger 2.0 resp.schema ($ref)
+		Operation op200Schema = new Operation();
+		op200Schema.operationId = "op200Schema";
+		op200Schema.responses = new Responses();
+		Response r200 = new Response();
+		r200.schema = ReferenceOr.ofRef("#/components/schemas/Pet");
+		op200Schema.responses.statusCodes.put("200", ReferenceOr.ofValue(r200));
+		piResp.get = op200Schema;
+
+		// 201 with OpenAPI 3.0 resp.content application/json schema
+		Operation op201Content = new Operation();
+		op201Content.operationId = "op201Content";
+		op201Content.responses = new Responses();
+		Response r201 = new Response();
+		r201.content = new java.util.HashMap<>();
+		MediaType mt201 = new MediaType();
+		Schema s201 = new Schema();
+		s201.type = SchemaType.ofSingle("array");
+		s201.items = ReferenceOr.ofRef("#/components/schemas/Pet");
+		mt201.schema = ReferenceOr.ofValue(s201);
+		r201.content.put("application/json", mt201);
+		op201Content.responses.statusCodes.put("201", ReferenceOr.ofValue(r201));
+		piResp.post = op201Content;
+
+		// default response with untyped object schema -> Map<String, Object>
+		Operation opDefMap = new Operation();
+		opDefMap.operationId = "opDefMap";
+		opDefMap.responses = new Responses();
+		Response rDef = new Response();
+		Schema sObj = new Schema();
+		sObj.type = SchemaType.ofSingle("object");
+		rDef.schema = ReferenceOr.ofValue(sObj);
+		opDefMap.responses.defaultResponse = ReferenceOr.ofValue(rDef);
+		piResp.put = opDefMap;
+
+		// 200 response with content but no application/json and no schema
+		Operation opNoJson = new Operation();
+		opNoJson.operationId = "opNoJson";
+		opNoJson.responses = new Responses();
+		Response rNoJson = new Response();
+		rNoJson.content = new java.util.HashMap<>();
+		rNoJson.content.put("text/plain", new MediaType());
+		opNoJson.responses.statusCodes.put("200", ReferenceOr.ofValue(rNoJson));
+		piResp.delete = opNoJson;
+
+		// 200 response with ReferenceOr.ofRef (value == null)
+		Operation opRefResp = new Operation();
+		opRefResp.operationId = "opRefResp";
+		opRefResp.responses = new Responses();
+		opRefResp.responses.statusCodes.put("200", ReferenceOr.ofRef("#/components/responses/SomeResp"));
+		piResp.patch = opRefResp;
+
+		// Operation with empty responses (no 200, 201, or default)
+		PathItem piResp2 = new PathItem();
+		Operation opEmptyResp = new Operation();
+		opEmptyResp.operationId = "opEmptyResp";
+		opEmptyResp.responses = new Responses();
+		piResp2.get = opEmptyResp;
+
+		// 200 response with empty Schema (type == null -> resolves to "Object")
+		Operation opRawObj = new Operation();
+		opRawObj.operationId = "opRawObj";
+		opRawObj.responses = new Responses();
+		Response rRawObj = new Response();
+		rRawObj.schema = ReferenceOr.ofValue(new Schema());
+		opRawObj.responses.statusCodes.put("200", ReferenceOr.ofValue(rRawObj));
+		piResp2.post = opRawObj;
+
+		apiResp.paths.pathItems.put("/respTest", piResp);
+		apiResp.paths.pathItems.put("/respTest2", piResp2);
+		String outResp = tests.Emit.emit(apiResp, null);
+		assertTrue(outResp.contains("new TypeReference<Pet>() {}"));
+		assertTrue(outResp.contains("new TypeReference<List<Pet>>() {}"));
 	}
 
 	/**

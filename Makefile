@@ -78,6 +78,9 @@ build: install_deps
 	@find src/main/java -name "*.java" ! -name "ApiIntegrationTest.java" > sources.txt
 	javac -d "$(BIN_DIR)" -cp "lib/*:src/main/java" @sources.txt
 	@rm -f sources.txt
+	@printf '%s\n' '#!/usr/bin/env sh' 'SCRIPT_DIR="$$(cd "$$(dirname "$$0")" && pwd)"' 'ROOT_DIR="$$(cd "$$SCRIPT_DIR/.." && pwd)"' 'exec java -cp "$$ROOT_DIR/lib/*:$$SCRIPT_DIR" cli.Main "$$@"' > "$(BIN_DIR)/cdd-java"
+	@chmod +x "$(BIN_DIR)/cdd-java"
+	@printf '%s\r\n' '@echo off' 'set "SCRIPT_DIR=%~dp0"' 'java -cp "%SCRIPT_DIR%..\lib\*;%SCRIPT_DIR%" cli.Main %*' > "$(BIN_DIR)/cdd-java.bat"
 
 test:
 	@echo "Running tests..."

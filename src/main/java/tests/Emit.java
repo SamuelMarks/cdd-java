@@ -49,21 +49,36 @@ public class Emit {
 		sb.append("import org.junit.BeforeClass;\n");
 		sb.append("import static org.junit.Assert.*;\n");
 		sb.append("import java.net.http.HttpResponse;\n");
+		sb.append("import java.util.List;\n");
+		sb.append("import java.util.Map;\n");
 		sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
-		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n\n");
+		sb.append("import com.fasterxml.jackson.databind.DeserializationFeature;\n");
+		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n");
+		sb.append("import com.fasterxml.jackson.core.type.TypeReference;\n\n");
 		sb.append("public class ").append(testClass).append(" {\n");
 		sb.append("    static com.sun.net.httpserver.HttpServer mockServer;\n");
 		sb.append("    static int mockPort;\n");
 		sb.append("    static String mockResponse = \"{}\";\n");
 		sb.append("    static int mockStatus = 200;\n\n");
+		sb.append("    private static String resolveBaseUrl(String defaultUrl) {\n");
+		sb.append("        String env = System.getenv(\"BASE_URL\");\n");
+		sb.append(
+				"        return (env != null && !env.trim().isEmpty()) ? env.trim().replaceAll(\"/+$\", \"\") : defaultUrl;\n");
+		sb.append("    }\n\n");
 		sb.append("    @BeforeClass\n");
 		sb.append("    public static void setUpClass() throws Exception {\n");
 		sb.append(
 				"        try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(\"../java_petstore_access.log\")); } catch (Exception e) {}\n");
+		sb.append("        String envUrl = System.getenv(\"BASE_URL\");\n");
+		sb.append(
+				"        java.net.URI targetUri = java.net.URI.create((envUrl != null && !envUrl.trim().isEmpty()) ? envUrl.trim() : \"http://localhost:8080\");\n");
+		sb.append("        String targetHost = targetUri.getHost() != null ? targetUri.getHost() : \"localhost\";\n");
+		sb.append(
+				"        int targetPort = targetUri.getPort() != -1 ? targetUri.getPort() : (\"https\".equalsIgnoreCase(targetUri.getScheme()) ? 443 : 80);\n");
 		sb.append("        long start = System.currentTimeMillis();\n");
 		sb.append("        while (System.currentTimeMillis() - start < 60000) {\n");
 		sb.append("            try {\n");
-		sb.append("                java.net.Socket s = new java.net.Socket(\"localhost\", 8080);\n");
+		sb.append("                java.net.Socket s = new java.net.Socket(targetHost, targetPort);\n");
 		sb.append("                java.io.OutputStream out = s.getOutputStream();\n");
 		sb.append("                out.write(\"GET / HTTP/1.0\\r\\n\\r\\n\".getBytes());\n");
 		sb.append("                java.io.InputStream in = s.getInputStream();\n");
@@ -225,14 +240,15 @@ public class Emit {
 		int expectedSuccessStatus = mocks.Emit.resolveStatusCode(op);
 		String expectedSuccessMockPayload = mocks.Emit.synthesizeMockPayload(op, model).replace("\\", "\\\\")
 				.replace("\"", "\\\"");
+		String responseType = resolveResponseType(op, model);
 
 		sb.append("    /**\n");
 		sb.append("     * ").append(method).append(" ").append(path).append("\n");
 		sb.append("     */\n");
 		sb.append("    @Test\n");
 		sb.append("    public void ").append(testMethodName).append("() throws Exception {\n");
-		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass).append("(\"")
-				.append(literalBaseUrl).append("\");\n");
+		sb.append("        ").append(clientClass).append(" client = new ").append(clientClass)
+				.append("(resolveBaseUrl(\"").append(literalBaseUrl).append("\"));\n");
 		// Log to access log to satisfy verify_coverage.py since Petstore Docker does
 		// not log to stdout
 		sb.append(
@@ -243,12 +259,25 @@ public class Emit {
 				.append(");\n");
 		sb.append(
 				"        assertTrue(\"Expected valid status code, got: \" + res.statusCode(), res.statusCode() >= 200 && res.statusCode() < 600);\n");
-		sb.append("        if (res.body() != null && !res.body().isEmpty() && res.statusCode() < 400) {\n");
-		sb.append("            ObjectMapper mapper = new ObjectMapper();\n");
-		sb.append("            try {\n");
-		sb.append("                mapper.readTree(res.body());\n");
-		sb.append("            } catch (Exception e) {\n");
-		sb.append("                fail(\"Failed to deserialize payload: \" + res.body());\n");
+		sb.append(
+				"        if (res.body() != null && !res.body().trim().isEmpty() && res.statusCode() >= 200 && res.statusCode() < 300) {\n");
+		sb.append("            String trimmed = res.body().trim();\n");
+		sb.append("            String ct = res.headers().firstValue(\"Content-Type\").orElse(\"\");\n");
+		sb.append(
+				"            if (ct.toLowerCase().contains(\"json\") || trimmed.startsWith(\"{\") || trimmed.startsWith(\"[\")) {\n");
+		sb.append("                ObjectMapper mapper = new ObjectMapper();\n");
+		sb.append("                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);\n");
+		sb.append("                try {\n");
+		if (responseType != null) {
+			sb.append("                    mapper.readValue(trimmed, new TypeReference<").append(responseType)
+					.append(">() {});\n");
+		} else {
+			sb.append("                    mapper.readTree(trimmed);\n");
+		}
+		sb.append("                } catch (Exception e) {\n");
+		sb.append(
+				"                    fail(\"Failed to deserialize payload: \" + res.body() + \" -> \" + e.getMessage());\n");
+		sb.append("                }\n");
 		sb.append("            }\n");
 		sb.append("        }\n");
 		sb.append("    }\n\n");
@@ -359,5 +388,46 @@ public class Emit {
 			}
 		}
 		return "\"0\"";
+	}
+
+	/**
+	 * Resolves the Java type string for a 2xx response schema on an operation, or
+	 * returns {@code null} if no typed schema is defined.
+	 *
+	 * @param op
+	 *            The OpenAPI {@link Operation}.
+	 * @param model
+	 *            The root {@link OpenAPI} model.
+	 * @return The resolved Java type string, or {@code null}.
+	 */
+	private static String resolveResponseType(Operation op, OpenAPI model) {
+		if (op.responses == null) {
+			return null;
+		}
+		openapi.ReferenceOr<openapi.Response> respRef = op.responses.defaultResponse;
+		if (op.responses.statusCodes.containsKey("200")) {
+			respRef = op.responses.statusCodes.get("200");
+		} else if (op.responses.statusCodes.containsKey("201")) {
+			respRef = op.responses.statusCodes.get("201");
+		}
+		if (respRef == null || respRef.value == null) {
+			return null;
+		}
+		openapi.Response resp = respRef.value;
+		openapi.ReferenceOr<Schema> schemaRef = resp.schema;
+		if (schemaRef == null && resp.content != null) {
+			openapi.MediaType mt = resp.content.get("application/json");
+			if (mt != null) {
+				schemaRef = mt.schema;
+			}
+		}
+		if (schemaRef == null) {
+			return null;
+		}
+		String javaType = openapi.TypeMapper.toJavaType(schemaRef, model, false);
+		if ("Object".equals(javaType) || "Map<String, Object>".equals(javaType)) {
+			return null;
+		}
+		return javaType;
 	}
 }

@@ -62,4 +62,64 @@ public class MainBranchTest {
 			Main.exitHandler = prevExit;
 		}
 	}
+
+	/**
+	 * Verifies CLI smoke tests for {@code from_openapi to_sdk --tests} and
+	 * {@code to_openapi} roundtrip execution via the generated launcher script.
+	 *
+	 * @throws Exception
+	 *             If building or executing the launcher script fails.
+	 */
+	@Test
+	public void testLauncherScriptSmokeRoundtrip() throws Exception {
+		boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+		File launcher = new File(isWindows ? "bin/cdd-java.bat" : "bin/cdd-java");
+		if (!launcher.exists() || !new File("bin/cli/Main.class").exists()) {
+			ProcessBuilder buildPb = isWindows
+					? new ProcessBuilder("cmd.exe", "/c", "make.bat", "build")
+					: new ProcessBuilder("make", "build");
+			buildPb.inheritIO();
+			assertEquals(0, buildPb.start().waitFor());
+		}
+		assertTrue("Launcher script must exist in bin/", launcher.exists());
+		File smokeSpec = new File("target/launcher_smoke_input.json");
+		smokeSpec.getParentFile().mkdirs();
+		java.nio.file.Files.writeString(smokeSpec.toPath(),
+				"{\"openapi\":\"3.2.0\",\"info\":{\"title\":\"SmokeApi\",\"version\":\"1.0.0\"},"
+						+ "\"paths\":{\"/pets\":{\"get\":{\"operationId\":\"listPets\",\"responses\":{\"200\":{\"description\":\"ok\","
+						+ "\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/Pet\"}}}}}}}},"
+						+ "\"components\":{\"schemas\":{\"Pet\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}}}}",
+				java.nio.charset.StandardCharsets.UTF_8);
+		File sdkDir = new File("target/launcher_smoke_sdk");
+		File roundtripSpec = new File("target/launcher_smoke_openapi.json");
+		if (roundtripSpec.exists()) {
+			roundtripSpec.delete();
+		}
+
+		ProcessBuilder sdkPb = isWindows
+				? new ProcessBuilder("cmd.exe", "/c", launcher.getAbsolutePath(), "from_openapi", "to_sdk", "--tests",
+						"-i", smokeSpec.getPath(), "-o", sdkDir.getPath())
+				: new ProcessBuilder(launcher.getAbsolutePath(), "from_openapi", "to_sdk", "--tests", "-i",
+						smokeSpec.getPath(), "-o", sdkDir.getPath());
+		sdkPb.inheritIO();
+		assertEquals(0, sdkPb.start().waitFor());
+		assertTrue(new File(sdkDir, "src/main/java/Sdk.java").exists());
+		assertTrue(new File(sdkDir, "src/test/java/SmokeApiIntegrationTest.java").exists());
+		assertTrue(new File(sdkDir, "src/test/java/SmokeApiMockServer.java").exists());
+
+		ProcessBuilder toOpenApiPb = isWindows
+				? new ProcessBuilder("cmd.exe", "/c", launcher.getAbsolutePath(), "to_openapi", "-i", sdkDir.getPath(),
+						"-o", roundtripSpec.getPath())
+				: new ProcessBuilder(launcher.getAbsolutePath(), "to_openapi", "-i", sdkDir.getPath(), "-o",
+						roundtripSpec.getPath());
+		toOpenApiPb.inheritIO();
+		assertEquals(0, toOpenApiPb.start().waitFor());
+		assertTrue(roundtripSpec.exists());
+		openapi.OpenAPI parsedRoundtrip = openapi.Parse.fromFile(roundtripSpec);
+		assertNotNull(parsedRoundtrip);
+		assertNotNull(parsedRoundtrip.paths);
+		assertTrue(parsedRoundtrip.paths.pathItems.containsKey("/pets"));
+		assertNotNull(parsedRoundtrip.components);
+		assertTrue(parsedRoundtrip.components.schemas.containsKey("Pet"));
+	}
 }

@@ -91,6 +91,17 @@ if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 dir /s /B "src\main\java\*.java" > sources.txt
 javac -d "%BIN_DIR%" -cp "lib/*;src/main/java" @sources.txt
 del sources.txt
+(
+echo #!/usr/bin/env sh
+echo SCRIPT_DIR="$(cd "$(dirname "$0")" ^&^& pwd)"
+echo ROOT_DIR="$(cd "$SCRIPT_DIR/.." ^&^& pwd)"
+echo exec java -cp "$ROOT_DIR/lib/*:$SCRIPT_DIR" cli.Main "$@"
+) > "%BIN_DIR%\cdd-java"
+(
+echo @echo off
+echo set "SCRIPT_DIR=%%~dp0"
+echo java -cp "%%SCRIPT_DIR%%..\lib\*;%%SCRIPT_DIR%%" cli.Main %%*
+) > "%BIN_DIR%\cdd-java.bat"
 goto :eof
 
 :test
