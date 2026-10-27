@@ -707,6 +707,20 @@ public class MiscParseEmitTest {
 		Schema nullTypeSchema = new Schema();
 		nullTypeSchema.type = null;
 		assertNotNull(mocks.Emit.synthesizeSchemaValue(nullTypeSchema, null));
+		Schema boolAddPropsSchema = new Schema();
+		boolAddPropsSchema.type = SchemaType.ofSingle("object");
+		boolAddPropsSchema.additionalProperties = AdditionalProperties.ofBoolean(true);
+		assertEquals("{\"mock\":\"true\"}", mocks.Emit.synthesizeSchemaValue(boolAddPropsSchema, null).toString());
+		Schema intAddPropsSchema = new Schema();
+		intAddPropsSchema.type = SchemaType.ofSingle("object");
+		intAddPropsSchema.additionalProperties = AdditionalProperties.ofSchema(intProp);
+		assertEquals("{\"mock\":1}", mocks.Emit.synthesizeSchemaValue(intAddPropsSchema, null).toString());
+		Operation opStringResp = new Operation();
+		opStringResp.responses = new Responses();
+		Response rString = new Response();
+		rString.schema = ReferenceOr.ofValue(strProp);
+		opStringResp.responses.statusCodes.put("200", ReferenceOr.ofValue(rString));
+		assertEquals("\"string\"", mocks.Emit.synthesizeMockPayload(opStringResp, null));
 
 		String newSrc = mocks.Emit.emit(api, null);
 		assertTrue(newSrc.contains("MockServer"));

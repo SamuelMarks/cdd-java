@@ -139,7 +139,11 @@ public class MainBranchTest {
 				"{\"openapi\":\"3.2.0\",\"info\":{\"title\":\"OrderApi\",\"version\":\"1.0.0\"},"
 						+ "\"paths\":{\"/store/order/{orderId}\":{\"get\":{\"operationId\":\"getOrderById\","
 						+ "\"parameters\":[{\"name\":\"orderId\",\"in\":\"path\",\"required\":true,\"schema\":{\"type\":\"integer\"}}],"
-						+ "\"responses\":{\"200\":{\"$ref\":\"#/components/responses/OrderResponse\"}}}}},"
+						+ "\"responses\":{\"200\":{\"$ref\":\"#/components/responses/OrderResponse\"}}}},"
+						+ "\"/store/inventory\":{\"get\":{\"operationId\":\"getInventory\","
+						+ "\"responses\":{\"200\":{\"description\":\"ok\",\"content\":{\"application/json\":{\"schema\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"integer\",\"format\":\"int32\"}}}}}}}},"
+						+ "\"/user/login\":{\"get\":{\"operationId\":\"loginUser\","
+						+ "\"responses\":{\"200\":{\"description\":\"ok\",\"content\":{\"application/json\":{\"schema\":{\"type\":\"string\"}}}}}}}},"
 						+ "\"components\":{\"responses\":{\"OrderResponse\":{\"description\":\"ok\","
 						+ "\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/Order\"}}}}},"
 						+ "\"schemas\":{\"Order\":{\"type\":\"object\",\"properties\":{"
@@ -187,6 +191,8 @@ public class MainBranchTest {
 			testCls.getMethod("setUpClass").invoke(null);
 			try {
 				testCls.getMethod("testGetOrderByIdMockSuccess").invoke(testInstance);
+				testCls.getMethod("testGetInventoryMockSuccess").invoke(testInstance);
+				testCls.getMethod("testLoginUserMockSuccess").invoke(testInstance);
 
 				Class<?> orderCls = Class.forName("Order", true, loader);
 				Class<?> clientCls = Class.forName("OrderApiClient", true, loader);

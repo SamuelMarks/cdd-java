@@ -323,17 +323,34 @@ public class Emit {
 								return valueToJsonString(mt.example);
 							}
 							if (mt.schema != null) {
-								return synthesizeSchemaRefOrValue(mt.schema, model).toString();
+								return serializeSynthesizedValue(synthesizeSchemaRefOrValue(mt.schema, model));
 							}
 						}
 					}
 					if (resp.schema != null) {
-						return synthesizeSchemaRefOrValue(resp.schema, model).toString();
+						return serializeSynthesizedValue(synthesizeSchemaRefOrValue(resp.schema, model));
 					}
 				}
 			}
 		}
 		return "{\"mock\": \"true\"}";
+	}
+
+	/**
+	 * Serializes a synthesized mock value into a valid JSON payload string, quoting
+	 * top-level {@link String} scalars so they form valid RFC 8259 JSON string
+	 * literals.
+	 *
+	 * @param val
+	 *            The synthesized value returned by
+	 *            {@link #synthesizeSchemaRefOrValue}.
+	 * @return A valid JSON string representation.
+	 */
+	private static String serializeSynthesizedValue(Object val) {
+		if (val instanceof String) {
+			return JSONObject.quote((String) val);
+		}
+		return val.toString();
 	}
 
 	/**
@@ -407,6 +424,10 @@ public class Emit {
 					obj.put(propEntry.getKey(), synthesizeSchemaRefOrValue(propEntry.getValue(), model));
 				}
 			}
+			return obj;
+		}
+		if (resolved.additionalProperties != null && resolved.additionalProperties.isSchema()) {
+			obj.put("mock", synthesizeSchemaRefOrValue(resolved.additionalProperties.schema, model));
 			return obj;
 		}
 		obj.put("mock", "true");
