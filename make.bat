@@ -60,7 +60,21 @@ winget install Microsoft.OpenJDK.17
 goto :eof
 
 :install_deps
-echo Dependencies already in lib/
+echo Installing dependencies to lib/...
+if not exist "lib" mkdir "lib"
+call mvn dependency:copy-dependencies -DoutputDirectory=lib
+if not exist "lib\jackson-core-2.15.2.jar" (
+    curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.15.2/jackson-core-2.15.2.jar -o "lib\jackson-core-2.15.2.jar"
+)
+if not exist "lib\jackson-annotations-2.15.2.jar" (
+    curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.15.2/jackson-annotations-2.15.2.jar -o "lib\jackson-annotations-2.15.2.jar"
+)
+if not exist "lib\jackson-databind-2.15.2.jar" (
+    curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.15.2/jackson-databind-2.15.2.jar -o "lib\jackson-databind-2.15.2.jar"
+)
+if not exist "lib\jackson-datatype-jsr310-2.15.2.jar" (
+    curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.15.2/jackson-datatype-jsr310-2.15.2.jar -o "lib\jackson-datatype-jsr310-2.15.2.jar"
+)
 goto :eof
 
 :docs

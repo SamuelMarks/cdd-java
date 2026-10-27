@@ -155,6 +155,8 @@ public class Emit {
 		cu.addImport("io.javalin.http.UnauthorizedResponse");
 		cu.addImport("com.fasterxml.jackson.databind.JsonNode");
 		cu.addImport("com.fasterxml.jackson.databind.ObjectMapper");
+		cu.addImport("com.fasterxml.jackson.databind.SerializationFeature");
+		cu.addImport("com.fasterxml.jackson.datatype.jsr310.JavaTimeModule");
 		cu.addImport("java.net.URI");
 		cu.addImport("java.net.http.HttpClient");
 		cu.addImport("java.net.http.HttpRequest");
@@ -174,7 +176,8 @@ public class Emit {
 				StaticJavaParser.parseExpression("ConcurrentHashMap.newKeySet()"), Modifier.Keyword.PUBLIC,
 				Modifier.Keyword.STATIC, Modifier.Keyword.FINAL)
 				.setJavadocComment("Active session tokens issued by the integrated Identity Provider.");
-		cls.addFieldWithInitializer("ObjectMapper", "MAPPER", StaticJavaParser.parseExpression("new ObjectMapper()"),
+		cls.addFieldWithInitializer("ObjectMapper", "MAPPER", StaticJavaParser.parseExpression(
+				"new ObjectMapper().registerModule(new JavaTimeModule()).findAndRegisterModules().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)"),
 				Modifier.Keyword.PRIVATE, Modifier.Keyword.STATIC, Modifier.Keyword.FINAL)
 				.setJavadocComment("Shared Jackson ObjectMapper instance.");
 

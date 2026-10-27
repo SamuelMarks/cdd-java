@@ -53,6 +53,18 @@ install_base:
 install_deps:
 	@echo "Installing dependencies to lib/..."
 	mvn dependency:copy-dependencies -DoutputDirectory=lib
+	@if [ ! -f lib/jackson-core-2.15.2.jar ]; then \
+		curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.15.2/jackson-core-2.15.2.jar -o lib/jackson-core-2.15.2.jar; \
+	fi
+	@if [ ! -f lib/jackson-annotations-2.15.2.jar ]; then \
+		curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.15.2/jackson-annotations-2.15.2.jar -o lib/jackson-annotations-2.15.2.jar; \
+	fi
+	@if [ ! -f lib/jackson-databind-2.15.2.jar ]; then \
+		curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.15.2/jackson-databind-2.15.2.jar -o lib/jackson-databind-2.15.2.jar; \
+	fi
+	@if [ ! -f lib/jackson-datatype-jsr310-2.15.2.jar ]; then \
+		curl -sL https://repo1.maven.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.15.2/jackson-datatype-jsr310-2.15.2.jar -o lib/jackson-datatype-jsr310-2.15.2.jar; \
+	fi
 
 docs: install_deps
 	@echo "Building API docs to target/docs..."

@@ -370,7 +370,8 @@ public class MiscParseEmitTest {
 		opNoJson.responses.statusCodes.put("200", ReferenceOr.ofValue(rNoJson));
 		piResp.delete = opNoJson;
 
-		// 200 response with ReferenceOr.ofRef (value == null)
+		// 200 response with ReferenceOr.ofRef (value == null) and various
+		// model/components branches
 		Operation opRefResp = new Operation();
 		opRefResp.operationId = "opRefResp";
 		opRefResp.responses = new Responses();
@@ -398,6 +399,42 @@ public class MiscParseEmitTest {
 		String outResp = tests.Emit.emit(apiResp, null);
 		assertTrue(outResp.contains("new TypeReference<Pet>() {}"));
 		assertTrue(outResp.contains("new TypeReference<List<Pet>>() {}"));
+		assertTrue(outResp.contains("JavaTimeModule"));
+		assertTrue(outResp.contains("findAndRegisterModules()"));
+		assertTrue(outResp.contains("res.statusCode() >= 200 && res.statusCode() < 500"));
+		assertTrue(cli.ProjectScaffolder.generatePomXml().contains("<artifactId>jackson-datatype-jsr310</artifactId>"));
+
+		// Test resolveResponseType with model.components != null but responses == null
+		apiResp.components = new Components();
+		apiResp.components.responses = null;
+		tests.Emit.emit(apiResp, null);
+
+		// Test resolveResponseType with model.components.responses != null (missing key
+		// and present key)
+		apiResp.components.responses = new java.util.HashMap<>();
+		tests.Emit.emit(apiResp, null);
+		Response resolvedSomeResp = new Response();
+		resolvedSomeResp.schema = ReferenceOr.ofRef("#/components/schemas/Order");
+		apiResp.components.responses.put("SomeResp", ReferenceOr.ofValue(resolvedSomeResp));
+		String outRespResolved = tests.Emit.emit(apiResp, null);
+		assertTrue(outRespResolved.contains("new TypeReference<Order>() {}"));
+
+		// Test resolveResponseType with null ReferenceOr entry in statusCodes
+		// (respRef.value == null && !respRef.isRef())
+		Operation opNullValNoRef = new Operation();
+		opNullValNoRef.operationId = "opNullValNoRef";
+		opNullValNoRef.responses = new Responses();
+		opNullValNoRef.responses.statusCodes.put("200", new ReferenceOr<Response>(null, null));
+		piResp2.put = opNullValNoRef;
+		tests.Emit.emit(apiResp, null);
+
+		// Test resolveResponseType via reflection with model == null
+		java.lang.reflect.Method resolveMethod = tests.Emit.class.getDeclaredMethod("resolveResponseType",
+				Operation.class, OpenAPI.class);
+		resolveMethod.setAccessible(true);
+		assertNull(resolveMethod.invoke(null, opRefResp, null));
+		assertEquals("{\"mock\": \"true\"}", mocks.Emit.synthesizeMockPayload(opRefResp, null));
+		assertEquals("{\"mock\": \"true\"}", mocks.Emit.synthesizeMockPayload(opNullValNoRef, apiResp));
 	}
 
 	/**
@@ -544,12 +581,20 @@ public class MiscParseEmitTest {
 		Schema exProp = new Schema();
 		exProp.type = SchemaType.ofSingle("string");
 		exProp.example = common.PayloadValue.ofString("customEx");
+		Schema dtProp = new Schema();
+		dtProp.type = SchemaType.ofSingle("string");
+		dtProp.format = "date-time";
+		Schema dateProp = new Schema();
+		dateProp.type = SchemaType.ofSingle("string");
+		dateProp.format = "date";
 		itemSchema.properties.put("s", ReferenceOr.ofValue(strProp));
 		itemSchema.properties.put("i", ReferenceOr.ofValue(intProp));
 		itemSchema.properties.put("n", ReferenceOr.ofValue(numProp));
 		itemSchema.properties.put("b", ReferenceOr.ofValue(boolProp));
 		itemSchema.properties.put("e", ReferenceOr.ofValue(enumProp));
 		itemSchema.properties.put("x", ReferenceOr.ofValue(exProp));
+		itemSchema.properties.put("dt", ReferenceOr.ofValue(dtProp));
+		itemSchema.properties.put("d", ReferenceOr.ofValue(dateProp));
 		itemSchema.properties.put("nonSchema", null);
 		api.components.schemas.put("Item", ReferenceOr.ofValue(itemSchema));
 

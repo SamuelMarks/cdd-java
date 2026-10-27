@@ -122,4 +122,101 @@ public class MainBranchTest {
 		assertNotNull(parsedRoundtrip.components);
 		assertTrue(parsedRoundtrip.components.schemas.containsKey("Pet"));
 	}
+
+	/**
+	 * Verifies that a generated SDK and JUnit integration test compile and
+	 * deserialize an {@code Order} payload containing an {@code OffsetDateTime}
+	 * ({@code shipDate}) and {@code LocalDate} field using {@code JavaTimeModule}.
+	 *
+	 * @throws Exception
+	 *             If compilation or execution fails.
+	 */
+	@Test
+	public void testGeneratedOrderShipDateRoundtrip() throws Exception {
+		File orderSpec = new File("target/order_shipdate_spec.json");
+		orderSpec.getParentFile().mkdirs();
+		java.nio.file.Files.writeString(orderSpec.toPath(),
+				"{\"openapi\":\"3.2.0\",\"info\":{\"title\":\"OrderApi\",\"version\":\"1.0.0\"},"
+						+ "\"paths\":{\"/store/order/{orderId}\":{\"get\":{\"operationId\":\"getOrderById\","
+						+ "\"parameters\":[{\"name\":\"orderId\",\"in\":\"path\",\"required\":true,\"schema\":{\"type\":\"integer\"}}],"
+						+ "\"responses\":{\"200\":{\"$ref\":\"#/components/responses/OrderResponse\"}}}}},"
+						+ "\"components\":{\"responses\":{\"OrderResponse\":{\"description\":\"ok\","
+						+ "\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/Order\"}}}}},"
+						+ "\"schemas\":{\"Order\":{\"type\":\"object\",\"properties\":{"
+						+ "\"id\":{\"type\":\"integer\",\"format\":\"int64\"},"
+						+ "\"shipDate\":{\"type\":\"string\",\"format\":\"date-time\"},"
+						+ "\"deliveryDate\":{\"type\":\"string\",\"format\":\"date\"}" + "}}}}}",
+				java.nio.charset.StandardCharsets.UTF_8);
+
+		File outDir = new File("target/order_shipdate_sdk");
+		Main.main(new String[]{"from_openapi", "to_sdk", "--tests", "-i", orderSpec.getPath(), "-o", outDir.getPath()});
+
+		File sdkFile = new File(outDir, "src/main/java/Sdk.java");
+		File testFile = new File(outDir, "src/test/java/OrderApiIntegrationTest.java");
+		assertTrue(sdkFile.exists());
+		assertTrue(testFile.exists());
+
+		File classesDir = new File("target/order_shipdate_classes");
+		classesDir.mkdirs();
+		javax.tools.JavaCompiler compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
+		assertNotNull(compiler);
+		int compileResult = compiler.run(null, null, null, "--release", "17", "-cp",
+				System.getProperty("java.class.path"), "-d", classesDir.getAbsolutePath(), sdkFile.getAbsolutePath(),
+				testFile.getAbsolutePath());
+		assertEquals(0, compileResult);
+
+		java.net.URLClassLoader loader = new java.net.URLClassLoader(new java.net.URL[]{classesDir.toURI().toURL()},
+				getClass().getClassLoader());
+		Class<?> testCls = Class.forName("OrderApiIntegrationTest", true, loader);
+		Object testInstance = testCls.getDeclaredConstructor().newInstance();
+
+		com.sun.net.httpserver.HttpServer liveServer = com.sun.net.httpserver.HttpServer
+				.create(new java.net.InetSocketAddress(0), 0);
+		int livePort = liveServer.getAddress().getPort();
+		liveServer.createContext("/", exchange -> {
+			byte[] body = "{\"id\":42,\"shipDate\":\"2026-10-24T12:34:56+02:00\",\"deliveryDate\":\"2026-10-25\"}"
+					.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().add("Content-Type", "application/json");
+			exchange.sendResponseHeaders(200, body.length);
+			try (java.io.OutputStream os = exchange.getResponseBody()) {
+				os.write(body);
+			}
+		});
+		liveServer.start();
+		try {
+			testCls.getMethod("setUpClass").invoke(null);
+			try {
+				testCls.getMethod("testGetOrderByIdMockSuccess").invoke(testInstance);
+
+				Class<?> orderCls = Class.forName("Order", true, loader);
+				Class<?> clientCls = Class.forName("OrderApiClient", true, loader);
+				java.lang.reflect.Constructor<?> clientCtor = clientCls.getDeclaredConstructor(String.class);
+				clientCtor.setAccessible(true);
+				Object clientObj = clientCtor.newInstance("http://localhost:" + livePort);
+				java.lang.reflect.Method getOrderMethod = clientCls.getMethod("getOrderById", String.class);
+				getOrderMethod.setAccessible(true);
+				java.net.http.HttpResponse<?> resp = (java.net.http.HttpResponse<?>) getOrderMethod.invoke(clientObj,
+						"42");
+				assertEquals(200, resp.statusCode());
+				java.lang.reflect.Field mapperField = clientCls.getField("mapper");
+				mapperField.setAccessible(true);
+				com.fasterxml.jackson.databind.ObjectMapper clientMapper = (com.fasterxml.jackson.databind.ObjectMapper) mapperField
+						.get(clientObj);
+				clientMapper.configure(
+						com.fasterxml.jackson.databind.DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE, false);
+				Object orderObj = clientMapper.readValue(String.valueOf(resp.body()), orderCls);
+				java.lang.reflect.Field shipDateField = orderCls.getField("shipDate");
+				shipDateField.setAccessible(true);
+				java.time.OffsetDateTime shipDate = (java.time.OffsetDateTime) shipDateField.get(orderObj);
+				assertEquals(java.time.OffsetDateTime.parse("2026-10-24T12:34:56+02:00"), shipDate);
+				String serialized = clientMapper.writeValueAsString(orderObj);
+				assertTrue(serialized.contains("2026-10-24T12:34:56+02:00"));
+			} finally {
+				testCls.getMethod("tearDownClass").invoke(null);
+			}
+		} finally {
+			liveServer.stop(0);
+			loader.close();
+		}
+	}
 }

@@ -304,21 +304,32 @@ public class Emit {
 			} else if (op.responses.statusCodes.containsKey("201")) {
 				respObj = op.responses.statusCodes.get("201");
 			}
-			if (respObj != null && respObj.value != null) {
+			if (respObj != null) {
 				Response resp = respObj.value;
-				if (resp.content != null) {
-					openapi.MediaType mt = resp.content.get("application/json");
-					if (mt != null) {
-						if (mt.example != null) {
-							return valueToJsonString(mt.example);
-						}
-						if (mt.schema != null) {
-							return synthesizeSchemaRefOrValue(mt.schema, model).toString();
-						}
+				if (resp == null && respObj.isRef() && model != null && model.components != null
+						&& model.components.responses != null) {
+					String refStr = respObj.resolveRefString();
+					String name = refStr.substring(refStr.lastIndexOf('/') + 1);
+					openapi.ReferenceOr<Response> target = model.components.responses.get(name);
+					if (target != null) {
+						resp = target.value;
 					}
 				}
-				if (resp.schema != null) {
-					return synthesizeSchemaRefOrValue(resp.schema, model).toString();
+				if (resp != null) {
+					if (resp.content != null) {
+						openapi.MediaType mt = resp.content.get("application/json");
+						if (mt != null) {
+							if (mt.example != null) {
+								return valueToJsonString(mt.example);
+							}
+							if (mt.schema != null) {
+								return synthesizeSchemaRefOrValue(mt.schema, model).toString();
+							}
+						}
+					}
+					if (resp.schema != null) {
+						return synthesizeSchemaRefOrValue(resp.schema, model).toString();
+					}
 				}
 			}
 		}
@@ -372,6 +383,12 @@ public class Emit {
 			return arr;
 		}
 		if ("string".equals(typeStr)) {
+			if ("date-time".equals(resolved.format)) {
+				return "2026-10-24T00:00:00Z";
+			}
+			if ("date".equals(resolved.format)) {
+				return "2026-10-24";
+			}
 			return "string";
 		}
 		if ("integer".equals(typeStr)) {
@@ -407,7 +424,7 @@ public class Emit {
 	 * @return The dereferenced {@link Schema}, or the original if not a reference.
 	 */
 	private static Schema dereferenceSchema(Schema schema, OpenAPI model) {
-		if (schema.$ref != null && model != null && model.components != null) {
+		if (schema.$ref != null && model != null && model.components != null && model.components.schemas != null) {
 			String name = schema.$ref.substring(schema.$ref.lastIndexOf('/') + 1);
 			openapi.ReferenceOr<Schema> target = model.components.schemas.get(name);
 			if (target != null) {

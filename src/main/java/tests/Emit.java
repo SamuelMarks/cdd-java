@@ -53,8 +53,10 @@ public class Emit {
 		sb.append("import java.util.Map;\n");
 		sb.append("import com.fasterxml.jackson.databind.ObjectMapper;\n");
 		sb.append("import com.fasterxml.jackson.databind.DeserializationFeature;\n");
+		sb.append("import com.fasterxml.jackson.databind.SerializationFeature;\n");
 		sb.append("import com.fasterxml.jackson.databind.JsonNode;\n");
-		sb.append("import com.fasterxml.jackson.core.type.TypeReference;\n\n");
+		sb.append("import com.fasterxml.jackson.core.type.TypeReference;\n");
+		sb.append("import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;\n\n");
 		sb.append("public class ").append(testClass).append(" {\n");
 		sb.append("    static com.sun.net.httpserver.HttpServer mockServer;\n");
 		sb.append("    static int mockPort;\n");
@@ -258,7 +260,7 @@ public class Emit {
 		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
 				.append(");\n");
 		sb.append(
-				"        assertTrue(\"Expected valid status code, got: \" + res.statusCode(), res.statusCode() >= 200 && res.statusCode() < 600);\n");
+				"        assertTrue(\"Expected valid status code, got: \" + res.statusCode(), res.statusCode() >= 200 && res.statusCode() < 500);\n");
 		sb.append(
 				"        if (res.body() != null && !res.body().trim().isEmpty() && res.statusCode() >= 200 && res.statusCode() < 300) {\n");
 		sb.append("            String trimmed = res.body().trim();\n");
@@ -266,7 +268,12 @@ public class Emit {
 		sb.append(
 				"            if (ct.toLowerCase().contains(\"json\") || trimmed.startsWith(\"{\") || trimmed.startsWith(\"[\")) {\n");
 		sb.append("                ObjectMapper mapper = new ObjectMapper();\n");
+		sb.append("                mapper.registerModule(new JavaTimeModule());\n");
+		sb.append("                mapper.findAndRegisterModules();\n");
 		sb.append("                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);\n");
+		sb.append(
+				"                mapper.configure(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE, false);\n");
+		sb.append("                mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);\n");
 		sb.append("                try {\n");
 		if (responseType != null) {
 			sb.append("                    mapper.readValue(trimmed, new TypeReference<").append(responseType)
@@ -292,6 +299,16 @@ public class Emit {
 		sb.append("        HttpResponse<String> res = client.").append(methodName).append("(").append(argsStr)
 				.append(");\n");
 		sb.append("        assertEquals(").append(expectedSuccessStatus).append(", res.statusCode());\n");
+		if (responseType != null) {
+			sb.append("        ObjectMapper mapper = new ObjectMapper();\n");
+			sb.append("        mapper.registerModule(new JavaTimeModule());\n");
+			sb.append("        mapper.findAndRegisterModules();\n");
+			sb.append("        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);\n");
+			sb.append("        mapper.configure(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE, false);\n");
+			sb.append("        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);\n");
+			sb.append("        assertNotNull(mapper.readValue(res.body().trim(), new TypeReference<")
+					.append(responseType).append(">() {}));\n");
+		}
 		sb.append("    }\n\n");
 
 		// test[MethodName]MockClientError
@@ -410,10 +427,22 @@ public class Emit {
 		} else if (op.responses.statusCodes.containsKey("201")) {
 			respRef = op.responses.statusCodes.get("201");
 		}
-		if (respRef == null || respRef.value == null) {
+		if (respRef == null) {
 			return null;
 		}
 		openapi.Response resp = respRef.value;
+		if (resp == null && respRef.isRef() && model != null && model.components != null
+				&& model.components.responses != null) {
+			String refStr = respRef.resolveRefString();
+			String name = refStr.substring(refStr.lastIndexOf('/') + 1);
+			openapi.ReferenceOr<openapi.Response> target = model.components.responses.get(name);
+			if (target != null) {
+				resp = target.value;
+			}
+		}
+		if (resp == null) {
+			return null;
+		}
 		openapi.ReferenceOr<Schema> schemaRef = resp.schema;
 		if (schemaRef == null && resp.content != null) {
 			openapi.MediaType mt = resp.content.get("application/json");

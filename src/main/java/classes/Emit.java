@@ -87,6 +87,9 @@ public class Emit {
 			cu.addImport("com.fasterxml.jackson.annotation.JsonTypeInfo");
 			cu.addImport("com.fasterxml.jackson.annotation.JsonSubTypes");
 			cu.addImport("com.fasterxml.jackson.annotation.JsonValue");
+			cu.addImport("com.fasterxml.jackson.databind.ObjectMapper");
+			cu.addImport("com.fasterxml.jackson.databind.SerializationFeature");
+			cu.addImport("com.fasterxml.jackson.datatype.jsr310.JavaTimeModule");
 			cu.addImport("java.util.List");
 			cu.addImport("java.util.Map");
 			cu.addImport("java.net.http.HttpClient");

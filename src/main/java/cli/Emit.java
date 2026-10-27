@@ -44,6 +44,8 @@ public class Emit {
 		cu.addImport("java.io.BufferedReader");
 		cu.addImport("java.io.InputStreamReader");
 		cu.addImport("com.fasterxml.jackson.databind.ObjectMapper");
+		cu.addImport("com.fasterxml.jackson.databind.SerializationFeature");
+		cu.addImport("com.fasterxml.jackson.datatype.jsr310.JavaTimeModule");
 		cu.addImport("com.fasterxml.jackson.databind.JsonNode");
 		cu.addImport("com.fasterxml.jackson.databind.node.ObjectNode");
 		cu.addImport("com.fasterxml.jackson.databind.node.ArrayNode");
@@ -90,6 +92,9 @@ public class Emit {
 		sb.append(
 				"            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, \"UTF-8\"));\n");
 		sb.append("            ObjectMapper mapper = new ObjectMapper();\n");
+		sb.append("            mapper.registerModule(new JavaTimeModule());\n");
+		sb.append("            mapper.findAndRegisterModules();\n");
+		sb.append("            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);\n");
 		sb.append("            String line;\n");
 		sb.append("            while ((line = reader.readLine()) != null) {\n");
 		sb.append("                line = line.trim();\n");

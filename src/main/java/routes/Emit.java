@@ -484,10 +484,12 @@ public class Emit {
 			clientDecl.setModifier(com.github.javaparser.ast.Modifier.Keyword.PUBLIC, false);
 			clientDecl.addField("String", "baseUrl", com.github.javaparser.ast.Modifier.Keyword.PRIVATE);
 			clientDecl.addField("HttpClient", "httpClient", com.github.javaparser.ast.Modifier.Keyword.PRIVATE);
+			clientDecl.addField("com.fasterxml.jackson.databind.ObjectMapper", "mapper",
+					com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
 			clientDecl.addField("String", "authorizationToken", com.github.javaparser.ast.Modifier.Keyword.PUBLIC);
 			clientDecl.addConstructor(com.github.javaparser.ast.Modifier.Keyword.PUBLIC)
 					.addParameter("String", "baseUrl").setBody(StaticJavaParser.parseBlock(
-							"{ this.baseUrl = baseUrl; this.httpClient = HttpClient.newHttpClient(); this.mcp = new McpAdapter(); this.auth = new AuthAdapter(); }"));
+							"{ this.baseUrl = baseUrl; this.httpClient = HttpClient.newHttpClient(); this.mapper = new com.fasterxml.jackson.databind.ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()).findAndRegisterModules().disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); this.mcp = new McpAdapter(); this.auth = new AuthAdapter(); }"));
 			classes.McpEmitter.createAuthAdapter(clientDecl, clientClass);
 			ClassOrInterfaceDeclaration mcpAdapter = classes.McpEmitter.createMcpAdapter(clientDecl);
 			com.github.javaparser.ast.body.MethodDeclaration getTools = mcpAdapter.addMethod("getTools",
