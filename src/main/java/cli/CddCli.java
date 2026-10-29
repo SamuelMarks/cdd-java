@@ -630,10 +630,16 @@ public class CddCli {
 			if (outputFile == null) {
 				outputFile = "docs.json";
 			}
-			OpenAPI api = openapi.Parse.fromFile(resolveFile(inputFile));
-			String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
-			writeFile(resolveFile(outputFile), docsJson);
-			System.out.println("Emitted docs JSON to " + outputFile);
+			File specFile = resolveFile(inputFile);
+			OpenAPI api = openapi.Parse.fromFile(specFile);
+			arazzo.Arazzo arazzoSpec = arazzo.Parse.fromFile(specFile);
+			String docsJson = docstrings.Emit.emitDocsJson(api, arazzoSpec, noImports, noWrapping);
+			File outTarget = resolveFile(outputFile);
+			if (outTarget.isDirectory()) {
+				outTarget = new File(outTarget, "docs.json");
+			}
+			writeFile(outTarget, docsJson);
+			System.out.println("Emitted docs JSON to " + outTarget.getPath());
 		} else if (command.equals("serve_json_rpc") || command.equals("mcp")) {
 			if (hasFlag(args, "-h", "--help", null)) {
 				System.out.println("cdd-java " + command);
@@ -781,9 +787,10 @@ public class CddCli {
 			} else if (command.equals("to_docs_json")) {
 				boolean noImports = hasFlag(cmdArgs, "--no-imports", "--no-imports", null);
 				boolean noWrapping = hasFlag(cmdArgs, "--no-wrapping", "--no-wrapping", null);
-				String specContent = inFiles.optString("spec.json", null);
+				String specContent = inFiles.optString("spec.json", inFiles.optString("arazzo.json", null));
 				OpenAPI api = openapi.Parse.fromString(specContent);
-				String docsJson = docstrings.Emit.emitDocsJson(api, noImports, noWrapping);
+				arazzo.Arazzo arazzoSpec = arazzo.Parse.fromString(specContent);
+				String docsJson = docstrings.Emit.emitDocsJson(api, arazzoSpec, noImports, noWrapping);
 				outFiles.put("docs.json", docsJson);
 			} else {
 				throw new Exception("Unsupported in-memory command: " + command);

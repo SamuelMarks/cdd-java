@@ -418,11 +418,16 @@ public class CliMainTest {
 		Files.writeString(specFile.toPath(),
 				"{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"\",\"version\":\"1\"},\"paths\":{}}");
 		File outFile = new File(tempDir, "docs.json");
+		File outSubDir = new File(tempDir, "out_dir");
+		outSubDir.mkdirs();
 
 		runMain(new String[]{"to_docs_json", "-h"});
 		runMain(new String[]{"to_docs_json"});
 		runMain(new String[]{"to_docs_json", "-i", specFile.getAbsolutePath(), "-o", outFile.getAbsolutePath(),
 				"--no-imports", "--no-wrapping"});
+		assertTrue(outFile.exists());
+		runMain(new String[]{"to_docs_json", "-i", specFile.getAbsolutePath(), "-o", outSubDir.getAbsolutePath()});
+		assertTrue(new File(outSubDir, "docs.json").exists());
 
 		String oldDir = System.getProperty("user.dir");
 		try {
