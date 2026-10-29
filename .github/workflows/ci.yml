@@ -63,13 +63,12 @@ jobs:
 
     - name: Generate WASM Binary
       run: |
-
         python3 build_wasm.py
 
     - name: Verify WASM File Exists
       run: |
-        if [ ! -f target/wasm/cdd-java.wasm ]; then
-          echo "WASM file not found!"
+        if [ ! -f target/wasm/cdd-java.wasm ] || [ ! -f target/wasm/cdd-java.js.wasm ] || [ ! -f target/wasm/cdd-java.js ]; then
+          echo "WASM or JS wrapper files not found!"
           exit 1
         fi
 
@@ -79,25 +78,13 @@ jobs:
         npm install
         npm run build
         cp ../target/wasm/cdd-java.js ./dist/cdd-java.js
+        cp ../target/wasm/cdd-java.js.wasm ./dist/cdd-java.js.wasm
         cp ../target/wasm/cdd-java.wasm ./dist/cdd-java.wasm
-
-#    - name: Publish NPM Package
-#      run: |
-#        cd package
-#        # Update version based on tag
-#        VERSION=${GITHUB_REF#refs/tags/}
-#        VERSION=${VERSION#v}
-#        # If tag is 'latest', maybe we don't want to fail npm version. We could skip it or handle it.
-#        if [ "$VERSION" != "latest" ]; then
-#          npm version $VERSION --no-git-tag-version
-#        fi
-#        npm publish --access public || echo "Publishing skipped or failed"
-#      env:
-#        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     - name: Rename and Checksum
       run: |
         cp target/wasm/cdd-java.wasm ./cdd-java.wasm
+        cp target/wasm/cdd-java.js.wasm ./cdd-java.js.wasm
         cp target/wasm/cdd-java.js ./cdd-java.js
         sha256sum cdd-java.wasm > cdd-java.wasm.sha256
 
@@ -106,9 +93,10 @@ jobs:
       with:
         files: |
           cdd-java.wasm
+          cdd-java.js.wasm
           cdd-java.js
           cdd-java.wasm.sha256
-        body: "WasmGC binary for cdd-java compiled via GraalVM Native Image 25 EA, bundled with JS Wrapper."
+        body: "WasmGC binary for cdd-java compiled via GraalVM Native Image 25, bundled with JS Wrapper."
         draft: false
         prerelease: false
 
@@ -128,6 +116,7 @@ jobs:
         tag_name: latest
         files: |
           cdd-java.wasm
+          cdd-java.js.wasm
           cdd-java.js
           cdd-java.wasm.sha256
         body: "Latest WasmGC binary automatically updated from ${{ github.ref_name }}"

@@ -113,7 +113,7 @@ help:
 	@echo "  build	: build the CLI binary (e.g. make build [path])"
 	@echo "  test	 : run tests locally"
 	@echo "  run	  : run the CLI (e.g. make run [args...])"
-	@echo "  build_wasm   : build WASM variant (Not implemented)"
+	@echo "  build_wasm   : build WasmGC binary and JS wrapper via GraalVM 25 SVM-WASM"
 	@echo "  build_docker : build Docker images"
 	@echo "  run_docker   : run Docker images"
 	@echo "  help	 : show this help text"
@@ -123,10 +123,14 @@ build_wasm:
 	@echo "Building WASM variant..."
 	python3 build_wasm.py
 	mkdir -p bin
-	cp target/wasm/cdd-java.wasm bin/ || true
-	cp target/wasm/cdd-java.js* bin/ || true
+	cp target/wasm/cdd-java.wasm bin/cdd-java.wasm
+	cp target/wasm/cdd-java.js.wasm bin/cdd-java.js.wasm
+	cp target/wasm/cdd-java.js bin/cdd-java.js
 	@echo "Building JS wrapper..."
 	cd package && npm install && npm run build
+	cp target/wasm/cdd-java.wasm package/dist/cdd-java.wasm
+	cp target/wasm/cdd-java.js.wasm package/dist/cdd-java.js.wasm
+	cp target/wasm/cdd-java.js package/dist/cdd-java.js
 DOCKER_CMD ?= $(shell if command -v docker >/dev/null 2>&1 && docker ps >/dev/null 2>&1; then echo docker; elif command -v nerdctl >/dev/null 2>&1 && nerdctl ps >/dev/null 2>&1; then echo nerdctl; elif command -v lima >/dev/null 2>&1 && lima nerdctl ps >/dev/null 2>&1; then echo "lima nerdctl"; else echo docker; fi)
 
 build_docker:

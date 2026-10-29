@@ -44,7 +44,7 @@ echo   install_deps : install local dependencies
 echo   docs         : build the API docs to target/docs and symlink docs/html
 echo   build_docs   : build the API docs (specify dir as second arg, e.g. make.bat build_docs custom_dir)
 echo   build        : build the CLI binary (specify dir as second arg, e.g. make.bat build custom_dir)
-echo   build_wasm   : build WASM variant (Not implemented)
+echo   build_wasm   : build WasmGC binary and JS wrapper via GraalVM 25 SVM-WASM
 echo   build_docker : build Docker images
 echo   run_docker   : run Docker images
 echo   test         : run tests locally
@@ -143,7 +143,20 @@ java -cp "lib/*;%BIN_DIR%" cli.Main %RUN_ARGS%
 goto :eof
 
 :build_wasm
-echo WASM Support is not implemented for cdd-java. See WASM.md
+echo Building WASM variant...
+python build_wasm.py
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+if not exist "bin" mkdir "bin"
+copy /Y "target\wasm\cdd-java.wasm" "bin\cdd-java.wasm"
+copy /Y "target\wasm\cdd-java.js.wasm" "bin\cdd-java.js.wasm"
+copy /Y "target\wasm\cdd-java.js" "bin\cdd-java.js"
+pushd package
+call npm install
+call npm run build
+popd
+copy /Y "target\wasm\cdd-java.wasm" "package\dist\cdd-java.wasm"
+copy /Y "target\wasm\cdd-java.js.wasm" "package\dist\cdd-java.js.wasm"
+copy /Y "target\wasm\cdd-java.js" "package\dist\cdd-java.js"
 goto :eof
 
 :build_docker
