@@ -141,8 +141,7 @@ public class Emit {
 			OpenAPI effectiveApi = api != null ? api : new OpenAPI();
 			for (Workflow wf : arazzoSpec.workflows) {
 				String wfId = (wf.workflowId != null && !wf.workflowId.isEmpty()) ? wf.workflowId : "runWorkflow";
-				workflows.put(wfId,
-						createWorkflowCodeObject(wf, wfId, arazzoSpec, effectiveApi, noImports, noWrapping));
+				workflows.put(wfId, buildWorkflowCodeObject(wf, wfId, arazzoSpec, effectiveApi, noImports, noWrapping));
 			}
 			result.put("workflows", workflows);
 		}
@@ -169,13 +168,13 @@ public class Emit {
 		JSONObject pathMap = new JSONObject();
 		for (Map.Entry<openapi.HttpVerb, Operation> opEntry : pi.getOperationsMap().entrySet()) {
 			pathMap.put(opEntry.getKey().specName,
-					createOperationCodeObject(opEntry.getValue(), pi, api, noImports, noWrapping));
+					buildOperationCodeObject(opEntry.getValue(), pi, api, noImports, noWrapping));
 		}
 		return pathMap;
 	}
 
 	/**
-	 * Creates a structured code {@link JSONObject} ({@code imports},
+	 * Builds a structured code {@link JSONObject} ({@code imports},
 	 * {@code wrapper_start}, {@code snippet}, {@code wrapper_end}, and
 	 * {@code code}) for an OpenAPI {@link Operation}.
 	 *
@@ -192,7 +191,7 @@ public class Emit {
 	 *            method wrapper.
 	 * @return The structured code {@link JSONObject}.
 	 */
-	private static JSONObject createOperationCodeObject(Operation op, PathItem pi, OpenAPI api, boolean noImports,
+	private static JSONObject buildOperationCodeObject(Operation op, PathItem pi, OpenAPI api, boolean noImports,
 			boolean noWrapping) {
 		String snippetOpId = (op.operationId != null && !op.operationId.isEmpty()) ? op.operationId : "callEndpoint";
 		List<String> args = buildOperationArguments(op, pi, api);
@@ -202,7 +201,7 @@ public class Emit {
 	}
 
 	/**
-	 * Creates a structured code {@link JSONObject} for an Arazzo {@link Workflow}.
+	 * Builds a structured code {@link JSONObject} for an Arazzo {@link Workflow}.
 	 *
 	 * @param wf
 	 *            The {@link Workflow} to generate a snippet for.
@@ -218,7 +217,7 @@ public class Emit {
 	 *            Whether to omit the outer wrapper.
 	 * @return The structured code {@link JSONObject}.
 	 */
-	private static JSONObject createWorkflowCodeObject(Workflow wf, String wfId, Arazzo spec, OpenAPI api,
+	private static JSONObject buildWorkflowCodeObject(Workflow wf, String wfId, Arazzo spec, OpenAPI api,
 			boolean noImports, boolean noWrapping) {
 		List<String> args = buildWorkflowArguments(wf, spec, api);
 		String snippet = "var response = client." + wfId + "(" + String.join(", ", args) + ");" + NL
